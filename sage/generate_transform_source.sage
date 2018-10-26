@@ -23,6 +23,28 @@ print('}\n')
 
 
 
+print('Array<FP> get_gll_points(int n) {')
+print('  if (n == %s) {'%(N1))
+print('    return get_gll_points_%s();'%(N1))
+for N in range(N1+1,N2+1,2) :
+    print('  } else if (n == %s) {'%N)
+    print('    return get_gll_points_%s();'%N)
+print('  }')
+print('}\n')
+
+
+
+print('Array<FP> get_gll_weights(int n) {')
+print('  if (n == %s) {'%(N1))
+print('    return get_gll_weights_%s();'%(N1))
+for N in range(N1+1,N2+1,2) :
+    print('  } else if (n == %s) {'%N)
+    print('    return get_gll_weights_%s();'%N)
+print('  }')
+print('}\n')
+
+
+
 print('Array<FP> sten_to_coefs(FP dx,int n) {')
 print('  if (n == %s) {'%(N1+1))
 print('    return sten_to_coefs_%s(dx);'%(N1+1))
@@ -128,6 +150,24 @@ for N in range(N1,N2+1) :
     print('  Array<FP> rslt(%s,%s);'%(N,N))
     p2c,c2p = points_gll_to_coefs(N,var('x'),var('dx'))
     print(add_spaces(2,c_matrix('rslt',N,N,force_fp(p2c,129),'none',200)))
+    print('  return rslt;')
+    print('}\n');
+
+    print('Array<FP> get_gll_points_%s() {'%N)
+    print('  Array<FP> rslt(%s);'%(N))
+    pts,wts = lobatto_weights_nodes(N,129,False,1.e-35,100)
+    pts = pts / 2
+    wts = wts / 2
+    print(add_spaces(2,c_vector('rslt',N,force_fp(pts,129),'none',200)))
+    print('  return rslt;')
+    print('}\n');
+
+    print('Array<FP> get_gll_weights_%s() {'%N)
+    print('  Array<FP> rslt(%s);'%(N))
+    pts,wts = lobatto_weights_nodes(N,129,False,1.e-35,100)
+    pts = pts / 2
+    wts = wts / 2
+    print(add_spaces(2,c_vector('rslt',N,force_fp(wts,129),'none',200)))
     print('  return rslt;')
     print('}\n');
 
