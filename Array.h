@@ -870,7 +870,7 @@ public :
   inline long const *get_ubounds() const {
     return ubounds;
   }
-  inline T const *get_data() const {
+  inline T *get_data() const {
     return data;
   }
 
