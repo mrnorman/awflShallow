@@ -15,67 +15,67 @@
 
 
 /* Array<T>
-   Implements an efficient multi-dimensional Array that allows basic matrix / vector arithmetic.
-   Arrays up to 8 dimensions can be created through a few different constructors.
-   You can also create an empty array and dimension it after-the-fact with Array.setup()
+Implements an efficient multi-dimensional Array that allows basic matrix / vector arithmetic.
+Arrays up to 8 dimensions can be created through a few different constructors.
+You can also create an empty array and dimension it after-the-fact with Array.setup()
 
-   This Array class is templated on the type of the data (float, double, int, etc)
+This Array class is templated on the type of the data (float, double, int, etc)
 
-   You can re-dimension an array with a subsequent call to Array.setup(), which deallocates the
-   old data and creates a new internal array. The old data is destroyed.
+You can re-dimension an array with a subsequent call to Array.setup(), which deallocates the
+old data and creates a new internal array. The old data is destroyed.
 
-   NOTE: This class was not developed with flexible dimension sizes in mind like std::vector. That
-   setup does not perform well anyway, and it requires extra book keeping that I don't want to
-   have to worry about. This class was designed for fixed-sized Arrays thorughout the object's
-   lifetime. Redimensioning an array is expensive because it deallocates, allocates, and basically
-   destroyed the previous data, requiring you to reset all of the data yourself. Arrays should only
-   be redimensioned when you simply want to re-use the same object for a new application.
+NOTE: This class was not developed with flexible dimension sizes in mind like std::vector. That
+setup does not perform well anyway, and it requires extra book keeping that I don't want to
+have to worry about. This class was designed for fixed-sized Arrays thorughout the object's
+lifetime. Redimensioning an array is expensive because it deallocates, allocates, and basically
+destroyed the previous data, requiring you to reset all of the data yourself. Arrays should only
+be redimensioned when you simply want to re-use the same object for a new application.
 
-   You can access the array internals with accessor functions, but they are returned as const.
+You can access the array internals with accessor functions, but they are returned as const.
 
-   I've added a number of global reductions for the Array class. I've tried to make them robust
-   to integer types, but you'll have to look at the implementations to determine if they fit what
-   you would expect for integer Array data. I always cast back to the class's templated type, meaning
-   default rounding for integers in the mean, for instance.
+I've added a number of global reductions for the Array class. I've tried to make them robust
+to integer types, but you'll have to look at the implementations to determine if they fit what
+you would expect for integer Array data. I always cast back to the class's templated type, meaning
+default rounding for integers in the mean, for instance.
 
-   The only variable allocated on the heap with "new" is the Array's 1-D internall array "data". Since
-   this structure is carefully handled internally, so long as you don't use "new", you'll never have
-   a memory leak when using this class.
+The only variable allocated on the heap with "new" is the Array's 1-D internall array "data". Since
+this structure is carefully handled internally, so long as you don't use "new", you'll never have
+a memory leak when using this class.
 
-   This class is indexed by overloading the () operator, rather than the [] operator. This makes things
-   a bit more flexible so you can create an array of Arrays if you wanted.
+This class is indexed by overloading the () operator, rather than the [] operator. This makes things
+a bit more flexible so you can create an array of Arrays if you wanted.
 
-   All functions are templated, so you can index with whatever you want, but preferrably it would be
-   integer-like to avoid undefined behavior.
+All functions are templated, so you can index with whatever you want, but preferrably it would be
+integer-like to avoid undefined behavior.
 
-   The internal indexing is always done with long and unsigned long so that you won't run into a case
-   where the size is larger than the indexing can handle.
+The internal indexing is always done with long and unsigned long so that you won't run into a case
+where the size is larger than the indexing can handle.
 
-   For arithmetic, you can multiply by a constant, component-wise vectors, matvecs, and matmuls. 3-D or
-   larger Arrays are multiplied component-wise. You can add a constant or another Array component-wise.
+For arithmetic, you can multiply by a constant, component-wise vectors, matvecs, and matmuls. 3-D or
+larger Arrays are multiplied component-wise. You can add a constant or another Array component-wise.
 
-   By defining the ARRAY_DEBUG CPP variable at compile time, you can swich on "debug" mode, which is
-   much slower than default mode without it. But it will catch all sorts of bugs you might otherwise
-   introduce into the code by indexing out of bounds, with the wrong # dimensions, arithmetic on
-   incompatible Array dimensions, etc.
+By defining the ARRAY_DEBUG CPP variable at compile time, you can swich on "debug" mode, which is
+much slower than default mode without it. But it will catch all sorts of bugs you might otherwise
+introduce into the code by indexing out of bounds, with the wrong # dimensions, arithmetic on
+incompatible Array dimensions, etc.
 
-   I've taken pains to make sure this class is (1) very fast in implementation and (2) able to be
-   transferred to CUDA at a later date. Namely, there is no use of std:: outside of debug mode.
-   It's more cumbersome up front, but CUDA doesn't recognize the standard template library yet
-   (and maybe never will).
+I've taken pains to make sure this class is (1) very fast in implementation and (2) able to be
+transferred to CUDA at a later date. Namely, there is no use of std:: outside of debug mode.
+It's more cumbersome up front, but CUDA doesn't recognize the standard template library yet
+(and maybe never will).
 
-   Regarding fast implementation, everything but the data itself is part of the class data (i.e., on
-   the stack and not on the heap), so it shouldn't create unnecessary cache misses. All accesses
-   are into a 1-D array under the hood, so no pointer lookups. Integer arithmetic is reduced by
-   creating "offsets" upon initialization for indexing. Further, the inline keyword is used everywhere
-   to strongly encourage the compiler to do the right thing. Since debug functions are inlined
-   when debug mode is off, they equate to an empty context and are optimized out.
+Regarding fast implementation, everything but the data itself is part of the class data (i.e., on
+the stack and not on the heap), so it shouldn't create unnecessary cache misses. All accesses
+are into a 1-D array under the hood, so no pointer lookups. Integer arithmetic is reduced by
+creating "offsets" upon initialization for indexing. Further, the inline keyword is used everywhere
+to strongly encourage the compiler to do the right thing. Since debug functions are inlined
+when debug mode is off, they equate to an empty context and are optimized out.
 */
 
 
 template <class T> class Array {
 
-protected :
+  protected :
 
   typedef unsigned long ulong;
 
@@ -101,13 +101,13 @@ protected :
     }
   }
 
-public :
+  public :
 
   /* CONSTRUCTORS
-     You can declare the array empty or with many dimensions
-     Always nullify before beginning so that data == NULL upon init. This allows the
-     setup() functions to keep from deallocating data upon initialization, since
-     you don't know what "data" will be when the object is created.
+  You can declare the array empty or with many dimensions
+  Always nullify before beginning so that data == NULL upon init. This allows the
+  setup() functions to keep from deallocating data upon initialization, since
+  you don't know what "data" will be when the object is created.
   */
   Array() { nullify(); }
   //Define the dimension ranges using an array of upper bounds, assuming lower bounds to be zero
@@ -185,12 +185,12 @@ public :
   }
 
   /* DESTRUCTOR
-     Make sure the internal arrays are allocated before freeing them
+  Make sure the internal arrays are allocated before freeing them
   */
   ~Array() { finalize(); }
 
   /* SETUP FUNCTIONS
-     Initialize the array with the given dimensions
+  Initialize the array with the given dimensions
   */
   inline void setup(Array const &in) {
     //If the buffer exists, and it's the right size, don't deallocate and reallocate
@@ -331,7 +331,7 @@ public :
   }
 
   /* ARRAY INDEXERS (FORTRAN index ordering)
-     Return the element at the given index (either read-only or read-write)
+  Return the element at the given index (either read-only or read-write)
   */
   template <class I> inline T &operator()(I const i0) {
     this->check_dims(1,ndims,__FILE__,__LINE__);
@@ -344,7 +344,7 @@ public :
     this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
     this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1]);
+    (i1-lbounds[1]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2) {
@@ -353,8 +353,8 @@ public :
     this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
     this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3) {
@@ -364,9 +364,9 @@ public :
     this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
     this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4) {
@@ -377,10 +377,10 @@ public :
     this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
     this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5) {
@@ -392,11 +392,11 @@ public :
     this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
     this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6) {
@@ -409,12 +409,12 @@ public :
     this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
     this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5])*offsets[5] +
-                (i6-lbounds[6]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5])*offsets[5] +
+    (i6-lbounds[6]);
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6, I const i7) {
@@ -428,13 +428,13 @@ public :
     this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
     this->check_index(7,i7,lbounds[7],ubounds[7],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5])*offsets[5] +
-                (i6-lbounds[6])*offsets[6] +
-                (i7-lbounds[7]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5])*offsets[5] +
+    (i6-lbounds[6])*offsets[6] +
+    (i7-lbounds[7]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0) const {
@@ -448,7 +448,7 @@ public :
     this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
     this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1]);
+    (i1-lbounds[1]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2) const {
@@ -457,8 +457,8 @@ public :
     this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
     this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3) const {
@@ -468,9 +468,9 @@ public :
     this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
     this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4) const {
@@ -481,10 +481,10 @@ public :
     this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
     this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5) const {
@@ -496,11 +496,11 @@ public :
     this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
     this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6) const {
@@ -513,12 +513,12 @@ public :
     this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
     this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5])*offsets[5] +
-                (i6-lbounds[6]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5])*offsets[5] +
+    (i6-lbounds[6]);
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6, I const i7) const {
@@ -532,28 +532,28 @@ public :
     this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
     this->check_index(7,i7,lbounds[7],ubounds[7],__FILE__,__LINE__);
     ulong ind = (i0-lbounds[0])*offsets[0] +
-                (i1-lbounds[1])*offsets[1] +
-                (i2-lbounds[2])*offsets[2] +
-                (i3-lbounds[3])*offsets[3] +
-                (i4-lbounds[4])*offsets[4] +
-                (i5-lbounds[5])*offsets[5] +
-                (i6-lbounds[6])*offsets[6] +
-                (i7-lbounds[7]);
+    (i1-lbounds[1])*offsets[1] +
+    (i2-lbounds[2])*offsets[2] +
+    (i3-lbounds[3])*offsets[3] +
+    (i4-lbounds[4])*offsets[4] +
+    (i5-lbounds[5])*offsets[5] +
+    (i6-lbounds[6])*offsets[6] +
+    (i7-lbounds[7]);
     return data[ind];
   }
 
   inline void check_dims(int const ndims_called, int const ndims_actual, char const *file, int const line) const {
-#ifdef ARRAY_DEBUG
+    #ifdef ARRAY_DEBUG
     if (ndims_called != ndims_actual) {
       std::stringstream ss;
       ss << "Using " << ndims_called << " dimensions to index an Array with " << ndims_actual << " dimensions\n";
       ss << "File, Line: " << file << ", " << line << "\n";
       throw std::out_of_range(ss.str());
     }
-#endif
+    #endif
   }
   inline void check_index(int const dim, long const ind, long const lb, long const ub, char const *file, int const line) const {
-#ifdef ARRAY_DEBUG
+    #ifdef ARRAY_DEBUG
     if (ind < lb || ind > ub) {
       std::stringstream ss;
       ss << "Index " << dim << " of " << this->ndims << " out of bounds\n";
@@ -561,14 +561,14 @@ public :
       ss << "Index: " << ind << ". Bounds: (" << lb << "," << ub << ")\n";
       throw std::out_of_range(ss.str());
     }
-#endif
+    #endif
   }
 
   /* OPERATOR+
-     This will always be element-wise addition
+  This will always be element-wise addition
   */
   template <class I> inline Array operator+(Array<I> const &rhs) {
-#ifdef ARRAY_DEBUG
+    #ifdef ARRAY_DEBUG
     if (this->totElems != rhs.totElems) {
       std::stringstream ss;
       ss << "Attempted element-wise addition between Arrays with incompatible lengths\n";
@@ -576,7 +576,7 @@ public :
       ss << "This size, rhs size:" << this->totElems << ", " << rhs.totElems << "\n";
       throw std::out_of_range(ss.str());
     }
-#endif
+    #endif
     Array<T> ret(*this);
     for (ulong i=0; i<ret.totElems; i++) {
       ret.data[i] += rhs.data[i];
@@ -593,24 +593,24 @@ public :
   }
 
   /* OPERATOR*
-     1-D * 1-D: element-wise
-     1-D * 2-D: INVALID
-     2-D * 1-D: matrix-vector
-     2-D * 2-D: matrix-matrix
-     higher-dimensions: element-wise
+  1-D * 1-D: element-wise
+  1-D * 2-D: INVALID
+  2-D * 1-D: matrix-vector
+  2-D * 2-D: matrix-matrix
+  higher-dimensions: element-wise
   */
   template <class I> inline Array operator*(Array<I> const &rhs) {
     if ( (this->ndims == 1 && rhs.ndims == 1) || (this->ndims>2 && rhs.ndims>2) ) {
       //Element-wise multiplication
-#ifdef ARRAY_DEBUG
-    if (this->totElems != rhs.totElems) {
-      std::stringstream ss;
-      ss << "Attempted element-wise multiplication between Arrays with incompatible lengths\n";
-      ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
-      ss << "This size, rhs size:" << this->totElems << ", " << rhs.totElems << "\n";
-      throw std::out_of_range(ss.str());
-    }
-#endif
+      #ifdef ARRAY_DEBUG
+      if (this->totElems != rhs.totElems) {
+        std::stringstream ss;
+        ss << "Attempted element-wise multiplication between Arrays with incompatible lengths\n";
+        ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
+        ss << "This size, rhs size:" << this->totElems << ", " << rhs.totElems << "\n";
+        throw std::out_of_range(ss.str());
+      }
+      #endif
       Array<T> ret(*this);
       for (ulong i=0; i<ret.totElems; i++) {
         ret.data[i] *= rhs.data[i];
@@ -618,15 +618,15 @@ public :
       return ret;
     } else if (this->ndims == 2 && rhs.ndims == 1) {
       //Matrix-vector multiplication
-#ifdef ARRAY_DEBUG
-    if (this->dimSizes[0] != rhs.dimSizes[0]) {
-      std::stringstream ss;
-      ss << "Attempted matrix-vector multiplication between Arrays with incompatible dimensions\n";
-      ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
-      ss << "this matrix dims(0,1), rhs dim: (" << this->dimSizes[0] << "," << this->dimSizes[1] << "), " << rhs.dimSizes[0] << "\n";
-      throw std::out_of_range(ss.str());
-    }
-#endif
+      #ifdef ARRAY_DEBUG
+      if (this->dimSizes[0] != rhs.dimSizes[0]) {
+        std::stringstream ss;
+        ss << "Attempted matrix-vector multiplication between Arrays with incompatible dimensions\n";
+        ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
+        ss << "this matrix dims(0,1), rhs dim: (" << this->dimSizes[0] << "," << this->dimSizes[1] << "), " << rhs.dimSizes[0] << "\n";
+        throw std::out_of_range(ss.str());
+      }
+      #endif
       Array<T> ret(this->dimSizes[1]);
       for (long j=0; j<this->dimSizes[1]; j++) {
         T tot = 0;
@@ -638,15 +638,15 @@ public :
       return ret;
     } else if (this->ndims == 2 && rhs.ndims == 2) {
       //Matrix-matrix multiplication
-#ifdef ARRAY_DEBUG
-    if (this->dimSizes[0] != rhs.dimSizes[1]) {
-      std::stringstream ss;
-      ss << "Attempted matrix-matrix multiplication between Arrays with incompatible dimensions\n";
-      ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
-      ss << "this matrix dims, rhs matrix dims: (" << this->dimSizes[0] << "," << this->dimSizes[1] << ") , (" << rhs.dimSizes[0] << "," << rhs.dimSizes[1] << ")\n";
-      throw std::out_of_range(ss.str());
-    }
-#endif
+      #ifdef ARRAY_DEBUG
+      if (this->dimSizes[0] != rhs.dimSizes[1]) {
+        std::stringstream ss;
+        ss << "Attempted matrix-matrix multiplication between Arrays with incompatible dimensions\n";
+        ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
+        ss << "this matrix dims, rhs matrix dims: (" << this->dimSizes[0] << "," << this->dimSizes[1] << ") , (" << rhs.dimSizes[0] << "," << rhs.dimSizes[1] << ")\n";
+        throw std::out_of_range(ss.str());
+      }
+      #endif
       Array<T> ret(rhs.dimSizes[0],this->dimSizes[1]);
       for (long j=0; j<rhs.dimSizes[0]; j++) {
         for (long i=0; i<this->dimSizes[1]; i++) {
@@ -659,12 +659,12 @@ public :
       }
       return ret;
     } else {
-#ifdef ARRAY_DEBUG
+      #ifdef ARRAY_DEBUG
       std::stringstream ss;
       ss << "Multiplying Arrays with incompatible dimensions\n";
       ss << "File, Line: " << __FILE__ << ", " << __LINE__ << "\n";
       throw std::out_of_range(ss.str());
-#endif
+      #endif
     }
   }
   //Multiply by a scalar
@@ -677,7 +677,7 @@ public :
   }
 
   /* OPERATOR=
-    Allow the user to set the entire Array to a single value */
+  Allow the user to set the entire Array to a single value */
   template <class I> inline void operator=(I const rhs) {
     for (ulong i=0; i < totElems; i++) {
       data[i] = rhs;
@@ -685,7 +685,7 @@ public :
   }
   /* Copy another Array's data to this one */
   inline void operator=(Array const &rhs) {
-#ifdef ARRAY_DEBUG
+    #ifdef ARRAY_DEBUG
     if (this->totElems != rhs.totElems) {
       std::stringstream ss;
       ss << "Attempted value-copy via operator= between Arrays with incompatible lengths\n";
@@ -693,7 +693,7 @@ public :
       ss << "This size, rhs size:" << this->totElems << ", " << rhs.totElems << "\n";
       throw std::out_of_range(ss.str());
     }
-#endif
+    #endif
     for (ulong i=0; i < rhs.totElems; i++) {
       data[i] = rhs.data[i];
     }
@@ -706,7 +706,7 @@ public :
   }
 
   /* RANDOM
-    Sets the Array's data to a random initialization \in [range1,range2] */
+  Sets the Array's data to a random initialization \in [range1,range2] */
   template <class I> inline void setRandom(I const range1, I const range2) {
     srand(time(NULL));
     for (ulong i=0; i<totElems; i++) {
@@ -715,7 +715,7 @@ public :
   }
 
   /* REDUCTIONS
-     Reductions over the Array. */
+  Reductions over the Array. */
   inline T minval() const {
     T min = data[0];
     for (ulong i=1; i < totElems; i++) {
@@ -912,7 +912,7 @@ public :
   }
 
   /* OPERATOR<<
-     Print the array. If it's 2-D, print a pretty looking matrix */
+  Print the array. If it's 2-D, print a pretty looking matrix */
   inline friend std::ostream &operator<<(std::ostream& os, Array const &v) {
     os << "Number of Dimensions: " << v.ndims << "\n";
     os << "Total Number of Elements: " << v.totElems << "\n";

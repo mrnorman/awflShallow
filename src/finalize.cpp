@@ -1,5 +1,4 @@
 
-
 #include "finalize.h"
 
 void finalize( str_stat &stat, str_dyn &dyn ) {
