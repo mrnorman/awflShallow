@@ -4,6 +4,6 @@
 
 #include "types.h"
 
-void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn );
+void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans);
 
 #endif

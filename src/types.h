@@ -31,6 +31,7 @@ struct str_dom {
   FP   dx, dy;                    //Grid space length in x- and y-dimension (meters)
   long nx_glob, ny_glob;          //Number of total grid cells in the x- and y- dimensions
   const int ord = 3;         //Order of accuracy
+  const int tord = 3;         //Order of accuracy
   const int hs  = (ord-1)/2; //Number of halo cells
   const FP cfl  = 0.90;      //"Courant, Friedrichs, Lewy" number (for numerical stability)
 };
@@ -75,6 +76,27 @@ struct str_dyn {
   Array<FP> tend;                  //Tendencies (nx,ny,NUM_VARS)
   int       num_out = 0;           //The number of outputs performed so far
   int       direction_switch = 1;  //Used to switch the order of the dimensionally split solve
+};
+
+
+
+/////////////////////////////////////////////////////////////////////
+// MATRICES TO TRANSFORM DATA
+/////////////////////////////////////////////////////////////////////
+struct str_trans {
+  Array<FP> gll_pts;        //ord Gauss-Legendre-Lobatto points on [-0.5,0.5] domain
+  Array<FP> gll_wts;        //ord Gauss-Legendre-Lobatto weights that sum to one
+  Array<FP> gll_pts_lo;     //tord Gauss-Legendre-Lobatto points on [-0.5,0.5] domain
+  Array<FP> gll_wts_lo;     //tord Gauss-Legendre-Lobatto weights that sum to one
+  Array<FP> s2c_x;          //Transform a stencil of ord cell averages to ord polynomial coefficients
+  Array<FP> c2s_x;          //Transform ord polynomial coefficients to a stencil of ord cell averages
+  Array<FP> s2c_y;          //Transform a stencil of ord cell averages to ord polynomial coefficients
+  Array<FP> c2s_y;          //Transform ord polynomial coefficients to a stencil of ord cell averages
+  Array<FP> s2g;            //Transform a stencil of ord cell averages to ord GLL point values
+  Array<FP> g2s;            //Transform ord GLL point values to a stencil of ord cell averages
+  Array<FP> s2g_hi2lo;      //Transform ord cell averages to <= ord GLL point values
+  Array<FP> c2g_hi2lo_x;    //Transform ord polynomial coefficients to <= ord GLL point values
+  Array<FP> c2g_hi2lo_y;    //Transform ord polynomial coefficients to <= ord GLL point values
 };
 
 

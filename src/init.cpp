@@ -1,9 +1,11 @@
 
 #include "init.h"
 #include <mpi.h>
+#include "transform.h"
+#include "types.h"
 
 
-void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn ) {
+void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans) {
   int  ierr, i, j, pxloc, pyloc, rr, hs, ord;
   FP   nper;
   int  debug_mpi = 1;
@@ -68,13 +70,31 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
     par.masterproc = 0;
   }
 
+  //Set elapsed time to zero
   dyn.etime = 0.;
 
+  //Locally save frequently used domain vars
   nx  = dom.nx;
   ny  = dom.ny;
   hs  = dom.hs;
   ord = dom.ord;
 
+  //Initialize the transformation matrices
+  trans.gll_pts = get_gll_points(dom.ord);
+  trans.gll_wts = get_gll_weights(dom.ord);
+  trans.gll_pts_lo = get_gll_points(dom.tord);
+  trans.gll_wts_lo = get_gll_weights(dom.tord);
+  trans.s2c_x = sten_to_coefs(dom.dx,dom.ord);
+  trans.s2c_y = sten_to_coefs(dom.dy,dom.ord);
+  trans.c2s_x = coefs_to_sten(dom.dx,dom.ord);
+  trans.c2s_y = coefs_to_sten(dom.dy,dom.ord);
+  trans.s2g = coefs_to_gll((FP) 1.,dom.ord) * sten_to_coefs((FP) 1.,dom.ord);
+  trans.g2s = coefs_to_sten((FP) 1.,dom.ord) * gll_to_coefs((FP) 1.,dom.ord);
+  trans.s2g_hi2lo = sten_to_gll_lower((FP) 1.,ord);
+  trans.c2g_hi2lo_x = coefs_to_gll(dom.dx,dom.ord);
+  trans.c2g_hi2lo_y = coefs_to_gll(dom.dy,dom.ord);
+
+  //Allocate needed variables
   dyn .state.setup((long)NUM_VARS,ny+2*hs,nx+2*hs);
   dyn .flux .setup((long)NUM_VARS,ny+1,nx+1);
   dyn .tend .setup((long)NUM_VARS,ny,nx);
@@ -84,6 +104,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   stat.sfc_x.setup(ny,nx);
   stat.sfc_y.setup(ny,nx);
 
+  //Set stuff to zero
   stat.sfc   = 0.;
   stat.sfc_x = 0.;
   stat.sfc_y = 0.;

@@ -11,15 +11,16 @@
 
 
 str_dom   dom;
-str_par  par;
-str_stat stat;
-str_dyn  dyn;
+str_par   par;
+str_stat  stat;
+str_dyn   dyn;
+str_trans trans;
 
 
 int main(int argc, char **argv) {
 
   //Initialize the model
-  init(&argc, &argv, dom, par, stat, dyn);
+  init(&argc, &argv, dom, par, stat, dyn, trans);
 
   //Output the initial state
   output_init(par, dom, dyn, stat);
