@@ -15,6 +15,7 @@ const int ID_V = 2;             //index for momentum in the y-direction ("h * v"
 const int DIR_X = 1;            //Integer constant to express that this operation is in the x-direction
 const int DIR_Y = 2;            //Integer constant to express that this operation is in the y-direction
 const FP GRAV = 9.8;            //Gravitational acceleration (m / s^2)
+const FP PI = 3.1415926535897932384626433832795028842;
 
 
 

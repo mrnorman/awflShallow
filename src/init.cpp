@@ -6,8 +6,8 @@
 
 
 void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans) {
-  int  ierr, i, j, pxloc, pyloc, rr, hs, ord;
-  FP   nper;
+  int  ierr, i, j, pxloc, pyloc, rr, hs, ord, ii, jj;
+  FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
   long nx, ny;
 
@@ -118,6 +118,22 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
       dyn.state(ID_U,j+hs,i+hs) = 0.;
       dyn.state(ID_V,j+hs,i+hs) = 0.;
       dyn.state(ID_H,j+hs,i+hs) = 10000.;
+      for (jj=0; jj<dom.tord; jj++) {
+        for (ii=0; ii<dom.tord; ii++) {
+          x = (par.i_beg+i+0.5)*dom.dx + trans.gll_pts_lo(ii)*dom.dx;
+          y = (par.j_beg+j+0.5)*dom.dy + trans.gll_pts_lo(jj)*dom.dy;
+          x0 = dom.xlen/2;
+          y0 = dom.ylen/2;
+          xr = dom.xlen/8;
+          yr = dom.ylen/8;
+          amp = 1000.;
+          rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
+          if (rad <= 1.) {
+            tmp = (cos(PI*rad)+1.)/2.;
+            stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+          }
+        }
+      }
     }
   }
 

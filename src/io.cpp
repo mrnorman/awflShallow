@@ -78,6 +78,8 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_put_vara_double_all( ncid , height_varid , st3 , ct3 , height ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   uvel_varid , st3 , ct3 , uvel   ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   vvel_varid , st3 , ct3 , vvel   ) , __LINE__ );
+  st3[0] = par.j_beg; st3[1] = par.i_beg;
+  ct3[0] = ny       ; ct3[1] = nx       ;
   ncwrap( ncmpi_put_vara_double_all( ncid ,    sfc_varid , st3 , ct3 , sfcloc ) , __LINE__ );
 
   //Only the master process needs to write the elapsed time
