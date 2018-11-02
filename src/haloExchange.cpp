@@ -16,8 +16,8 @@ void haloPackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   for (v=0; v<n; v++) {
     for (ii=0; ii<dom.hs; ii++) {
       for (i=0; i<dom.ny; i++) {
-        exch.sendBufW(exch.nPack+v,ii,i) = a(v,i,dom.hs+ii);
-        exch.sendBufE(exch.nPack+v,ii,i) = a(v,i,dom.nx+ii);
+        exch.sendBufW(exch.nPack+v,ii,i) = a(v,i+dom.hs,dom.hs+ii);
+        exch.sendBufE(exch.nPack+v,ii,i) = a(v,i+dom.hs,dom.nx+ii);
       }
     }
   }
@@ -30,8 +30,8 @@ void haloPackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   for (v=0; v<n; v++) {
     for (ii=0; ii<dom.hs; ii++) {
       for (i=0; i<dom.nx; i++) {
-        exch.sendBufS(exch.nPack+v,ii,i) = a(v,dom.hs+ii,i);
-        exch.sendBufN(exch.nPack+v,ii,i) = a(v,dom.ny+ii,i);
+        exch.sendBufS(exch.nPack+v,ii,i) = a(v,dom.hs+ii,i+dom.hs);
+        exch.sendBufN(exch.nPack+v,ii,i) = a(v,dom.ny+ii,i+dom.hs);
       }
     }
   }
@@ -43,8 +43,8 @@ void haloPack1_x(str_dom &dom, str_exch &exch, Array<FP> &a) {
   int i, ii;
   for (ii=0; ii<dom.hs; ii++) {
     for (i=0; i<dom.ny; i++) {
-      exch.sendBufW(exch.nPack,ii,i) = a(i,dom.hs+ii);
-      exch.sendBufE(exch.nPack,ii,i) = a(i,dom.nx+ii);
+      exch.sendBufW(exch.nPack,ii,i) = a(i+dom.hs,dom.hs+ii);
+      exch.sendBufE(exch.nPack,ii,i) = a(i+dom.hs,dom.nx+ii);
     }
   }
   exch.nPack = exch.nPack + 1;
@@ -55,8 +55,8 @@ void haloPack1_y(str_dom &dom, str_exch &exch, Array<FP> &a) {
   int i, ii;
   for (ii=0; ii<dom.hs; ii++) {
     for (i=0; i<dom.nx; i++) {
-      exch.sendBufS(exch.nPack,ii,i) = a(dom.hs+ii,i);
-      exch.sendBufN(exch.nPack,ii,i) = a(dom.ny+ii,i);
+      exch.sendBufS(exch.nPack,ii,i) = a(dom.hs+ii,i+dom.hs);
+      exch.sendBufN(exch.nPack,ii,i) = a(dom.ny+ii,i+dom.hs);
     }
   }
   exch.nPack = exch.nPack + 1;
@@ -68,8 +68,8 @@ void haloUnpackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   for (v=0; v<n; v++) {
     for (ii=0; ii<dom.hs; ii++) {
       for (i=0; i<dom.ny; i++) {
-        a(v,i,      ii) = exch.sendBufW(exch.nPack+v,ii,i);
-        a(v,i,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nPack+v,ii,i);
+        a(v,i+dom.hs,              ii) = exch.sendBufW(exch.nUnpack+v,ii,i);
+        a(v,i+dom.hs,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nUnpack+v,ii,i);
       }
     }
   }
@@ -82,8 +82,8 @@ void haloUnpackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   for (v=0; v<n; v++) {
     for (ii=0; ii<dom.hs; ii++) {
       for (i=0; i<dom.nx; i++) {
-        a(v,      ii,i) = exch.recvBufS(exch.nPack+v,ii,i);
-        a(v,dom.ny+dom.hs+ii,i) = exch.recvBufN(exch.nPack+v,ii,i);
+        a(v,              ii,i+dom.hs) = exch.recvBufS(exch.nUnpack+v,ii,i);
+        a(v,dom.ny+dom.hs+ii,i+dom.hs) = exch.recvBufN(exch.nUnpack+v,ii,i);
       }
     }
   }
@@ -95,8 +95,8 @@ void haloUnpack1_x(str_dom &dom, str_exch &exch, Array<FP> &a) {
   int i, ii;
   for (ii=0; ii<dom.hs; ii++) {
     for (i=0; i<dom.ny; i++) {
-      a(i,      ii) = exch.sendBufW(exch.nPack,ii,i);
-      a(i,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nPack,ii,i);
+      a(i+dom.hs,              ii) = exch.sendBufW(exch.nUnpack,ii,i);
+      a(i+dom.hs,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nUnpack,ii,i);
     }
   }
   exch.nUnpack = exch.nUnpack + 1;
@@ -107,8 +107,8 @@ void haloUnpack1_y(str_dom &dom, str_exch &exch, Array<FP> &a) {
   int i, ii;
   for (ii=0; ii<dom.hs; ii++) {
     for (i=0; i<dom.nx; i++) {
-      a(      ii,i) = exch.recvBufS(exch.nPack,ii,i);
-      a(dom.ny+dom.hs+ii,i) = exch.recvBufN(exch.nPack,ii,i);
+      a(              ii,i+dom.hs) = exch.recvBufS(exch.nUnpack,ii,i);
+      a(dom.ny+dom.hs+ii,i+dom.hs) = exch.recvBufN(exch.nUnpack,ii,i);
     }
   }
   exch.nUnpack = exch.nUnpack + 1;
