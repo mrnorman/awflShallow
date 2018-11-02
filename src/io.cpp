@@ -50,7 +50,7 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_def_var( ncid , "fsy"    , NC_DOUBLE , 2 , dimids ,    &fsy_varid ) , __LINE__ );
   ncwrap( ncmpi_def_var( ncid , "sfc"    , NC_DOUBLE , 2 , dimids ,    &sfc_varid ) , __LINE__ );
   ncwrap( ncmpi_def_var( ncid , "sfc_x"  , NC_DOUBLE , 2 , dimids ,  &sfc_x_varid ) , __LINE__ );
-  ncwrap( ncmpi_def_var( ncid , "sfc_y"  , NC_DOUBLE , 2 , dimids ,  &sfc_x_varid ) , __LINE__ );
+  ncwrap( ncmpi_def_var( ncid , "sfc_y"  , NC_DOUBLE , 2 , dimids ,  &sfc_y_varid ) , __LINE__ );
   //End "define" mode
   ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
 

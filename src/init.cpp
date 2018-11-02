@@ -7,10 +7,11 @@
 
 
 void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans, str_exch &exch) {
-  int  ierr, i, j, pxloc, pyloc, rr, hs, ord, ii, jj;
+  int  ierr, i, j, pxloc, pyloc, rr, hs, ord, ii, jj, s;
   FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
   long nx, ny;
+  Array<FP> s2d2g, der;
 
   ierr = MPI_Init(argc,argv);
 
@@ -145,8 +146,8 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
           y = (par.j_beg+j+0.5)*dom.dy + trans.gll_pts_lo(jj)*dom.dy;
           x0 = dom.xlen/2;
           y0 = dom.ylen/2;
-          xr = dom.xlen/8;
-          yr = dom.ylen/8;
+          xr = dom.xlen/2;
+          yr = dom.ylen/2;
           amp = 1000.;
           rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
           if (rad <= 1.) {
@@ -172,5 +173,21 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   haloExchange_y(dom, exch, par);
   haloUnpackN_y (dom, exch, dyn.state, NUM_VARS);
   haloUnpack1_y (dom, exch, stat.sfc);
+
+  s2d2g.setup(ord,ord);
+  s2d2g = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
+
+  //(Across rows, Across columns)
+  for (j=0; j<ny; j++) {
+    for (i=0; i<nx; i++) {
+      for (ii=0; ii<ord; ii++) {
+        tmp = 0;
+        for (s=0; s<ord; s++) {
+          tmp = tmp + s2d2g(s,ii)*stat.sfc(j+hs,i+s);
+        }
+        stat.sfc_x(j,i) = stat.sfc_x(j,i) + tmp * trans.gll_wts(ii);
+      }
+    }
+  }
 
 }
