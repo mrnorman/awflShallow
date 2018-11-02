@@ -11,19 +11,19 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
   long nx, ny;
-  Array<FP> s2d2g, der;
+  Array<FP> s2d2g_x, s2d2g_y;
 
   ierr = MPI_Init(argc,argv);
 
-  dom.nx_glob = 100;       //Number of total cells in the x-dirction
-  dom.ny_glob = 100;       //Number of total cells in the y-dirction
+  dom.nx_glob = 32;       //Number of total cells in the x-dirction
+  dom.ny_glob = 32;       //Number of total cells in the y-dirction
   dom.xlen = 1.0;          //Length of the x-domain in meters
   dom.ylen = 1.0;          //Length of the y-domain in meters
   dom.sim_time = 1000;     //How many seconds to run the simulation
   dom.output_freq = 10;    //How frequently to output data to file (in seconds)
 
   par.nproc_x = 4;         //Number of processors in the x-direction
-  par.nproc_y = 2;         //Number of processors in the y-direction
+  par.nproc_y = 4;         //Number of processors in the y-direction
 
   dom.dx = dom.xlen / dom.nx_glob;
   dom.dy = dom.ylen / dom.ny_glob;
@@ -66,10 +66,17 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   if (debug_mpi) {
     for (rr=0; rr < par.nranks; rr++) {
       if (rr == par.myrank) {
-        std::cout << "Hello! My Rank is: " << par.myrank << "\n";
+        std::cout << "Hello! My Rank is what, my rank is who, my rank is: " << par.myrank << "\n";
         std::cout << "My proc grid ID is: " << par.px << " , " << par.py << "\n";
         std::cout << "I have: " << dom.nx << " x " << dom.ny << " cells." << "\n";
         std::cout << "I start at index: " << par.i_beg << " x " << par.j_beg << "\n";
+        std::cout << "My neighbor matrix is:\n";
+        for (j = 2; j >= 0; j--) {
+          for (i = 0; i < 3; i++) {
+            std::cout << std::setw(6) << par.neigh(j,i) << " ";
+          }
+          printf("\n");
+        }
         printf("\n");
       }
       ierr = MPI_Barrier(MPI_COMM_WORLD);
@@ -174,8 +181,10 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   haloUnpackN_y (dom, exch, dyn.state, NUM_VARS);
   haloUnpack1_y (dom, exch, stat.sfc);
 
-  s2d2g.setup(ord,ord);
-  s2d2g = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
+  s2d2g_x.setup(ord,ord);
+  s2d2g_x = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
+  s2d2g_y.setup(ord,ord);
+  s2d2g_y = coefs_to_gll(dom.dy,dom.ord) * coefs_to_deriv(dom.dy,dom.ord) * sten_to_coefs(dom.dy,dom.ord);
 
   //(Across rows, Across columns)
   for (j=0; j<ny; j++) {
@@ -183,11 +192,20 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
       for (ii=0; ii<ord; ii++) {
         tmp = 0;
         for (s=0; s<ord; s++) {
-          tmp = tmp + s2d2g(s,ii)*stat.sfc(j+hs,i+s);
+          tmp = tmp + s2d2g_x(s,ii)*stat.sfc(j+hs,i+s);
         }
         stat.sfc_x(j,i) = stat.sfc_x(j,i) + tmp * trans.gll_wts(ii);
+
+        tmp = 0;
+        for (s=0; s<ord; s++) {
+          tmp = tmp + s2d2g_y(s,ii)*stat.sfc(j+s,i+hs);
+        }
+        stat.sfc_y(j,i) = stat.sfc_y(j,i) + tmp * trans.gll_wts(ii);
       }
     }
   }
+
+  s2d2g_x.finalize();
+  s2d2g_y.finalize();
 
 }

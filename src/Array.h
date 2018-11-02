@@ -826,7 +826,7 @@ template <class T> class Array {
     } else if (v.ndims == 2) {
       for (ulong j=0; j<v.dimSizes[1]; j++) {
         for (ulong i=0; i<v.dimSizes[0]; i++) {
-          os << std::setw(12) << v(i,j) << " ";
+          os << std::setw(12) << v(j,i) << " ";
         }
         os << "\n";
       }

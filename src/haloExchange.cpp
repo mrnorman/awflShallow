@@ -68,8 +68,8 @@ void haloUnpackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   for (v=0; v<n; v++) {
     for (ii=0; ii<dom.hs; ii++) {
       for (i=0; i<dom.ny; i++) {
-        a(v,i+dom.hs,              ii) = exch.sendBufW(exch.nUnpack+v,ii,i);
-        a(v,i+dom.hs,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nUnpack+v,ii,i);
+        a(v,i+dom.hs,              ii) = exch.recvBufW(exch.nUnpack+v,ii,i);
+        a(v,i+dom.hs,dom.nx+dom.hs+ii) = exch.recvBufE(exch.nUnpack+v,ii,i);
       }
     }
   }
@@ -95,8 +95,8 @@ void haloUnpack1_x(str_dom &dom, str_exch &exch, Array<FP> &a) {
   int i, ii;
   for (ii=0; ii<dom.hs; ii++) {
     for (i=0; i<dom.ny; i++) {
-      a(i+dom.hs,              ii) = exch.sendBufW(exch.nUnpack,ii,i);
-      a(i+dom.hs,dom.nx+dom.hs+ii) = exch.sendBufE(exch.nUnpack,ii,i);
+      a(i+dom.hs,              ii) = exch.recvBufW(exch.nUnpack,ii,i);
+      a(i+dom.hs,dom.nx+dom.hs+ii) = exch.recvBufE(exch.nUnpack,ii,i);
     }
   }
   exch.nUnpack = exch.nUnpack + 1;
@@ -119,12 +119,12 @@ void haloExchange_x(str_dom &dom, str_exch &exch, str_par &par) {
   int ierr;
 
   //Pre-post the receives
-  ierr = MPI_Irecv( exch.recvBufS.get_data() , exch.recvBufS.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &exch.rReq[0] );
-  ierr = MPI_Irecv( exch.recvBufN.get_data() , exch.recvBufN.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &exch.rReq[1] );
+  ierr = MPI_Irecv( exch.recvBufW.get_data() , exch.recvBufW.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &exch.rReq[0] );
+  ierr = MPI_Irecv( exch.recvBufE.get_data() , exch.recvBufE.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &exch.rReq[1] );
 
   //Send the data
-  ierr = MPI_Isend( exch.sendBufS.get_data() , exch.sendBufS.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &exch.sReq[0] );
-  ierr = MPI_Isend( exch.sendBufN.get_data() , exch.sendBufN.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &exch.sReq[1] );
+  ierr = MPI_Isend( exch.sendBufW.get_data() , exch.sendBufW.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &exch.sReq[0] );
+  ierr = MPI_Isend( exch.sendBufE.get_data() , exch.sendBufE.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &exch.sReq[1] );
 
   //Wait for the sends and receives to finish
   ierr = MPI_Waitall(2, exch.sReq, exch.sStat);
@@ -136,12 +136,12 @@ void haloExchange_y(str_dom &dom, str_exch &exch, str_par &par) {
   int ierr;
 
   //Pre-post the receives
-  ierr = MPI_Irecv( exch.recvBufW.get_data() , exch.recvBufW.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &exch.rReq[0] );
-  ierr = MPI_Irecv( exch.recvBufE.get_data() , exch.recvBufE.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &exch.rReq[1] );
+  ierr = MPI_Irecv( exch.recvBufS.get_data() , exch.recvBufS.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &exch.rReq[0] );
+  ierr = MPI_Irecv( exch.recvBufN.get_data() , exch.recvBufN.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &exch.rReq[1] );
 
   //Send the data
-  ierr = MPI_Isend( exch.sendBufW.get_data() , exch.sendBufW.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &exch.sReq[0] );
-  ierr = MPI_Isend( exch.sendBufE.get_data() , exch.sendBufE.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &exch.sReq[1] );
+  ierr = MPI_Isend( exch.sendBufS.get_data() , exch.sendBufS.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &exch.sReq[0] );
+  ierr = MPI_Isend( exch.sendBufN.get_data() , exch.sendBufN.get_totElems() , MPI_DOUBLE_PRECISION , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &exch.sReq[1] );
 
   //Wait for the sends and receives to finish
   ierr = MPI_Waitall(2, exch.sReq, exch.sStat);
