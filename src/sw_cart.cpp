@@ -15,16 +15,17 @@ str_par   par;
 str_stat  stat;
 str_dyn   dyn;
 str_trans trans;
+str_exch  exch;
 
 
 int main(int argc, char **argv) {
 
   //Initialize the model
-  init(&argc, &argv, dom, par, stat, dyn, trans);
+  init(&argc, &argv, dom, par, stat, dyn, trans, exch);
 
   //Output the initial state
   output_init(par, dom, dyn, stat);
 
   //Cleanup
-  finalize(stat, dyn);
+  finalize(stat, dyn, exch, par);
 }

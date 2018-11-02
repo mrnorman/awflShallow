@@ -80,8 +80,6 @@ template <class T> class Array {
   typedef unsigned long ulong;
 
   int   ndims;
-  long  lbounds [8];
-  long  ubounds [8];
   ulong dimSizes[8];
   long  offsets [8];
   ulong totElems;
@@ -95,8 +93,6 @@ template <class T> class Array {
     totElems = 0;
     for (int i=0; i<8; i++) {
       dimSizes[i] = 0;
-      lbounds [i] = 0;
-      ubounds [i] = 0;
       offsets [i] = 0;
     }
   }
@@ -115,47 +111,37 @@ template <class T> class Array {
     nullify();
     setup(in);
   }
-  template <class I> Array(I const d1) {
+  template <class I1> Array(I1 const d1) {
     nullify();
     setup(d1);
   }
-  template <class I> Array(I const d1, I const d2) {
+  template <class I1, class I2> Array(I1 const d1, I2 const d2) {
     nullify();
     setup(d1,d2);
   }
-  template <class I> Array(I const d1, I const d2, I const d3) {
+  template <class I1, class I2, class I3> Array(I1 const d1, I2 const d2, I3 const d3) {
     nullify();
     setup(d1,d2,d3);
   }
-  template <class I> Array(I const d1, I const d2, I const d3, I const d4) {
+  template <class I1, class I2, class I3, class I4> Array(I1 const d1, I2 const d2, I3 const d3, I4 const d4) {
     nullify();
     setup(d1,d2,d3,d4);
   }
-  template <class I> Array(I const d1, I const d2, I const d3, I const d4, I const d5) {
+  template <class I1, class I2, class I3, class I4, class I5> Array(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5) {
     nullify();
     setup(d1,d2,d3,d4,d5);
   }
-  template <class I> Array(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6> Array(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6) {
     nullify();
     setup(d1,d2,d3,d4,d5,d6);
   }
-  template <class I> Array(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6, I const d7) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6, class I7> Array(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6, I7 const d7) {
     nullify();
     setup(d1,d2,d3,d4,d5,d6,d7);
   }
-  template <class I> Array(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6, I const d7, I const d8) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6, class I7, class I8> Array(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6, I7 const d7, I8 const d8) {
     nullify();
     setup(d1,d2,d3,d4,d5,d6,d7,d8);
-  }
-  //Define the dimension ranges using an array of upper bounds, assuming lower bounds to be zero
-  template <class I> Array(I const ndims, I const dimSizes[]) {
-    nullify();
-    setup(ndims,dimSizes);
-  }
-  //Define the dimension ranges array of array, {{lbound,ubound},{lbound,ubound},...}
-  template <class I> Array(I const ndims, I const bounds[][2]) {
-    nullify();
-    setup(ndims,bounds);
   }
 
   /*MOVE CONSTRUCTOR*/
@@ -163,25 +149,21 @@ template <class T> class Array {
     ndims    = in.ndims;
     totElems = in.totElems;
     for (int i=0; i < ndims; i++) {
-      lbounds [i] = in.lbounds [i];
-      ubounds [i] = in.ubounds [i];
       dimSizes[i] = in.dimSizes[i];
       offsets [i] = in.offsets [i];
     }
     data = in.data;
     in.data = NULL;
   }
-  Array &operator=(Array &&rhs) {
-    ndims    = rhs.ndims;
-    totElems = rhs.totElems;
+  Array &operator=(Array &&in) {
+    ndims    = in.ndims;
+    totElems = in.totElems;
     for (int i=0; i < ndims; i++) {
-      lbounds [i] = rhs.lbounds [i];
-      ubounds [i] = rhs.ubounds [i];
-      dimSizes[i] = rhs.dimSizes[i];
-      offsets [i] = rhs.offsets [i];
+      dimSizes[i] = in.dimSizes[i];
+      offsets [i] = in.offsets [i];
     }
-    data = rhs.data;
-    rhs.data = NULL;
+    data = in.data;
+    in.data = NULL;
   }
 
   /* DESTRUCTOR
@@ -195,10 +177,8 @@ template <class T> class Array {
   inline void setup(Array const &in) {
     //If the buffer exists, and it's the right size, don't deallocate and reallocate
     if ( data != NULL && (this->totElems == in.totElems) )  {
-      ndims    = in.ndims;
+      ndims = in.ndims;
       for (int i=0; i < ndims; i++) {
-        lbounds [i] = in.lbounds [i];
-        ubounds [i] = in.ubounds [i];
         dimSizes[i] = in.dimSizes[i];
         offsets [i] = in.offsets [i];
       }
@@ -211,8 +191,6 @@ template <class T> class Array {
       totElems = in.totElems;
       data = new T[totElems];
       for (int i=0; i < ndims; i++) {
-        lbounds [i] = in.lbounds [i];
-        ubounds [i] = in.ubounds [i];
         dimSizes[i] = in.dimSizes[i];
         offsets [i] = in.offsets [i];
       }
@@ -224,39 +202,39 @@ template <class T> class Array {
   template <class I> inline void setup(I const d1) {
     ulong tmp[1];
     tmp[0] = d1;
-    setup((ulong) 1,tmp);
+    setup_arr((ulong) 1,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2) {
+  template <class I1, class I2> inline void setup(I1 const d1, I2 const d2) {
     ulong tmp[2];
     tmp[0] = d1;
     tmp[1] = d2;
-    setup((ulong) 2,tmp);
+    setup_arr((ulong) 2,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3) {
+  template <class I1, class I2, class I3> inline void setup(I1 const d1, I2 const d2, I3 const d3) {
     ulong tmp[3];
     tmp[0] = d1;
     tmp[1] = d2;
     tmp[2] = d3;
-    setup((ulong) 3,tmp);
+    setup_arr((ulong) 3,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3, I const d4) {
+  template <class I1, class I2, class I3, class I4> inline void setup(I1 const d1, I2 const d2, I3 const d3, I4 const d4) {
     ulong tmp[4];
     tmp[0] = d1;
     tmp[1] = d2;
     tmp[2] = d3;
     tmp[3] = d4;
-    setup((ulong) 4,tmp);
+    setup_arr((ulong) 4,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3, I const d4, I const d5) {
+  template <class I1, class I2, class I3, class I4, class I5> inline void setup(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5) {
     ulong tmp[5];
     tmp[0] = d1;
     tmp[1] = d2;
     tmp[2] = d3;
     tmp[3] = d4;
     tmp[4] = d5;
-    setup((ulong) 5,tmp);
+    setup_arr((ulong) 5,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6> inline void setup(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6) {
     ulong tmp[6];
     tmp[0] = d1;
     tmp[1] = d2;
@@ -264,9 +242,9 @@ template <class T> class Array {
     tmp[3] = d4;
     tmp[4] = d5;
     tmp[5] = d6;
-    setup((ulong) 6,tmp);
+    setup_arr((ulong) 6,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6, I const d7) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6, class I7> inline void setup(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6, I7 const d7) {
     ulong tmp[7];
     tmp[0] = d1;
     tmp[1] = d2;
@@ -275,9 +253,9 @@ template <class T> class Array {
     tmp[4] = d5;
     tmp[5] = d6;
     tmp[6] = d7;
-    setup((ulong) 7,tmp);
+    setup_arr((ulong) 7,tmp);
   }
-  template <class I> inline void setup(I const d1, I const d2, I const d3, I const d4, I const d5, I const d6, I const d7, I const d8) {
+  template <class I1, class I2, class I3, class I4, class I5, class I6, class I7, class I8> inline void setup(I1 const d1, I2 const d2, I3 const d3, I4 const d4, I5 const d5, I6 const d6, I7 const d7, I8 const d8) {
     ulong tmp[8];
     tmp[0] = d1;
     tmp[1] = d2;
@@ -287,18 +265,16 @@ template <class T> class Array {
     tmp[5] = d6;
     tmp[6] = d7;
     tmp[7] = d8;
-    setup((ulong) 8,tmp);
+    setup_arr((ulong) 8,tmp);
   }
-  template <class I> inline void setup(I const ndims, I const dimSizes[]) {
+  template <class I> inline void setup_arr(I const ndims, I const dimSizes[]) {
     //Only deallocate and allocate if the buffer isn't yet allocate or the dimensions don't match
     if ( data == NULL || (! this->dimsMatch(ndims,dimSizes)) ) {
       finalize();
       this->ndims = ndims;
       totElems = 1;
       for (ulong i=0; i<ndims; i++) {
-        this->lbounds [i] = 0;
-        this->ubounds [i] = dimSizes[i]-1;
-        this->dimSizes[i] = this->ubounds[i] - this->lbounds[i] + 1;
+        this->dimSizes[i] = dimSizes[i];
         totElems *= this->dimSizes[i];
       }
       offsets[ndims-1] = 1;
@@ -307,22 +283,6 @@ template <class T> class Array {
       }
       data = new T[totElems];
     }
-  }
-  template <class I> inline void setup(I const ndims, I const bounds[][2]) {
-    finalize();
-    this->ndims = ndims;
-    totElems = 1;
-    for (ulong i=0; i<ndims; i++) {
-      this->lbounds [i] = bounds[i][0];
-      this->ubounds [i] = bounds[i][1];
-      this->dimSizes[i] = this->ubounds[i] - this->lbounds[i] + 1;
-      totElems *= this->dimSizes[i];
-    }
-    offsets[ndims-1] = 1;
-    for (int i=ndims-2; i>=0; i--) {
-      offsets[i] = offsets[i+1] * dimSizes[i+1];
-    }
-    data = new T[totElems];
   }
 
   inline void finalize() {
@@ -335,210 +295,154 @@ template <class T> class Array {
   */
   template <class I> inline T &operator()(I const i0) {
     this->check_dims(1,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    ulong ind = i0;
     return data[ind];
   }
-  template <class I> inline T &operator()(I const i0, I const i1) {
+  template <class I1, class I2> inline T &operator()(I1 const i0, I2 const i1) {
     this->check_dims(2,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1;
     return data[ind];
   }
-  template <class I> inline T &operator()(I const i0, I const i1, I const i2) {
+  template <class I1, class I2, class I3> inline T &operator()(I1 const i0, I2 const i1, I3 const i2) {
     this->check_dims(3,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2;
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3) {
     this->check_dims(4,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3;
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4) {
     this->check_dims(5,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4;
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5) {
     this->check_dims(6,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5;
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6) {
     this->check_dims(7,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5])*offsets[5] +
-    (i6-lbounds[6]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    this->check_index(6,i6,0,dimSizes[6]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6;
     return data[ind];
   }
   template <class I> inline T &operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6, I const i7) {
     this->check_dims(8,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
-    this->check_index(7,i7,lbounds[7],ubounds[7],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5])*offsets[5] +
-    (i6-lbounds[6])*offsets[6] +
-    (i7-lbounds[7]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    this->check_index(6,i6,0,dimSizes[6]-1,__FILE__,__LINE__);
+    this->check_index(7,i7,0,dimSizes[7]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6*offsets[6] + i7;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0) const {
     this->check_dims(1,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    ulong ind = i0;
     return data[ind];
   }
-  template <class I> inline T operator()(I const i0, I const i1) const {
+  template <class I1, class I2> inline T operator()(I1 const i0, I2 const i1) const {
     this->check_dims(2,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1;
     return data[ind];
   }
-  template <class I> inline T operator()(I const i0, I const i1, I const i2) const {
+  template <class I1, class I2, class I3> inline T operator()(I1 const i0, I2 const i1, I3 const i2) const {
     this->check_dims(3,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3) const {
     this->check_dims(4,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4) const {
     this->check_dims(5,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5) const {
     this->check_dims(6,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6) const {
     this->check_dims(7,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5])*offsets[5] +
-    (i6-lbounds[6]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    this->check_index(6,i6,0,dimSizes[6]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6;
     return data[ind];
   }
   template <class I> inline T operator()(I const i0, I const i1, I const i2, I const i3, I const i4, I const i5, I const i6, I const i7) const {
     this->check_dims(8,ndims,__FILE__,__LINE__);
-    this->check_index(0,i0,lbounds[0],ubounds[0],__FILE__,__LINE__);
-    this->check_index(1,i1,lbounds[1],ubounds[1],__FILE__,__LINE__);
-    this->check_index(2,i2,lbounds[2],ubounds[2],__FILE__,__LINE__);
-    this->check_index(3,i3,lbounds[3],ubounds[3],__FILE__,__LINE__);
-    this->check_index(4,i4,lbounds[4],ubounds[4],__FILE__,__LINE__);
-    this->check_index(5,i5,lbounds[5],ubounds[5],__FILE__,__LINE__);
-    this->check_index(6,i6,lbounds[6],ubounds[6],__FILE__,__LINE__);
-    this->check_index(7,i7,lbounds[7],ubounds[7],__FILE__,__LINE__);
-    ulong ind = (i0-lbounds[0])*offsets[0] +
-    (i1-lbounds[1])*offsets[1] +
-    (i2-lbounds[2])*offsets[2] +
-    (i3-lbounds[3])*offsets[3] +
-    (i4-lbounds[4])*offsets[4] +
-    (i5-lbounds[5])*offsets[5] +
-    (i6-lbounds[6])*offsets[6] +
-    (i7-lbounds[7]);
+    this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
+    this->check_index(1,i1,0,dimSizes[1]-1,__FILE__,__LINE__);
+    this->check_index(2,i2,0,dimSizes[2]-1,__FILE__,__LINE__);
+    this->check_index(3,i3,0,dimSizes[3]-1,__FILE__,__LINE__);
+    this->check_index(4,i4,0,dimSizes[4]-1,__FILE__,__LINE__);
+    this->check_index(5,i5,0,dimSizes[5]-1,__FILE__,__LINE__);
+    this->check_index(6,i6,0,dimSizes[6]-1,__FILE__,__LINE__);
+    this->check_index(7,i7,0,dimSizes[7]-1,__FILE__,__LINE__);
+    ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6*offsets[6] + i7;
     return data[ind];
   }
 
@@ -631,7 +535,7 @@ template <class T> class Array {
       for (long j=0; j<this->dimSizes[1]; j++) {
         T tot = 0;
         for (long i=0; i<this->dimSizes[0]; i++) {
-          tot += (*this)(i+this->lbounds[0],j+this->lbounds[1]) * rhs(i+rhs.lbounds[0]);
+          tot += (*this)(i,j) * rhs(i);
         }
         ret(j) = tot;
       }
@@ -652,7 +556,7 @@ template <class T> class Array {
         for (long i=0; i<this->dimSizes[1]; i++) {
           T tot = 0;
           for (long k=0; k<this->dimSizes[0]; k++) {
-            tot += (*this)(k+this->lbounds[0],i+this->lbounds[1]) * rhs(j+rhs.lbounds[0],k+rhs.lbounds[1]);
+            tot += (*this)(k,i) * rhs(j,k);
           }
           ret(j,i) = tot;
         }
@@ -864,12 +768,6 @@ template <class T> class Array {
   inline ulong const *get_dimSizes() const {
     return dimSizes;
   }
-  inline long const *get_lbounds() const {
-    return lbounds;
-  }
-  inline long const *get_ubounds() const {
-    return ubounds;
-  }
   inline T *get_data() const {
     return data;
   }
@@ -922,12 +820,12 @@ template <class T> class Array {
     }
     os << "\n";
     if (v.ndims == 1) {
-      for (ulong i=v.lbounds[0]; i<=v.ubounds[0]; i++) {
+      for (ulong i=0; i<v.dimSizes[0]; i++) {
         os << std::setw(12) << v(i) << "\n";
       }
     } else if (v.ndims == 2) {
-      for (ulong j=v.lbounds[1]; j<=v.ubounds[1]; j++) {
-        for (ulong i=v.lbounds[0]; i<=v.ubounds[0]; i++) {
+      for (ulong j=0; j<v.dimSizes[1]; j++) {
+        for (ulong i=0; i<v.dimSizes[0]; i++) {
           os << std::setw(12) << v(i,j) << " ";
         }
         os << "\n";

@@ -3,9 +3,10 @@
 #include <mpi.h>
 #include "transform.h"
 #include "types.h"
+#include "haloExchange.h"
 
 
-void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans) {
+void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans, str_exch &exch) {
   int  ierr, i, j, pxloc, pyloc, rr, hs, ord, ii, jj;
   FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
@@ -48,6 +49,18 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   //Determine my number of grid cells
   dom.nx = par.i_end - par.i_beg + 1;
   dom.ny = par.j_end - par.j_beg + 1;
+  par.neigh.setup(3,3);
+  for (j = 0; j < 3; j++) {
+    for (i = 0; i < 3; i++) {
+      pxloc = par.px+i-1;
+      if (pxloc < 0            ) pxloc = pxloc + par.nproc_x;
+      if (pxloc > par.nproc_x-1) pxloc = pxloc - par.nproc_x;
+      pyloc = par.py+j-1;
+      if (pyloc < 0            ) pyloc = pyloc + par.nproc_y;
+      if (pyloc > par.nproc_y-1) pyloc = pyloc - par.nproc_y;
+      par.neigh(j,i) = pyloc * par.nproc_x + pxloc;
+    }
+  }
 
   if (debug_mpi) {
     for (rr=0; rr < par.nranks; rr++) {
@@ -95,14 +108,22 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   trans.c2g_hi2lo_y = coefs_to_gll(dom.dy,dom.ord);
 
   //Allocate needed variables
-  dyn .state.setup((long)NUM_VARS,ny+2*hs,nx+2*hs);
-  dyn .flux .setup((long)NUM_VARS,ny+1,nx+1);
-  dyn .tend .setup((long)NUM_VARS,ny,nx);
+  dyn .state.setup(NUM_VARS,ny+2*hs,nx+2*hs);
+  dyn .flux .setup(NUM_VARS,ny+1,nx+1);
+  dyn .tend .setup(NUM_VARS,ny,nx);
   stat.fs_x .setup(ny,nx);
   stat.fs_y .setup(ny,nx);
   stat.sfc  .setup(ny+2*hs,nx+2*hs);
   stat.sfc_x.setup(ny,nx);
   stat.sfc_y.setup(ny,nx);
+  exch.sendBufS.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.sendBufN.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.sendBufW.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.sendBufE.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.recvBufS.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.recvBufN.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.recvBufW.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.recvBufE.setup(exch.maxPack,dom.hs,dom.ny);
 
   //Set stuff to zero
   stat.sfc   = 0.;
@@ -136,5 +157,20 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
       }
     }
   }
+
+  //Fill dimensionally split halos for the state and terrain
+  haloInit      (exch);
+  haloPackN_x   (dom, exch, dyn.state, NUM_VARS);
+  haloPack1_x   (dom, exch, stat.sfc);
+  haloExchange_x(dom, exch, par);
+  haloUnpackN_x (dom, exch, dyn.state, NUM_VARS);
+  haloUnpack1_x (dom, exch, stat.sfc);
+
+  haloInit      (exch);
+  haloPackN_y   (dom, exch, dyn.state, NUM_VARS);
+  haloPack1_y   (dom, exch, stat.sfc);
+  haloExchange_y(dom, exch, par);
+  haloUnpackN_y (dom, exch, dyn.state, NUM_VARS);
+  haloUnpack1_y (dom, exch, stat.sfc);
 
 }

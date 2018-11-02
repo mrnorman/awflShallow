@@ -3,6 +3,7 @@
 #define _TYPE_H_
 
 #include "Array.h"
+#include <mpi.h>
 
 
 
@@ -49,6 +50,39 @@ struct str_par {
   int  px, py;                    //My process grid ID in the x- and y-directions
   int  nproc_x, nproc_y;          //Number of processes in the x- and y-directions
   int  masterproc;                //Am I the master process (rank == 0)?
+  Array<int> neigh;
+};
+
+
+
+/////////////////////////////////////////////////////////////////////
+// HALO EXCHANGE DATA
+/////////////////////////////////////////////////////////////////////
+struct str_exch {
+  const int maxPack = 5;
+  Array<FP> sendBufS;
+  Array<FP> sendBufN;
+  Array<FP> sendBufW;
+  Array<FP> sendBufE;
+  Array<FP> recvBufS;
+  Array<FP> recvBufN;
+  Array<FP> recvBufW;
+  Array<FP> recvBufE;
+  int nPack;
+  int nUnpack;
+  MPI_Request sReq [8];
+  MPI_Request rReq [8];
+  MPI_Status  sStat[8];
+  MPI_Status  rStat[8];
+  int ID_E  = 0;  //East
+  int ID_NE = 1;  //Northeast
+  int ID_N  = 2;  //North
+  int ID_NW = 3;  //Northwest
+  int ID_W  = 4;  //West
+  int ID_SW = 5;  //Southwest
+  int ID_S  = 6;  //South
+  int ID_SE = 7;  //Southeast
+  int ID_C  = 8;  //Center
 };
 
 

@@ -4,6 +4,6 @@
 
 #include "types.h"
 
-void finalize( str_stat &stat , str_dyn &dyn );
+void finalize( str_stat &stat, str_dyn &dyn, str_exch &exch, str_par &par );
 
 #endif

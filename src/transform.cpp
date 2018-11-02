@@ -1,7 +1,8 @@
-#include "transform.h"
+
 #include "types.h"
 #include <math.h>
 #include "Array.h"
+#include "transform.h"
 
 FP coefs_to_tv(Array<FP> &a, int n) {
   if (n == 2) {
@@ -5985,4 +5986,3 @@ FP coefs_to_tv_10(Array<FP> &a) {
 
   return rslt;
 }
-
