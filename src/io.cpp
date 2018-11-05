@@ -122,3 +122,81 @@ void ncwrap( int ierr , int line ) {
     exit(-1);
   }
 }
+
+
+void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
+  int ncid, t_dimid, x_dimid, y_dimid, height_varid, uvel_varid, sfc_x_varid, sfc_y_varid;
+  int vvel_varid, fsx_varid, fsy_varid, sfc_varid, t_varid, dimids[3];
+  int i, j, num_out, hs;
+  long nx, ny;
+  MPI_Offset st1[1], ct1[1], st3[3], ct3[3];
+  //Temporary arrays to hold density, u-wind, w-wind, and potential temperature (theta)
+  FP *height, *uvel, *vvel, *sfcloc;
+  FP *etimearr;
+
+  nx = dom.nx;
+  ny = dom.ny;
+  hs = dom.hs;
+
+  //Inform the user
+  if (par.masterproc) { printf("*** OUTPUT ***\n"); }
+  //Allocate some (big) temp arrays
+  height   = (FP *) malloc(nx*ny*sizeof(FP));
+  uvel     = (FP *) malloc(nx*ny*sizeof(FP));
+  vvel     = (FP *) malloc(nx*ny*sizeof(FP));
+  etimearr = (FP *) malloc(1    *sizeof(FP));
+
+  num_out = 0;
+
+  //Create the file
+  ncwrap( ncmpi_open( MPI_COMM_WORLD , "output.nc" , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
+  ncwrap( ncmpi_inq_varid(ncid,"height",&height_varid) , __LINE__ );
+  ncwrap( ncmpi_inq_varid(ncid,"uvel"  ,  &uvel_varid) , __LINE__ );
+  ncwrap( ncmpi_inq_varid(ncid,"vvel"  ,  &vvel_varid) , __LINE__ );
+  ncwrap( ncmpi_inq_varid(ncid,"t"     ,     &t_varid) , __LINE__ );
+
+  //Store perturbed values in the temp arrays for output
+  for (j=0; j<ny; j++) {
+    for (i=0; i<nx; i++) {
+      height[j*nx+i] = dyn.state(ID_H,j+hs,i+hs);
+      if (height[j*nx+i] != 0.) {
+        uvel[j*nx+i] = dyn.state(ID_U,j+hs,i+hs) / dyn.state(ID_H,j+hs,i+hs);
+        vvel[j*nx+i] = dyn.state(ID_V,j+hs,i+hs) / dyn.state(ID_H,j+hs,i+hs);
+      } else {
+        uvel[j*nx+i] = 0.;
+        vvel[j*nx+i] = 0.;
+      }
+    }
+  }
+
+  //Write the grid data to file with all the processes writing collectively
+  st3[0] = num_out; st3[1] = par.j_beg; st3[2] = par.i_beg;
+  ct3[0] = 1      ; ct3[1] = ny       ; ct3[2] = nx       ;
+  ncwrap( ncmpi_put_vara_double_all( ncid , height_varid , st3 , ct3 , height ) , __LINE__ );
+  ncwrap( ncmpi_put_vara_double_all( ncid ,   uvel_varid , st3 , ct3 , uvel   ) , __LINE__ );
+  ncwrap( ncmpi_put_vara_double_all( ncid ,   vvel_varid , st3 , ct3 , vvel   ) , __LINE__ );
+
+  //Only the master process needs to write the elapsed time
+  //Begin "independent" write mode
+  ncwrap( ncmpi_begin_indep_data(ncid) , __LINE__ );
+  //write elapsed time to file
+  if (par.masterproc) {
+    st1[0] = num_out;
+    ct1[0] = 1;
+    etimearr[0] = 0.; ncwrap( ncmpi_put_vara_double( ncid , t_varid , st1 , ct1 , etimearr ) , __LINE__ );
+  }
+  //End "independent" write mode
+  ncwrap( ncmpi_end_indep_data(ncid) , __LINE__ );
+
+  //Close the file
+  ncwrap( ncmpi_close(ncid) , __LINE__ );
+
+  //Increment the number of outputs
+  num_out = num_out + 1;
+
+  //Deallocate the temp arrays
+  free( height   );
+  free( uvel     );
+  free( vvel     );
+  free( etimearr );
+}

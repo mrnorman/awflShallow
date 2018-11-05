@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
     //If it's time to do output, do output
     if (dyn.output_counter >= dom.out_freq) {
       dyn.output_counter -= dom.out_freq;
+      output(par, dom, dyn, stat);
     }
 
     //If it's time to compute the time step based on CFL, then do that

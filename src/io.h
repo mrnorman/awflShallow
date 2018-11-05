@@ -7,5 +7,6 @@
 
 void ncwrap( int ierr , int line );
 void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat );
+void output     ( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat );
 
 #endif
