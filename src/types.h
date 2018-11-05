@@ -27,8 +27,8 @@ struct str_dom {
   FP   sim_time;                  //total simulation time in seconds
   FP   xlen;                      //Length of the domain in the x-direction (meters)
   FP   ylen;                      //Length of the domain in the y-direction (meters)
-  FP   output_freq;               //frequency to perform output in seconds
-  FP   dt;                        //Model time step (seconds)
+  FP   out_freq;                  //frequency to perform output in seconds
+  FP   cfl_freq;                  //frequency to compute a new time step based on CFL
   long nx, ny;                    //Number of local grid cells in the x- and y- dimensions for this MPI task
   FP   dx, dy;                    //Grid space length in x- and y-dimension (meters)
   long nx_glob, ny_glob;          //Number of total grid cells in the x- and y- dimensions
@@ -36,6 +36,7 @@ struct str_dom {
   const int tord = 3;         //Order of accuracy
   const int hs  = (ord-1)/2; //Number of halo cells
   const FP cfl  = 0.90;      //"Courant, Friedrichs, Lewy" number (for numerical stability)
+  const int verbose = 1;     //Do verbose output
 };
 
 
@@ -105,7 +106,9 @@ struct str_stat {
 /////////////////////////////////////////////////////////////////////
 struct str_dyn {
   FP        etime;                 //Elapsed model time
+  FP        dt;                    //Model time step (seconds)
   FP        output_counter;        //Helps determine when it's time to do output
+  FP        cfl_counter;           //Helps determine when it's time to do output
   Array<FP> state;                 //The fluid state (nx+2*hs,ny+2*hs,NUM_VARS)
   Array<FP> flux;                  //Fluxes in the x- and y-directions (nx+1,ny+1,NUM_VARS)
   Array<FP> tend;                  //Tendencies (nx,ny,NUM_VARS)

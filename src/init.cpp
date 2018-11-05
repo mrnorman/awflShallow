@@ -4,6 +4,7 @@
 #include "transform.h"
 #include "types.h"
 #include "haloExchange.h"
+#include "cfl.h"
 
 
 void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans, str_exch &exch) {
@@ -17,13 +18,14 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
 
   dom.nx_glob = 32;       //Number of total cells in the x-dirction
   dom.ny_glob = 32;       //Number of total cells in the y-dirction
-  dom.xlen = 1.0;          //Length of the x-domain in meters
-  dom.ylen = 1.0;          //Length of the y-domain in meters
-  dom.sim_time = 1000;     //How many seconds to run the simulation
-  dom.output_freq = 10;    //How frequently to output data to file (in seconds)
+  dom.xlen = 10000.0;     //Length of the x-domain in meters
+  dom.ylen = 10000.0;     //Length of the y-domain in meters
+  dom.sim_time = 1000;    //How many seconds to run the simulation
+  dom.out_freq = 10;      //How frequently to output data to file (in seconds)
+  dom.cfl_freq = 10;      //How frequently to output data to file (in seconds)
 
-  par.nproc_x = 4;         //Number of processors in the x-direction
-  par.nproc_y = 4;         //Number of processors in the y-direction
+  par.nproc_x = 4;        //Number of processors in the x-direction
+  par.nproc_y = 4;        //Number of processors in the y-direction
 
   dom.dx = dom.xlen / dom.nx_glob;
   dom.dy = dom.ylen / dom.ny_glob;
@@ -207,5 +209,12 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
 
   s2d2g_x.finalize();
   s2d2g_y.finalize();
+
+  //Compute the time step based on the maximum hyperbolic wave speed
+  compute_cfl_timestep(dom, dyn, stat, par);
+  if (par.masterproc) {
+    std::cout << "dx, dy: " << dom.dx << ", " << dom.dy << "\n";
+    std::cout << "Time Step: " << dyn.dt << "\n";
+  }
 
 }

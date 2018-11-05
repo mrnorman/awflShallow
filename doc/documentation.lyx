@@ -162,5 +162,86 @@ where
  
 \end_layout
 
+\begin_layout Standard
+We could transform the bottom topography terms to include a portion of them
+ in the conservative flux.
+ However, this would end up making the gravity wave speed 
+\begin_inset Formula $\sqrt{g\left(h+h_{s}\right)}$
+\end_inset
+
+ in the flux Jacobian diagonalization.
+ Since 
+\begin_inset Formula $h_{s}$
+\end_inset
+
+ could become arbitrarily large, this would seemingly limite the time step
+ to unnecessarily small values.
+ If the equations remain as they are above, then the gravity wave speed
+ becomes 
+\begin_inset Formula $\sqrt{gh}$
+\end_inset
+
+, which is guaranteed to be smaller (thus permitting a larger stable time
+ step).
+\end_layout
+
+\begin_layout Subsection
+Differential Transforms
+\end_layout
+
+\begin_layout Standard
+We perform DTs only in the temporal dimension, leaving space continuous:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\mathbf{q}\left(k_{t}+1\right)=-\frac{1}{k_{t}+1}\frac{\partial\mathbf{f}}{\partial x}\left(k_{t}\right)-\frac{1}{k_{t}+1}\frac{\partial\mathbf{g}}{\partial y}\left(k_{t}\right)+\frac{1}{k_{t}+1}\mathbf{s}\left(k_{t}\right)
+\]
+
+\end_inset
+
+The spatial derivatives of the flux will be computed with a matrix-vector
+ product.
+ Thus, we only need the temporal DTs of the flux vectors themselves after
+ computing the state:
+\begin_inset Formula 
+\[
+\mathbf{F}\left(k_{t}\right)=\left[\begin{array}{c}
+Q_{2}\left(k_{t}\right)\\
+\Phi_{22}\left(k_{t}\right)+\frac{1}{2}gP\left(k_{t}\right)\\
+\Phi_{23}\left(k_{t}\right)
+\end{array}\right]\,\,\,\,\,;\,\,\,\,\,\mathbf{G}\left(k_{t}\right)=\left[\begin{array}{c}
+Q_{3}\left(k_{t}\right)\\
+\Phi_{23}\left(k_{t}\right)\\
+\Phi_{33}\left(k_{t}\right)+\frac{1}{2}gP\left(k_{t}\right)
+\end{array}\right]\,\,\,\,\,;\,\,\,\,\,\mathbf{S}\left(k_{t}\right)=\left[\begin{array}{c}
+0\\
+-g\frac{\partial h_{S}}{\partial x}Q_{1}\left(k_{t}\right)\\
+-g\frac{\partial h_{S}}{\partial y}Q_{1}\left(k_{t}\right)
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\Phi_{ij}\left(k_{t}\right)=\frac{1}{Q_{1}\left(0\right)}\sum_{r_{t}=0}^{k_{t}}\left[Q_{i}\left(r_{t}\right)Q_{j}\left(k_{t}-r_{t}\right)-Q_{1}\left(r_{t}\right)\Phi_{ij}\left(k_{t}-r_{t}\right)\right];\,\,\,\,\forall i\in\left\{ 2,3\right\} ,j\in\left\{ 2,3\right\} 
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+P\left(k_{t}\right)=\sum_{r_{t}=0}^{k_{t}}Q_{1}\left(r_{t}\right)Q_{1}\left(k_{t}-r_{t}\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
 \end_body
 \end_document
