@@ -21,7 +21,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   dom.xlen = 10000.0;     //Length of the x-domain in meters
   dom.ylen = 10000.0;     //Length of the y-domain in meters
   dom.sim_time = 1000;    //How many seconds to run the simulation
-  dom.out_freq = 10;      //How frequently to output data to file (in seconds)
+  dom.out_freq = 0.01;      //How frequently to output data to file (in seconds)
   dom.cfl_freq = 10;      //How frequently to output data to file (in seconds)
 
   par.nproc_x = 2;        //Number of processors in the x-direction
