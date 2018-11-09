@@ -24,7 +24,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   dom.out_freq = 10;      //How frequently to output data to file (in seconds)
   dom.cfl_freq = 10;      //How frequently to output data to file (in seconds)
 
-  par.nproc_x = 4;        //Number of processors in the x-direction
+  par.nproc_x = 2;        //Number of processors in the x-direction
   par.nproc_y = 4;        //Number of processors in the y-direction
 
   dom.dx = dom.xlen / dom.nx_glob;
@@ -153,6 +153,8 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   stat.sfc  .setup(ny+2*hs,nx+2*hs);
   stat.sfc_x.setup(ny,nx);
   stat.sfc_y.setup(ny,nx);
+  stat.sfc_x_gll.setup(ny,nx,dom.tord);
+  stat.sfc_y_gll.setup(ny,nx,dom.tord);
   exch.haloSendBufS.setup(exch.maxPack,dom.hs,dom.nx);
   exch.haloSendBufN.setup(exch.maxPack,dom.hs,dom.nx);
   exch.haloSendBufW.setup(exch.maxPack,dom.hs,dom.ny);

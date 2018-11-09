@@ -10,7 +10,7 @@
 void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   int ncid, t_dimid, x_dimid, y_dimid, height_varid, uvel_varid, sfc_x_varid, sfc_y_varid;
   int vvel_varid, fsx_varid, fsy_varid, sfc_varid, t_varid, dimids[3];
-  int i, j, num_out, hs;
+  int i, j, hs;
   long nx, ny;
   MPI_Offset st1[1], ct1[1], st3[3], ct3[3];
   //Temporary arrays to hold density, u-wind, w-wind, and potential temperature (theta)
@@ -30,7 +30,7 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   sfcloc   = (FP *) malloc(nx*ny*sizeof(FP));
   etimearr = (FP *) malloc(1    *sizeof(FP));
 
-  num_out = 0;
+  dyn.num_out = 0;
 
   //Create the file
   ncwrap( ncmpi_create( MPI_COMM_WORLD , "output.nc" , NC_CLOBBER , MPI_INFO_NULL , &ncid ) , __LINE__ );
@@ -77,8 +77,8 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   }
 
   //Write the grid data to file with all the processes writing collectively
-  st3[0] = num_out; st3[1] = par.j_beg; st3[2] = par.i_beg;
-  ct3[0] = 1      ; ct3[1] = ny       ; ct3[2] = nx       ;
+  st3[0] = dyn.num_out; st3[1] = par.j_beg; st3[2] = par.i_beg;
+  ct3[0] = 1          ; ct3[1] = ny       ; ct3[2] = nx       ;
   ncwrap( ncmpi_put_vara_double_all( ncid , height_varid , st3 , ct3 , height ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   uvel_varid , st3 , ct3 , uvel   ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   vvel_varid , st3 , ct3 , vvel   ) , __LINE__ );
@@ -91,7 +91,7 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_begin_indep_data(ncid) , __LINE__ );
   //write elapsed time to file
   if (par.masterproc) {
-    st1[0] = num_out;
+    st1[0] = dyn.num_out;
     ct1[0] = 1;
     etimearr[0] = 0.; ncwrap( ncmpi_put_vara_double( ncid , t_varid , st1 , ct1 , etimearr ) , __LINE__ );
   }
@@ -102,7 +102,7 @@ void output_init( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_close(ncid) , __LINE__ );
 
   //Increment the number of outputs
-  num_out = num_out + 1;
+  dyn.num_out = dyn.num_out + 1;
 
   //Deallocate the temp arrays
   free( height   );
@@ -127,7 +127,7 @@ void ncwrap( int ierr , int line ) {
 void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   int ncid, t_dimid, x_dimid, y_dimid, height_varid, uvel_varid, sfc_x_varid, sfc_y_varid;
   int vvel_varid, fsx_varid, fsy_varid, sfc_varid, t_varid, dimids[3];
-  int i, j, num_out, hs;
+  int i, j, hs;
   long nx, ny;
   MPI_Offset st1[1], ct1[1], st3[3], ct3[3];
   //Temporary arrays to hold density, u-wind, w-wind, and potential temperature (theta)
@@ -145,8 +145,6 @@ void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   uvel     = (FP *) malloc(nx*ny*sizeof(FP));
   vvel     = (FP *) malloc(nx*ny*sizeof(FP));
   etimearr = (FP *) malloc(1    *sizeof(FP));
-
-  num_out = 0;
 
   //Create the file
   ncwrap( ncmpi_open( MPI_COMM_WORLD , "output.nc" , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
@@ -170,8 +168,8 @@ void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   }
 
   //Write the grid data to file with all the processes writing collectively
-  st3[0] = num_out; st3[1] = par.j_beg; st3[2] = par.i_beg;
-  ct3[0] = 1      ; ct3[1] = ny       ; ct3[2] = nx       ;
+  st3[0] = dyn.num_out; st3[1] = par.j_beg; st3[2] = par.i_beg;
+  ct3[0] = 1          ; ct3[1] = ny       ; ct3[2] = nx       ;
   ncwrap( ncmpi_put_vara_double_all( ncid , height_varid , st3 , ct3 , height ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   uvel_varid , st3 , ct3 , uvel   ) , __LINE__ );
   ncwrap( ncmpi_put_vara_double_all( ncid ,   vvel_varid , st3 , ct3 , vvel   ) , __LINE__ );
@@ -181,7 +179,7 @@ void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_begin_indep_data(ncid) , __LINE__ );
   //write elapsed time to file
   if (par.masterproc) {
-    st1[0] = num_out;
+    st1[0] = dyn.num_out;
     ct1[0] = 1;
     etimearr[0] = 0.; ncwrap( ncmpi_put_vara_double( ncid , t_varid , st1 , ct1 , etimearr ) , __LINE__ );
   }
@@ -192,7 +190,7 @@ void output( str_par &par, str_dom &dom, str_dyn &dyn, str_stat &stat ) {
   ncwrap( ncmpi_close(ncid) , __LINE__ );
 
   //Increment the number of outputs
-  num_out = num_out + 1;
+  dyn.num_out = dyn.num_out + 1;
 
   //Deallocate the temp arrays
   free( height   );

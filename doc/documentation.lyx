@@ -262,7 +262,7 @@ hv
 hu\\
 hu^{2}+\frac{1}{2}gh^{2}\\
 huv
-\end{array}\right]+=\left[\begin{array}{c}
+\end{array}\right]=\left[\begin{array}{c}
 0\\
 -gh\frac{\partial h_{S}}{\partial x}-ghS_{fx}\\
 0
