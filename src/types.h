@@ -32,11 +32,11 @@ struct str_dom {
   long nx, ny;                    //Number of local grid cells in the x- and y- dimensions for this MPI task
   FP   dx, dy;                    //Grid space length in x- and y-dimension (meters)
   long nx_glob, ny_glob;          //Number of total grid cells in the x- and y- dimensions
-  const int ord = 3;         //Order of accuracy
-  const int tord = 3;         //Order of accuracy
-  const int hs  = (ord-1)/2; //Number of halo cells
-  const FP cfl  = 0.90;      //"Courant, Friedrichs, Lewy" number (for numerical stability)
-  const int verbose = 1;     //Do verbose output
+  const int ord = 3;              //Spatial order of accuracy
+  const int tord = 3;             //Temporal order of accuracy
+  const int hs  = (ord-1)/2;      //Number of halo cells
+  const FP cfl  = 0.90;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
+  const int verbose = 1;          //Do verbose output
 };
 
 
@@ -60,15 +60,15 @@ struct str_par {
 // HALO EXCHANGE DATA
 /////////////////////////////////////////////////////////////////////
 struct str_exch {
-  const int maxPack = 5;
-  Array<FP> sendBufS;
-  Array<FP> sendBufN;
-  Array<FP> sendBufW;
-  Array<FP> sendBufE;
-  Array<FP> recvBufS;
-  Array<FP> recvBufN;
-  Array<FP> recvBufW;
-  Array<FP> recvBufE;
+  const int maxPack = 10;
+  Array<FP> haloSendBufS;
+  Array<FP> haloSendBufN;
+  Array<FP> haloSendBufW;
+  Array<FP> haloSendBufE;
+  Array<FP> haloRecvBufS;
+  Array<FP> haloRecvBufN;
+  Array<FP> haloRecvBufW;
+  Array<FP> haloRecvBufE;
   int nPack;
   int nUnpack;
   MPI_Request sReq [8];
@@ -84,6 +84,14 @@ struct str_exch {
   int ID_S  = 6;  //South
   int ID_SE = 7;  //Southeast
   int ID_C  = 8;  //Center
+  Array<FP> edgeRecvBufE;
+  Array<FP> edgeRecvBufW;
+  Array<FP> edgeSendBufE;
+  Array<FP> edgeSendBufW;
+  Array<FP> edgeRecvBufN;
+  Array<FP> edgeRecvBufS;
+  Array<FP> edgeSendBufN;
+  Array<FP> edgeSendBufS;
 };
 
 
@@ -92,11 +100,13 @@ struct str_exch {
 // STATIC ARRAYS
 /////////////////////////////////////////////////////////////////////
 struct str_stat {
-  Array<FP> fs_x;                  //friction slope in x-direction (nx,ny)
-  Array<FP> fs_y;                  //friction slope in y-direction (nx,ny)
-  Array<FP> sfc;                   //Surface elevation values (nx+2*hs,ny+2*hs)
-  Array<FP> sfc_x;                 //x-direction spatial derivative of the surface elevation values (nx,ny)
-  Array<FP> sfc_y;                 //y-direction spatial derivative of the surface elevation values (nx,ny)
+  Array<FP> fs_x;                  //friction slope in x-direction
+  Array<FP> fs_y;                  //friction slope in y-direction
+  Array<FP> sfc;                   //Surface elevation values
+  Array<FP> sfc_x;                 //x-direction spatial derivative of the surface elevation values
+  Array<FP> sfc_y;                 //y-direction spatial derivative of the surface elevation values
+  Array<FP> sfc_x_gll;             //x-direction spatial derivative of the surface elevation values
+  Array<FP> sfc_y_gll;             //y-direction spatial derivative of the surface elevation values
 };
 
 
@@ -109,9 +119,12 @@ struct str_dyn {
   FP        dt;                    //Model time step (seconds)
   FP        output_counter;        //Helps determine when it's time to do output
   FP        cfl_counter;           //Helps determine when it's time to do output
-  Array<FP> state;                 //The fluid state (nx+2*hs,ny+2*hs,NUM_VARS)
-  Array<FP> flux;                  //Fluxes in the x- and y-directions (nx+1,ny+1,NUM_VARS)
-  Array<FP> tend;                  //Tendencies (nx,ny,NUM_VARS)
+  Array<FP> state;                 //The fluid state
+  Array<FP> state_riem;            //Riemann limits for state in the x- and y-directions
+  Array<FP> flux_riem;             //Riemann limits for fluxes in the x- and y-directions
+  Array<FP> source;                //Cell-averaged source term
+  Array<FP> flux;                  //Fluxes in the x- and y-directions
+  Array<FP> tend;                  //Tendencies
   int       num_out = 0;           //The number of outputs performed so far
   int       direction_switch = 1;  //Used to switch the order of the dimensionally split solve
 };

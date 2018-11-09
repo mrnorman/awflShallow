@@ -7,7 +7,7 @@ OMPFLAGS := -mp
 ACCFLAGS := -ta=tesla,pinned,cc50,cuda9.0,ptxinfo -Minfo=accel
 
 all:
-	${CC} ${INCLUDE} ${CFLAGS} -o sw_cart cfl.cpp timeStepping.cpp haloExchange.cpp transform.cpp finalize.cpp init.cpp io.cpp main.cpp ${LDFLAGS}
+	${CC} ${INCLUDE} ${CFLAGS} -o sw_cart tendencies.cpp riemann.cpp cfl.cpp diffTransform.cpp timeStepping.cpp haloExchange.cpp transform.cpp finalize.cpp init.cpp io.cpp main.cpp ${LDFLAGS}
 
 clean:
 	rm -f *.o sw_cart

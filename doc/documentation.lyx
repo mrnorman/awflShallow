@@ -243,5 +243,63 @@ P\left(k_{t}\right)=\sum_{r_{t}=0}^{k_{t}}Q_{1}\left(r_{t}\right)Q_{1}\left(k_{t
 
 \end_layout
 
+\begin_layout Subsection
+Dimensional Splitting
+\end_layout
+
+\begin_layout Subsubsection
+x-direction
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\partial}{\partial t}\left[\begin{array}{c}
+h\\
+hu\\
+hv
+\end{array}\right]+\frac{\partial}{\partial x}\left[\begin{array}{c}
+hu\\
+hu^{2}+\frac{1}{2}gh^{2}\\
+huv
+\end{array}\right]+=\left[\begin{array}{c}
+0\\
+-gh\frac{\partial h_{S}}{\partial x}-ghS_{fx}\\
+0
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+y-direction
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\partial}{\partial t}\left[\begin{array}{c}
+h\\
+hu\\
+hv
+\end{array}\right]+\frac{\partial}{\partial y}\left[\begin{array}{c}
+hv\\
+hvu\\
+hv^{2}+\frac{1}{2}gh^{2}
+\end{array}\right]=\left[\begin{array}{c}
+0\\
+0\\
+-gh\frac{\partial h_{S}}{\partial y}-ghS_{fy}
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
 \end_body
 \end_document

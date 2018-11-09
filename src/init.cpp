@@ -12,7 +12,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
   long nx, ny;
-  Array<FP> s2d2g_x, s2d2g_y;
+  Array<FP> s2d2g_x, s2d2g_y, tmparr;
 
   ierr = MPI_Init(argc,argv);
 
@@ -113,27 +113,62 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   trans.c2s_y = coefs_to_sten(dom.dy,dom.ord);
   trans.s2g = coefs_to_gll((FP) 1.,dom.ord) * sten_to_coefs((FP) 1.,dom.ord);
   trans.g2s = coefs_to_sten((FP) 1.,dom.ord) * gll_to_coefs((FP) 1.,dom.ord);
-  trans.s2g_hi2lo = sten_to_gll_lower((FP) 1.,ord);
-  trans.c2g_hi2lo_x = coefs_to_gll(dom.dx,dom.ord);
-  trans.c2g_hi2lo_y = coefs_to_gll(dom.dy,dom.ord);
+
+  tmparr = sten_to_gll_lower((FP) 1.,dom.ord);
+  trans.s2g_hi2lo.setup(dom.ord,dom.tord);
+  for (int ii=0; ii<dom.ord; ii++) {
+    for (int jj=0; jj<dom.tord; jj++) {
+      trans.s2g_hi2lo(ii,jj) = tmparr(dom.tord,ii,jj);
+    }
+  }
+  tmparr.finalize();
+
+  tmparr = coefs_to_gll(dom.dx,dom.ord);
+  trans.c2g_hi2lo_x.setup(dom.ord,dom.tord);
+  for (int ii=0; ii<dom.ord; ii++) {
+    for (int jj=0; jj<dom.tord; jj++) {
+      trans.c2g_hi2lo_x(ii,jj) = tmparr(dom.tord,ii,jj);
+    }
+  }
+  tmparr.finalize();
+
+  tmparr = coefs_to_gll(dom.dy,dom.ord);
+  trans.c2g_hi2lo_y.setup(dom.ord,dom.tord);
+  for (int ii=0; ii<dom.ord; ii++) {
+    for (int jj=0; jj<dom.tord; jj++) {
+      trans.c2g_hi2lo_y(ii,jj) = tmparr(dom.tord,ii,jj);
+    }
+  }
+  tmparr.finalize();
 
   //Allocate needed variables
-  dyn .state.setup(NUM_VARS,ny+2*hs,nx+2*hs);
-  dyn .flux .setup(NUM_VARS,ny+1,nx+1);
-  dyn .tend .setup(NUM_VARS,ny,nx);
+  dyn .state     .setup(NUM_VARS,ny+2*hs,nx+2*hs);
+  dyn .flux      .setup(NUM_VARS,ny+1,nx+1);
+  dyn .flux_riem .setup(NUM_VARS,2,ny+1,nx+1);
+  dyn .state_riem.setup(NUM_VARS,2,ny+1,nx+1);
+  dyn .tend      .setup(NUM_VARS,ny,nx);
+  dyn .source    .setup(NUM_VARS,ny,nx);
   stat.fs_x .setup(ny,nx);
   stat.fs_y .setup(ny,nx);
   stat.sfc  .setup(ny+2*hs,nx+2*hs);
   stat.sfc_x.setup(ny,nx);
   stat.sfc_y.setup(ny,nx);
-  exch.sendBufS.setup(exch.maxPack,dom.hs,dom.nx);
-  exch.sendBufN.setup(exch.maxPack,dom.hs,dom.nx);
-  exch.sendBufW.setup(exch.maxPack,dom.hs,dom.ny);
-  exch.sendBufE.setup(exch.maxPack,dom.hs,dom.ny);
-  exch.recvBufS.setup(exch.maxPack,dom.hs,dom.nx);
-  exch.recvBufN.setup(exch.maxPack,dom.hs,dom.nx);
-  exch.recvBufW.setup(exch.maxPack,dom.hs,dom.ny);
-  exch.recvBufE.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.haloSendBufS.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.haloSendBufN.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.haloSendBufW.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.haloSendBufE.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.haloRecvBufS.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.haloRecvBufN.setup(exch.maxPack,dom.hs,dom.nx);
+  exch.haloRecvBufW.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.haloRecvBufE.setup(exch.maxPack,dom.hs,dom.ny);
+  exch.edgeSendBufS.setup(exch.maxPack,dom.nx);
+  exch.edgeSendBufN.setup(exch.maxPack,dom.nx);
+  exch.edgeSendBufW.setup(exch.maxPack,dom.ny);
+  exch.edgeSendBufE.setup(exch.maxPack,dom.ny);
+  exch.edgeRecvBufS.setup(exch.maxPack,dom.nx);
+  exch.edgeRecvBufN.setup(exch.maxPack,dom.nx);
+  exch.edgeRecvBufW.setup(exch.maxPack,dom.ny);
+  exch.edgeRecvBufE.setup(exch.maxPack,dom.ny);
 
   //Set stuff to zero
   stat.sfc   = 0.;
@@ -188,7 +223,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   s2d2g_y.setup(ord,ord);
   s2d2g_y = coefs_to_gll(dom.dy,dom.ord) * coefs_to_deriv(dom.dy,dom.ord) * sten_to_coefs(dom.dy,dom.ord);
 
-  //(Across rows, Across columns)
+  //Compute cell-averaged bottom orography derivatives
   for (j=0; j<ny; j++) {
     for (i=0; i<nx; i++) {
       for (ii=0; ii<ord; ii++) {
@@ -207,8 +242,25 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
     }
   }
 
-  s2d2g_x.finalize();
-  s2d2g_y.finalize();
+  s2d2g_x = trans.c2g_hi2lo_x * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
+  s2d2g_y = trans.c2g_hi2lo_y * coefs_to_deriv(dom.dy,dom.ord) * sten_to_coefs(dom.dy,dom.ord);
+
+  //Compute bottom orography derivatives at tord GLL points
+  for (j=0; j<ny; j++) {
+    for (i=0; i<nx; i++) {
+      for (ii=0; ii<dom.tord; ii++) {
+        stat.sfc_x_gll(j,i,ii) = 0;
+        for (s=0; s<dom.ord; s++) {
+          stat.sfc_x_gll(j,i,ii) = stat.sfc_x_gll(j,i,ii) + s2d2g_x(s,ii)*stat.sfc(j+hs,i+s);
+        }
+
+        stat.sfc_y_gll(j,i,ii) = 0;
+        for (s=0; s<dom.ord; s++) {
+          stat.sfc_y_gll(j,i,ii) = stat.sfc_y_gll(j,i,ii) + s2d2g_y(s,ii)*stat.sfc(j+s,i+hs);
+        }
+      }
+    }
+  }
 
   //Compute the time step based on the maximum hyperbolic wave speed
   compute_cfl_timestep(dom, dyn, stat, par);

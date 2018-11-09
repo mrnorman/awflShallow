@@ -17,4 +17,11 @@ void haloUnpack1_y(str_dom &dom, str_exch &exch, Array<FP> &a);
 void haloExchange_x(str_dom &dom, str_exch &exch, str_par &par);
 void haloExchange_y(str_dom &dom, str_exch &exch, str_par &par);
 
+void edgePackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n);
+void edgePackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n);
+void edgeUnpackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n);
+void edgeUnpackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n);
+void edgeExchange_x(str_dom &dom, str_exch &exch, str_par &par);
+void edgeExchange_y(str_dom &dom, str_exch &exch, str_par &par);
+
 #endif
