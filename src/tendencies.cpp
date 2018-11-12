@@ -6,13 +6,14 @@
 #include "diffTransform.h"
 
 void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch) {
-  Array<FP> state_dts, flux_dts, source_dts, huu, huv, hh, g2d2g;
+  Array<FP> state_dts, flux_dts, source_dts, huu, huv, hh, g2d2g, dsfc;
   state_dts .setup(NUM_VARS,dom.tord,dom.tord);
   flux_dts  .setup(NUM_VARS,dom.tord,dom.tord);
   source_dts.setup(NUM_VARS,dom.tord,dom.tord);
   huu       .setup(         dom.tord,dom.tord);
   huv       .setup(         dom.tord,dom.tord);
   hh        .setup(         dom.tord,dom.tord);
+  dsfc      .setup(                  dom.tord);
   g2d2g = coefs_to_gll(dom.dx,dom.tord) * coefs_to_deriv(dom.dx,dom.tord) * gll_to_coefs(dom.dx,dom.tord);
 
   //Fill in halos for the state
@@ -36,16 +37,19 @@ void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
 
       //Compute temporal Differential Transforms of the state, fluxes, and sources
       //Then store the integrated average over the time step in DT order zero index for state, fluxes, and source
-      computeTimeDTs_x(dom.tord, state_dts, flux_dts, source_dts, stat.sfc_x_gll, g2d2g, huu, huv, hh, dyn.dt);
+      for (int ii=0; ii<dom.tord; ii++) {
+        dsfc(ii) = stat.sfc_x_gll(j,i,ii);
+      }
+      computeTimeDTs_x(dom.tord, state_dts, flux_dts, source_dts, dsfc, g2d2g, huu, huv, hh, dyn.dt);
 
       //Store the cell interface limits of the state and fluxes for the Riemann solver in the next pass
       for (int v=0; v<NUM_VARS; v++) {
         //Right-hand limit of cell interface "i"
-        dyn.state_riem(v,2,j,i  ) = state_dts(v,0,0     );
-        dyn.flux_riem (v,2,j,i  ) = flux_dts (v,0,0     );
+        dyn.state_riem(v,1,j,i  ) = state_dts(v,0,0     );
+        dyn.flux_riem (v,1,j,i  ) = flux_dts (v,0,0     );
         //Left-hand limit of cell interface "i+1"
-        dyn.state_riem(v,1,j,i+1) = state_dts(v,0,dom.tord-1);
-        dyn.flux_riem (v,1,j,i+1) = flux_dts (v,0,dom.tord-1);
+        dyn.state_riem(v,0,j,i+1) = state_dts(v,0,dom.tord-1);
+        dyn.flux_riem (v,0,j,i+1) = flux_dts (v,0,dom.tord-1);
       }
 
       //Compute the cell-averaged source term
@@ -86,18 +90,20 @@ void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
   huv       .finalize();
   hh        .finalize();
   g2d2g     .finalize();
+  dsfc      .finalize();
 }
 
 
 
 void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch) {
-  Array<FP> state_dts, flux_dts, source_dts, hvu, hvv, hh, g2d2g;
+  Array<FP> state_dts, flux_dts, source_dts, hvu, hvv, hh, g2d2g, dsfc;
   state_dts .setup(NUM_VARS,dom.tord,dom.tord);
   flux_dts  .setup(NUM_VARS,dom.tord,dom.tord);
   source_dts.setup(NUM_VARS,dom.tord,dom.tord);
   hvu       .setup(         dom.tord,dom.tord);
   hvv       .setup(         dom.tord,dom.tord);
   hh        .setup(         dom.tord,dom.tord);
+  dsfc      .setup(                  dom.tord);
   g2d2g = coefs_to_gll(dom.dy,dom.tord) * coefs_to_deriv(dom.dy,dom.tord) * gll_to_coefs(dom.dy,dom.tord);
 
   //Fill in halos for the state
@@ -121,16 +127,19 @@ void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
 
       //Compute temporal Differential Transforms of the state, fluxes, and sources
       //Then store the integrated average over the time step in DT order zero index for state, fluxes, and source
-      computeTimeDTs_y(dom.tord, state_dts, flux_dts, source_dts, stat.sfc_y_gll, g2d2g, hvu, hvv, hh, dyn.dt);
+      for (int ii=0; ii<dom.tord; ii++) {
+        dsfc(ii) = stat.sfc_y_gll(j,i,ii);
+      }
+      computeTimeDTs_y(dom.tord, state_dts, flux_dts, source_dts, dsfc, g2d2g, hvu, hvv, hh, dyn.dt);
 
       //Store the cell interface limits of the state and fluxes for the Riemann solver in the next pass
       for (int v=0; v<NUM_VARS; v++) {
         //Right-hand limit of cell interface "i"
-        dyn.state_riem(v,2,j  ,i) = state_dts(v,0,0     );
-        dyn.flux_riem (v,2,j  ,i) = flux_dts (v,0,0     );
+        dyn.state_riem(v,1,j  ,i) = state_dts(v,0,0     );
+        dyn.flux_riem (v,1,j  ,i) = flux_dts (v,0,0     );
         //Left-hand limit of cell interface "i+1"
-        dyn.state_riem(v,1,j+1,i) = state_dts(v,0,dom.tord-1);
-        dyn.flux_riem (v,1,j+1,i) = flux_dts (v,0,dom.tord-1);
+        dyn.state_riem(v,0,j+1,i) = state_dts(v,0,dom.tord-1);
+        dyn.flux_riem (v,0,j+1,i) = flux_dts (v,0,dom.tord-1);
       }
 
       //Compute the cell-averaged source term
@@ -171,4 +180,5 @@ void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
   hvv       .finalize();
   hh        .finalize();
   g2d2g     .finalize();
+  dsfc      .finalize();
 }

@@ -153,8 +153,8 @@ void edgePackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   int v, i;
   for (v=0; v<n; v++) {
     for (i=0; i<dom.ny; i++) {
-      exch.edgeSendBufW(exch.nPack+v,i) = a(v,2,i,1       );
-      exch.edgeSendBufE(exch.nPack+v,i) = a(v,1,i,dom.nx+1);
+      exch.edgeSendBufW(exch.nPack+v,i) = a(v,1,i,0     );
+      exch.edgeSendBufE(exch.nPack+v,i) = a(v,0,i,dom.nx);
     }
   }
   exch.nPack = exch.nPack + n;
@@ -165,8 +165,8 @@ void edgePackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   int v, i;
   for (v=0; v<n; v++) {
     for (i=0; i<dom.nx; i++) {
-      exch.edgeSendBufS(exch.nPack+v,i) = a(v,2,1       ,i);
-      exch.edgeSendBufN(exch.nPack+v,i) = a(v,1,dom.ny+1,i);
+      exch.edgeSendBufS(exch.nPack+v,i) = a(v,1,0     ,i);
+      exch.edgeSendBufN(exch.nPack+v,i) = a(v,0,dom.ny,i);
     }
   }
   exch.nPack = exch.nPack + n;
@@ -177,11 +177,11 @@ void edgeUnpackN_x(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   int v, i;
   for (v=0; v<n; v++) {
     for (i=0; i<dom.ny; i++) {
-      a(v,1,i,1       ) = exch.edgeRecvBufW(exch.nPack+v,i);
-      a(v,2,i,dom.nx+1) = exch.edgeRecvBufE(exch.nPack+v,i);
+      a(v,0,i,0     ) = exch.edgeRecvBufW(exch.nUnpack+v,i);
+      a(v,1,i,dom.nx) = exch.edgeRecvBufE(exch.nUnpack+v,i);
     }
   }
-  exch.nPack = exch.nPack + n;
+  exch.nUnpack = exch.nUnpack + n;
 }
 
 
@@ -189,11 +189,11 @@ void edgeUnpackN_y(str_dom &dom, str_exch &exch, Array<FP> &a, int n) {
   int v, i;
   for (v=0; v<n; v++) {
     for (i=0; i<dom.nx; i++) {
-      a(v,1,1       ,i) = exch.edgeRecvBufS(exch.nPack+v,i);
-      a(v,2,dom.ny+1,i) = exch.edgeRecvBufN(exch.nPack+v,i);
+      a(v,0,0     ,i) = exch.edgeRecvBufS(exch.nUnpack+v,i);
+      a(v,1,dom.ny,i) = exch.edgeRecvBufN(exch.nUnpack+v,i);
     }
   }
-  exch.nPack = exch.nPack + n;
+  exch.nUnpack = exch.nUnpack + n;
 }
 
 

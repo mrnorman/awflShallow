@@ -4,9 +4,9 @@
 void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
   for (int j=0; j<dom.ny; j++) {
     for (int i=0; i<dom.nx+1; i++) {
-      FP h1 = dyn.state_riem(ID_H,1,j,i)       ;  FP h2 = dyn.state_riem(ID_H,2,j,i);
-      FP u1 = dyn.state_riem(ID_U,1,j,i) / h1  ;  FP u2 = dyn.state_riem(ID_U,2,j,i) / h2;
-      FP v1 = dyn.state_riem(ID_V,1,j,i) / h1  ;  FP v2 = dyn.state_riem(ID_V,2,j,i) / h2;
+      FP h1 = dyn.state_riem(ID_H,0,j,i)       ;  FP h2 = dyn.state_riem(ID_H,1,j,i);
+      FP u1 = dyn.state_riem(ID_U,0,j,i) / h1  ;  FP u2 = dyn.state_riem(ID_U,1,j,i) / h2;
+      FP v1 = dyn.state_riem(ID_V,0,j,i) / h1  ;  FP v2 = dyn.state_riem(ID_V,1,j,i) / h2;
       FP h = 0.5*(h1+h2);   //Cell interface "locally frozen" height
       FP u = 0.5*(u1+u2);   //Cell interface "locally frozen" u-velocity
       FP v = 0.5*(v1+v2);   //Cell interface "locally frozen" v-velocity
@@ -20,11 +20,11 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       eval = u - gw;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (1st left eigenvector "dot" upwind flux vector)
       cvs[0] = (gw+u)/(2*gw)*f[0] + -1./(2*gw)*f[1];
@@ -33,11 +33,11 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       eval = u + gw;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (2nd left eigenvector "dot" upwind flux vector)
       cvs[1] = (gw-u)/(2*gw)*f[0] + 1./(2*gw)*f[1];
@@ -46,11 +46,11 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       eval = u;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (3rd left eigenvector "dot" upwind flux vector)
       cvs[2] = -v*f[0] + f[2];
@@ -68,9 +68,9 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
 void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
   for (int j=0; j<dom.ny+1; j++) {
     for (int i=0; i<dom.nx; i++) {
-      FP h1 = dyn.state_riem(ID_H,1,j,i)       ;  FP h2 = dyn.state_riem(ID_H,2,j,i);
-      FP u1 = dyn.state_riem(ID_U,1,j,i) / h1  ;  FP u2 = dyn.state_riem(ID_U,2,j,i) / h2;
-      FP v1 = dyn.state_riem(ID_V,1,j,i) / h1  ;  FP v2 = dyn.state_riem(ID_V,2,j,i) / h2;
+      FP h1 = dyn.state_riem(ID_H,0,j,i)       ;  FP h2 = dyn.state_riem(ID_H,1,j,i);
+      FP u1 = dyn.state_riem(ID_U,0,j,i) / h1  ;  FP u2 = dyn.state_riem(ID_U,1,j,i) / h2;
+      FP v1 = dyn.state_riem(ID_V,0,j,i) / h1  ;  FP v2 = dyn.state_riem(ID_V,1,j,i) / h2;
       FP h = 0.5*(h1+h2);   //Cell interface "locally frozen" height
       FP u = 0.5*(u1+u2);   //Cell interface "locally frozen" u-velocity
       FP v = 0.5*(v1+v2);   //Cell interface "locally frozen" v-velocity
@@ -84,11 +84,11 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       eval = v - gw;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (1st left eigenvector "dot" upwind flux vector)
       cvs[0] = (gw+v)/(2*gw)*f[0] + -1./(2*gw)*f[2];
@@ -97,11 +97,11 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       eval = v + gw;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (2nd left eigenvector "dot" upwind flux vector)
       cvs[1] = (gw-v)/(2*gw)*f[0] + 1./(2*gw)*f[2];
@@ -110,11 +110,11 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       eval = v;
       //Determine the upwind flux vector for this wave
       if (eval > wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,0,j,i); }
       } else if (eval < -wtol) {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,2,j,i); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = dyn.flux_riem(ii,1,j,i); }
       } else {
-        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,1,j,i) + dyn.flux_riem(ii,2,j,i) ); }
+        for (int ii=0; ii<NUM_VARS; ii++) { f[ii] = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) ); }
       }
       //Compute the upwind characteristic variable for this wave (3rd left eigenvector "dot" upwind flux vector)
       cvs[2] = -u*f[0] + f[1];
