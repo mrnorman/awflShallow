@@ -118,30 +118,30 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   trans.s2g_hi2lo.setup(dom.ord,dom.tord);
   for (int ii=0; ii<dom.ord; ii++) {
     for (int jj=0; jj<dom.tord; jj++) {
-      trans.s2g_hi2lo(ii,jj) = tmparr(dom.tord,ii,jj);
+      trans.s2g_hi2lo(ii,jj) = tmparr(dom.tord-1,ii,jj);
     }
   }
   tmparr.finalize();
 
-  tmparr = coefs_to_gll(dom.dx,dom.ord);
+  tmparr = coefs_to_gll_lower(dom.dx,dom.ord);
   trans.c2g_hi2lo_x.setup(dom.ord,dom.tord);
   for (int ii=0; ii<dom.ord; ii++) {
     for (int jj=0; jj<dom.tord; jj++) {
-      trans.c2g_hi2lo_x(ii,jj) = tmparr(dom.tord,ii,jj);
+      trans.c2g_hi2lo_x(ii,jj) = tmparr(dom.tord-1,ii,jj);
     }
   }
   tmparr.finalize();
 
-  tmparr = coefs_to_gll(dom.dy,dom.ord);
+  tmparr = coefs_to_gll_lower(dom.dy,dom.ord);
   trans.c2g_hi2lo_y.setup(dom.ord,dom.tord);
   for (int ii=0; ii<dom.ord; ii++) {
     for (int jj=0; jj<dom.tord; jj++) {
-      trans.c2g_hi2lo_y(ii,jj) = tmparr(dom.tord,ii,jj);
+      trans.c2g_hi2lo_y(ii,jj) = tmparr(dom.tord-1,ii,jj);
     }
   }
   tmparr.finalize();
 
-  //Allocate needed variables
+  // Allocate needed variables
   dyn .state     .setup(NUM_VARS,ny+2*hs,nx+2*hs);
   dyn .flux      .setup(NUM_VARS,ny+1,nx+1);
   dyn .flux_riem .setup(NUM_VARS,2,ny+1,nx+1);
