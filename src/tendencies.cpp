@@ -161,13 +161,13 @@ void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
   edgeUnpackN_y (dom, exch, dyn.flux_riem , NUM_VARS);
 
   //Reconcile discontinuous cell edge flux estimates with an upwind Riemann solver
-  GodunovLinearX(dom, dyn);
+  GodunovLinearY(dom, dyn);
 
   //Apply the upwind fluxes to compute tendencies for each cell
   for (int v=0; v<NUM_VARS; v++) {
     for (int j=0; j<dom.ny; j++) {
       for (int i=0; i<dom.nx; i++) {
-        dyn.tend(v,j,i) = - ( dyn.flux(v,j+1,i) - dyn.flux(v,j,i) ) / dom.dx + dyn.source(v,j,i);
+        dyn.tend(v,j,i) = - ( dyn.flux(v,j+1,i) - dyn.flux(v,j,i) ) / dom.dy + dyn.source(v,j,i);
       }
     }
   }

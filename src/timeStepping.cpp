@@ -25,7 +25,7 @@ void timeStepX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_tra
 
 void timeStepY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch) {
   computeTendenciesY(dom, par, stat, dyn, trans, exch);
-  // applyTendencies(dom, dyn);
+  applyTendencies(dom, dyn);
 }
 
 
