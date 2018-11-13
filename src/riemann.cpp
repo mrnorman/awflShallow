@@ -60,11 +60,6 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       dyn.flux(1,j,i) = (u-gw)*cvs[0] + (u+gw)*cvs[1];
       dyn.flux(2,j,i) = (v)   *cvs[0] + (v)   *cvs[1] + cvs[2];
 
-
-
-      // dyn.flux(0,j,i) = (dyn.flux_riem(0,0,j,i) + dyn.flux_riem(0,1,j,i)) / 2;
-      // dyn.flux(1,j,i) = (dyn.flux_riem(1,0,j,i) + dyn.flux_riem(1,1,j,i)) / 2;
-      // dyn.flux(2,j,i) = (dyn.flux_riem(2,0,j,i) + dyn.flux_riem(2,1,j,i)) / 2;
     }
   }
 }
@@ -129,6 +124,7 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       dyn.flux(0,j,i) =        cvs[0] +        cvs[1];
       dyn.flux(1,j,i) = (u)   *cvs[0] + (u)   *cvs[1] + cvs[2];
       dyn.flux(2,j,i) = (v-gw)*cvs[0] + (v+gw)*cvs[1];
+
     }
   }
 }

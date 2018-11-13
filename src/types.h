@@ -35,7 +35,7 @@ struct str_dom {
   const int ord = 3;              //Spatial order of accuracy
   const int tord = 3;             //Temporal order of accuracy
   const int hs  = (ord-1)/2;      //Number of halo cells
-  const FP cfl  = 0.90;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
+  const FP cfl  = 0.30;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
   const int verbose = 1;          //Do verbose output
 };
 

@@ -16,11 +16,11 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
 
   ierr = MPI_Init(argc,argv);
 
-  dom.nx_glob = 32;       //Number of total cells in the x-dirction
-  dom.ny_glob = 32;       //Number of total cells in the y-dirction
+  dom.nx_glob = 128;       //Number of total cells in the x-dirction
+  dom.ny_glob = 128;       //Number of total cells in the y-dirction
   dom.xlen = 10000.0;     //Length of the x-domain in meters
   dom.ylen = 10000.0;     //Length of the y-domain in meters
-  dom.sim_time = 1000;    //How many seconds to run the simulation
+  dom.sim_time = 100;    //How many seconds to run the simulation
   dom.out_freq = 0.01;      //How frequently to output data to file (in seconds)
   dom.cfl_freq = 0.01;      //How frequently to output data to file (in seconds)
 
@@ -192,13 +192,14 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
           y = (par.j_beg+j+0.5)*dom.dy + trans.gll_pts_lo(jj)*dom.dy;
           x0 = dom.xlen/2;
           y0 = dom.ylen/2;
-          xr = dom.xlen/2;
-          yr = dom.ylen/2;
-          amp = 1000.;
+          xr = dom.xlen/20;
+          yr = dom.ylen/20;
+          amp = 100.;
           rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
           if (rad <= 1.) {
             tmp = (cos(PI*rad)+1.)/2.;
-            stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            // stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
           }
         }
       }
