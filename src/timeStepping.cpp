@@ -33,7 +33,7 @@ void applyTendencies(str_dom &dom, str_dyn &dyn) {
   for (int v=0; v<NUM_VARS; v++) {
     for (int j=0; j<dom.ny; j++) {
       for (int i=0; i<dom.nx; i++) {
-        dyn.state(v,j,i) += dyn.dt * dyn.tend(v,j,i);
+        dyn.state(v,j+dom.hs,i+dom.hs) += dyn.dt * dyn.tend(v,j,i);
       }
     }
   }
