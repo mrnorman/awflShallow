@@ -17,8 +17,8 @@ void compute_cfl_timestep(str_dom &dom, str_dyn &dyn, str_stat &stat, str_par &p
   for (j=0; j<dom.ny; j++) {
     for (i=0; i<dom.nx; i++) {
       h = dyn.state(ID_H,j+dom.hs,i+dom.hs);
-      u = dyn.state(ID_U,j+dom.hs,i+dom.hs);
-      v = dyn.state(ID_V,j+dom.hs,i+dom.hs);
+      u = dyn.state(ID_U,j+dom.hs,i+dom.hs) / h;
+      v = dyn.state(ID_V,j+dom.hs,i+dom.hs) / h;
       loc_wave = sqrt( u*u + v*v ) + sqrt( GRAV*h );
       if (loc_wave > max_wave) {
         max_wave = loc_wave;
