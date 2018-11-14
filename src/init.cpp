@@ -185,7 +185,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   weno.wts.setup(dom.hs+2);
   weno.recon = weno_sten_to_coefs((FP) 1., dom.ord);
   weno.limCoefs.setup(dom.ord);
-  weno.polyCoefs.setup(dom.hs+2,dom.ord,dom.ord);
+  weno.polyCoefs.setup(dom.hs+2,dom.ord);
   weno.tv.setup(dom.hs+2);
 
   //setup the WENO struct

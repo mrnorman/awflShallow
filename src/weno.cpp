@@ -61,8 +61,6 @@ void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten
   //convexify
   convexify( weno.wts , dom.hs+2 , weno.eps );
 
-  weno.wts = weno.idl;
-
   //Form the WENO coefficients
   weno.limCoefs = 0;
   for (int p=0; p<dom.hs+2; p++) {
