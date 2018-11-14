@@ -19,11 +19,12 @@ str_stat  stat;
 str_dyn   dyn;
 str_trans trans;
 str_exch  exch;
+str_weno  weno;
 
 
 int main(int argc, char **argv) {
   //Initialize the model
-  init(&argc, &argv, dom, par, stat, dyn, trans, exch);
+  init(&argc, &argv, dom, par, stat, dyn, trans, exch, weno);
 
   //Output the initial state
   output_init(par, dom, dyn, stat);

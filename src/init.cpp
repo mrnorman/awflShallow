@@ -5,14 +5,15 @@
 #include "types.h"
 #include "haloExchange.h"
 #include "cfl.h"
+#include "weno.h"
 
 
-void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans, str_exch &exch) {
+void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &stat , str_dyn &dyn , str_trans &trans, str_exch &exch, str_weno &weno ) {
   int  ierr, i, j, pxloc, pyloc, rr, hs, ord, ii, jj, s;
   FP   nper, x, y, x0, y0, xr, yr, amp, rad, tmp;
   int  debug_mpi = 1;
   long nx, ny;
-  Array<FP> s2d2g_x, s2d2g_y, tmparr;
+  Array<FP> c2d2g_x, c2d2g_y, tmparr;
 
   ierr = MPI_Init(argc,argv);
 
@@ -171,6 +172,44 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   exch.edgeRecvBufN.setup(exch.maxPack,dom.nx);
   exch.edgeRecvBufW.setup(exch.maxPack,dom.ny);
   exch.edgeRecvBufE.setup(exch.maxPack,dom.ny);
+  weno.idl.setup(dom.hs+2);
+  weno.wts.setup(dom.hs+2);
+  weno.recon = weno_sten_to_coefs((FP) 1., dom.ord);
+  weno.limCoefs.setup(dom.ord);
+  weno.polyCoefs.setup(dom.hs+2,dom.ord,dom.ord);
+  weno.tv.setup(dom.hs+2);
+
+  //setup the WENO struct
+  weno.eps = 1.e-20;
+  if (dom.ord == 3) {
+    weno.sigma = 0.1;
+    weno.idl(0) = 1.;
+    weno.idl(1) = 1.;
+    weno.idl(2) = 100.;
+  } else if (dom.ord == 5) {
+    weno.sigma = 0.1;
+    weno.idl(0) = 1.;
+    weno.idl(1) = 100.;
+    weno.idl(2) = 1.;
+    weno.idl(3) = 1000.;
+  } else if (dom.ord == 7) {
+    weno.sigma = 0.01;
+    weno.idl(0) = 1.;
+    weno.idl(1) = 20.;
+    weno.idl(2) = 20.;
+    weno.idl(3) = 1.;
+    weno.idl(4) = 400.;
+  } else if (dom.ord == 9) {
+    weno.sigma = 0.1;
+    FP factor = 18;
+    FP power = 1.5;
+    weno.idl(0) = 1.;
+    weno.idl(1) = factor;
+    weno.idl(2) = pow(factor,power);
+    weno.idl(3) = factor;
+    weno.idl(4) = 1.;
+    weno.idl(5) = pow(factor,2*power);
+  }
 
   //Set stuff to zero
   stat.sfc   = 0.;
@@ -192,14 +231,14 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
           y = (par.j_beg+j+0.5)*dom.dy + trans.gll_pts_lo(jj)*dom.dy;
           x0 = dom.xlen/2;
           y0 = dom.ylen/2;
-          xr = dom.xlen/20;
-          yr = dom.ylen/20;
+          xr = dom.xlen/10;
+          yr = dom.ylen/10;
           amp = 100.;
           rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
           if (rad <= 1.) {
             tmp = (cos(PI*rad)+1.)/2.;
-            // stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
-            dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            // dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
           }
         }
       }
@@ -221,45 +260,62 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   haloUnpackN_y (dom, exch, dyn.state, NUM_VARS);
   haloUnpack1_y (dom, exch, stat.sfc);
 
-  s2d2g_x.setup(ord,ord);
-  s2d2g_x = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
-  s2d2g_y.setup(ord,ord);
-  s2d2g_y = coefs_to_gll(dom.dy,dom.ord) * coefs_to_deriv(dom.dy,dom.ord) * sten_to_coefs(dom.dy,dom.ord);
+  c2d2g_x.setup(ord,ord);
+  c2d2g_x = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord);
+  c2d2g_y.setup(ord,ord);
+  c2d2g_y = coefs_to_gll(dom.dy,dom.ord) * coefs_to_deriv(dom.dy,dom.ord);
 
   //Compute cell-averaged bottom orography derivatives
+  Array<FP> sten(ord);
   for (j=0; j<ny; j++) {
     for (i=0; i<nx; i++) {
       for (ii=0; ii<ord; ii++) {
+        for (int s=0; s<ord; s++) {
+          sten(s) = stat.sfc(j+hs,i+s);
+        }
+        computeWenoCoefs( weno, dom, sten );
         tmp = 0;
         for (s=0; s<ord; s++) {
-          tmp = tmp + s2d2g_x(s,ii)*stat.sfc(j+hs,i+s);
+          tmp = tmp + c2d2g_x(s,ii)*weno.limCoefs(s);
         }
         stat.sfc_x(j,i) = stat.sfc_x(j,i) + tmp * trans.gll_wts(ii);
 
+        for (int s=0; s<ord; s++) {
+          sten(s) = stat.sfc(j+s,i+hs);
+        }
+        computeWenoCoefs( weno, dom, sten );
         tmp = 0;
         for (s=0; s<ord; s++) {
-          tmp = tmp + s2d2g_y(s,ii)*stat.sfc(j+s,i+hs);
+          tmp = tmp + c2d2g_y(s,ii)*weno.limCoefs(s);
         }
         stat.sfc_y(j,i) = stat.sfc_y(j,i) + tmp * trans.gll_wts(ii);
       }
     }
   }
 
-  s2d2g_x = trans.c2g_hi2lo_x * coefs_to_deriv(dom.dx,dom.ord) * sten_to_coefs(dom.dx,dom.ord);
-  s2d2g_y = trans.c2g_hi2lo_y * coefs_to_deriv(dom.dy,dom.ord) * sten_to_coefs(dom.dy,dom.ord);
+  c2d2g_x = trans.c2g_hi2lo_x * coefs_to_deriv(dom.dx,dom.ord);
+  c2d2g_y = trans.c2g_hi2lo_y * coefs_to_deriv(dom.dy,dom.ord);
 
   //Compute bottom orography derivatives at tord GLL points
   for (j=0; j<ny; j++) {
     for (i=0; i<nx; i++) {
       for (ii=0; ii<dom.tord; ii++) {
+        for (int s=0; s<ord; s++) {
+          sten(s) = stat.sfc(j+hs,i+s);
+        }
+        computeWenoCoefs( weno, dom, sten );
         stat.sfc_x_gll(j,i,ii) = 0;
         for (s=0; s<dom.ord; s++) {
-          stat.sfc_x_gll(j,i,ii) = stat.sfc_x_gll(j,i,ii) + s2d2g_x(s,ii)*stat.sfc(j+hs,i+s);
+          stat.sfc_x_gll(j,i,ii) = stat.sfc_x_gll(j,i,ii) + c2d2g_x(s,ii)*weno.limCoefs(s);
         }
 
+        for (int s=0; s<ord; s++) {
+          sten(s) = stat.sfc(j+s,i+hs);
+        }
+        computeWenoCoefs( weno, dom, sten );
         stat.sfc_y_gll(j,i,ii) = 0;
         for (s=0; s<dom.ord; s++) {
-          stat.sfc_y_gll(j,i,ii) = stat.sfc_y_gll(j,i,ii) + s2d2g_y(s,ii)*stat.sfc(j+s,i+hs);
+          stat.sfc_y_gll(j,i,ii) = stat.sfc_y_gll(j,i,ii) + c2d2g_y(s,ii)*weno.limCoefs(s);
         }
       }
     }

@@ -32,7 +32,7 @@ struct str_dom {
   long nx, ny;                    //Number of local grid cells in the x- and y- dimensions for this MPI task
   FP   dx, dy;                    //Grid space length in x- and y-dimension (meters)
   long nx_glob, ny_glob;          //Number of total grid cells in the x- and y- dimensions
-  const int ord = 3;              //Spatial order of accuracy
+  const int ord = 5;              //Spatial order of accuracy
   const int tord = 3;             //Temporal order of accuracy
   const int hs  = (ord-1)/2;      //Number of halo cells
   const FP cfl  = 0.30;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
@@ -149,6 +149,23 @@ struct str_trans {
   Array<FP> c2g_hi2lo_x;    //Transform ord polynomial coefficients to <= ord GLL point values
   Array<FP> c2g_hi2lo_y;    //Transform ord polynomial coefficients to <= ord GLL point values
 };
+
+
+
+/////////////////////////////////////////////////////////////////////
+// STUFF NEEDED FOR A SINGLE WENO INTERPOLATION
+/////////////////////////////////////////////////////////////////////
+struct str_weno {
+  Array<FP> idl;         //Ideal weights
+  FP        sigma;       //Handicapping value for bridge polynomial TV
+  Array<FP> wts;         //WENO-limited weights
+  Array<FP> recon;       //Reconstructction matrices for WENO candidate polynomials
+  Array<FP> limCoefs;    //Final limited WENO polynomial coefficients
+  Array<FP> polyCoefs;   //Coefficients for the candidate polynomials
+  Array<FP> tv;          //Total variation of the candidate polynomials
+  FP        eps;         //Small number to avoid division by zero
+};
+
 
 
 

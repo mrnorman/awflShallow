@@ -11,10 +11,10 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       FP u = 0.5*(u1+u2);   //Cell interface "locally frozen" u-velocity
       FP v = 0.5*(v1+v2);   //Cell interface "locally frozen" v-velocity
       FP gw = sqrt(GRAV*h); //Cell interface "locally frozen" gravity wave speed
-      FP eval;              //Eigenvector (hyperbolicwave speed)
+      FP eval;              //Eigenvalue  (hyperbolicwave speed)
       FP cvs[3];            //Characteristic variables
       FP f[3];              //upwind flux vector
-      FP wtol = 1.e-12;     //Tolerance for when to call a wave speed "zero" (i.e., no truly upwind value)
+      FP wtol = 1.e-14;     //Tolerance for when to call a wave speed "zero" (i.e., no truly upwind value)
 
       //"Wave 1"
       eval = u - gw;
@@ -76,10 +76,10 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       FP u = 0.5*(u1+u2);   //Cell interface "locally frozen" u-velocity
       FP v = 0.5*(v1+v2);   //Cell interface "locally frozen" v-velocity
       FP gw = sqrt(GRAV*h); //Cell interface "locally frozen" gravity wave speed
-      FP eval;              //Eigenvector (hyperbolicwave speed)
+      FP eval;              //Eigenvalue  (hyperbolicwave speed)
       FP cvs[3];            //Characteristic variables
       FP f[3];              //upwind flux vector
-      FP wtol = 1.e-12;     //Tolerance for when to call a wave speed "zero" (i.e., no truly upwind value)
+      FP wtol = 1.e-14;     //Tolerance for when to call a wave speed "zero" (i.e., no truly upwind value)
 
       //"Wave 1"
       eval = v - gw;
