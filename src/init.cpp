@@ -219,6 +219,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
     weno.idl(4) = 1.;
     weno.idl(5) = pow(factor,2*power);
   }
+  weno.idl = weno.idl / weno.idl.sum();
 
   //Set stuff to zero
   stat.sfc   = 0.;
