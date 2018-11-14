@@ -2,7 +2,9 @@
 #include "weno.h"
 #include "types.h"
 
-void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten ) {
+
+
+void computePolyCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten ) {
   weno.polyCoefs = 0;
 
   //Reconstruct the lower-order polynomials
@@ -32,7 +34,11 @@ void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten
   for (int i=0; i<dom.ord; i++) {
     weno.polyCoefs(dom.hs+1,i) /= weno.idl(dom.hs+1);
   }
+}
 
+
+
+void computeWenoWeights( str_weno &weno, str_dom const &dom ) {
   //Compute the TV of the lower and higher-order polynomials
   for (int p=0; p<dom.hs+1; p++) {
     weno.tv(p) = computeTV( &weno.polyCoefs(p,0) , dom.hs+1 );
@@ -60,7 +66,11 @@ void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten
 
   //convexify
   convexify( weno.wts , dom.hs+2 , weno.eps );
+}
 
+
+
+void computeWenoCoefs( str_weno &weno, str_dom const &dom ) {
   //Form the WENO coefficients
   weno.limCoefs = 0;
   for (int p=0; p<dom.hs+2; p++) {
@@ -68,8 +78,8 @@ void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten
       weno.limCoefs(i) += weno.wts(p) * weno.polyCoefs(p,i);
     }
   }
-
 }
+
 
 
 inline void convexify(Array<FP> &wts, int const n, FP const eps) {
@@ -83,12 +93,15 @@ inline void convexify(Array<FP> &wts, int const n, FP const eps) {
 }
 
 
+
 inline void mapWeights( int const n , Array<FP> const &idl , Array<FP> &wts ) {
   //Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping!
   for (int p=0; p<n; p++) {
     wts(p) = wts(p) * ( idl(p) + idl(p)*idl(p) - 3.*idl(p)*wts(p) + wts(p)*wts(p) ) / ( idl(p)*idl(p) + wts(p) * ( 1. - 2. * idl(p) ) );
   }
 }
+
+
 
 inline FP computeTV(FP *a, int n) {
   FP tv;
