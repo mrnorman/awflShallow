@@ -1,6 +1,6 @@
 
 CC := mpiCC
-CFLAGS := -O0 -g -DARRAY_DEBUG
+CFLAGS := -O3
 INCLUDE := -I${PNETCDF_PATH}/include
 LDFLAGS := -L${PNETCDF_PATH}/lib -lpnetcdf -L${LAPACK_PATH}/lib
 OMPFLAGS := -mp

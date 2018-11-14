@@ -4,17 +4,18 @@
 #include "haloExchange.h"
 #include "transform.h"
 #include "diffTransform.h"
+#include "weno.h"
 
-void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch) {
-  Array<FP> state_dts, flux_dts, source_dts, huu, huv, hh, g2d2g, dsfc;
-  state_dts .setup(NUM_VARS,dom.tord,dom.tord);
-  flux_dts  .setup(NUM_VARS,dom.tord,dom.tord);
-  source_dts.setup(NUM_VARS,dom.tord,dom.tord);
-  huu       .setup(         dom.tord,dom.tord);
-  huv       .setup(         dom.tord,dom.tord);
-  hh        .setup(         dom.tord,dom.tord);
-  dsfc      .setup(                  dom.tord);
-  g2d2g = coefs_to_gll(dom.dx,dom.tord) * coefs_to_deriv(dom.dx,dom.tord) * gll_to_coefs(dom.dx,dom.tord);
+void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch, str_weno &weno) {
+  Array<FP> sten      (dom.ord);
+  Array<FP> state_dts (NUM_VARS,dom.tord,dom.tord);
+  Array<FP> flux_dts  (NUM_VARS,dom.tord,dom.tord);
+  Array<FP> source_dts(NUM_VARS,dom.tord,dom.tord);
+  Array<FP> huu       (         dom.tord,dom.tord);
+  Array<FP> huv       (         dom.tord,dom.tord);
+  Array<FP> hh        (         dom.tord,dom.tord);
+  Array<FP> dsfc      (                  dom.tord);
+  Array<FP> g2d2g = coefs_to_gll(dom.dx,dom.tord) * coefs_to_deriv(dom.dx,dom.tord) * gll_to_coefs(dom.dx,dom.tord);
 
   //Fill in halos for the state
   haloInit      (exch);
@@ -27,10 +28,14 @@ void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
     for (int i=0; i<dom.nx; i++) {
       //Reconstruct the intra-cell variation by projecting ord cell averages onto tord GLL points
       for (int v=0; v<NUM_VARS; v++) {
+        for (int s=0; s<dom.ord; s++) {
+          sten(s) = dyn.state(v,j+dom.hs,i+s);
+        }
+        computeWenoCoefs( weno, dom, sten );
         for (int ii=0; ii<dom.tord; ii++) {
           state_dts(v,0,ii) = 0;
           for (int s=0; s<dom.ord; s++) {
-            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.s2g_hi2lo(s,ii) * dyn.state(v,j+dom.hs,i+s);
+            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.c2g_hi2lo(s,ii) * weno.limCoefs(s);
           }
         }
       }
@@ -82,29 +87,20 @@ void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
     }
   }
 
-  //Cleanup
-  state_dts .finalize();
-  flux_dts  .finalize();
-  source_dts.finalize();
-  huu       .finalize();
-  huv       .finalize();
-  hh        .finalize();
-  g2d2g     .finalize();
-  dsfc      .finalize();
 }
 
 
 
-void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch) {
-  Array<FP> state_dts, flux_dts, source_dts, hvu, hvv, hh, g2d2g, dsfc;
-  state_dts .setup(NUM_VARS,dom.tord,dom.tord);
-  flux_dts  .setup(NUM_VARS,dom.tord,dom.tord);
-  source_dts.setup(NUM_VARS,dom.tord,dom.tord);
-  hvu       .setup(         dom.tord,dom.tord);
-  hvv       .setup(         dom.tord,dom.tord);
-  hh        .setup(         dom.tord,dom.tord);
-  dsfc      .setup(                  dom.tord);
-  g2d2g = coefs_to_gll(dom.dy,dom.tord) * coefs_to_deriv(dom.dy,dom.tord) * gll_to_coefs(dom.dy,dom.tord);
+void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn, str_trans &trans, str_exch &exch, str_weno &weno) {
+  Array<FP> sten      (dom.ord);
+  Array<FP> state_dts (NUM_VARS,dom.tord,dom.tord);
+  Array<FP> flux_dts  (NUM_VARS,dom.tord,dom.tord);
+  Array<FP> source_dts(NUM_VARS,dom.tord,dom.tord);
+  Array<FP> hvu       (         dom.tord,dom.tord);
+  Array<FP> hvv       (         dom.tord,dom.tord);
+  Array<FP> hh        (         dom.tord,dom.tord);
+  Array<FP> dsfc      (                  dom.tord);
+  Array<FP> g2d2g = coefs_to_gll(dom.dy,dom.tord) * coefs_to_deriv(dom.dy,dom.tord) * gll_to_coefs(dom.dy,dom.tord);
 
   //Fill in halos for the state
   haloInit      (exch);
@@ -117,10 +113,14 @@ void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
     for (int i=0; i<dom.nx; i++) {
       //Reconstruct the intra-cell variation by projecting ord cell averages onto tord GLL points
       for (int v=0; v<NUM_VARS; v++) {
+        for (int s=0; s<dom.ord; s++) {
+          sten(s) = dyn.state(v,j+s,i+dom.hs);
+        }
+        computeWenoCoefs( weno, dom, sten );
         for (int ii=0; ii<dom.tord; ii++) {
           state_dts(v,0,ii) = 0;
           for (int s=0; s<dom.ord; s++) {
-            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.s2g_hi2lo(s,ii) * dyn.state(v,j+s,i+dom.hs);
+            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.c2g_hi2lo(s,ii) * weno.limCoefs(s);
           }
         }
       }

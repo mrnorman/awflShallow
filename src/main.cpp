@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     }
 
     //Perform one time step of simulation
-    timeStepping(dom, par, stat, dyn, trans, exch);
+    timeStepping(dom, par, stat, dyn, trans, exch, weno);
 
     //Update the elapsed time and various counters
     dyn.etime          += dyn.dt;

@@ -247,8 +247,8 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
           rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
           if (rad <= 1.) {
             tmp = (cos(PI*rad)+1.)/2.;
-            stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
-            // dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            // stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
           }
         }
       }
