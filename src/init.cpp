@@ -142,6 +142,15 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   }
   tmparr.finalize();
 
+  tmparr = coefs_to_gll_lower(1.,dom.ord);
+  trans.c2g_hi2lo.setup(dom.ord,dom.tord);
+  for (int ii=0; ii<dom.ord; ii++) {
+    for (int jj=0; jj<dom.tord; jj++) {
+      trans.c2g_hi2lo(ii,jj) = tmparr(dom.tord-1,ii,jj);
+    }
+  }
+  tmparr.finalize();
+
   // Allocate needed variables
   dyn .state     .setup(NUM_VARS,ny+2*hs,nx+2*hs);
   dyn .flux      .setup(NUM_VARS,ny+1,nx+1);
@@ -261,9 +270,9 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
   haloUnpack1_y (dom, exch, stat.sfc);
 
   c2d2g_x.setup(ord,ord);
-  c2d2g_x = coefs_to_gll(dom.dx,dom.ord) * coefs_to_deriv(dom.dx,dom.ord);
+  c2d2g_x = coefs_to_gll(1.,dom.ord) * coefs_to_deriv(1.,dom.ord) / dom.dx;
   c2d2g_y.setup(ord,ord);
-  c2d2g_y = coefs_to_gll(dom.dy,dom.ord) * coefs_to_deriv(dom.dy,dom.ord);
+  c2d2g_y = coefs_to_gll(1.,dom.ord) * coefs_to_deriv(1.,dom.ord) / dom.dy;
 
   //Compute cell-averaged bottom orography derivatives
   Array<FP> sten(ord);
@@ -293,8 +302,8 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
     }
   }
 
-  c2d2g_x = trans.c2g_hi2lo_x * coefs_to_deriv(dom.dx,dom.ord);
-  c2d2g_y = trans.c2g_hi2lo_y * coefs_to_deriv(dom.dy,dom.ord);
+  c2d2g_x = trans.c2g_hi2lo * coefs_to_deriv(1.,dom.ord) / dom.dx;
+  c2d2g_y = trans.c2g_hi2lo * coefs_to_deriv(1.,dom.ord) / dom.dy;
 
   //Compute bottom orography derivatives at tord GLL points
   for (j=0; j<ny; j++) {

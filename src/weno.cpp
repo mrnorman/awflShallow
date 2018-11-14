@@ -2,7 +2,7 @@
 #include "weno.h"
 #include "types.h"
 
-inline void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten ) {
+void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten ) {
   weno.polyCoefs = 0;
 
   //Reconstruct the lower-order polynomials
@@ -60,6 +60,8 @@ inline void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> cons
 
   //convexify
   convexify( weno.wts , dom.hs+2 , weno.eps );
+
+  weno.wts = weno.idl;
 
   //Form the WENO coefficients
   weno.limCoefs = 0;

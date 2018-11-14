@@ -611,6 +611,13 @@ template <class T> class Array {
     }
     return ret;
   }
+  template <class I> inline Array operator/(I const rhs) {
+    Array<T> ret(*this);
+    for (ulong i=0; i<ret.totElems; i++) {
+      ret.data[i] /= rhs;
+    }
+    return ret;
+  }
 
   /* OPERATOR=
   Allow the user to set the entire Array to a single value */

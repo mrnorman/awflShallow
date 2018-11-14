@@ -5,7 +5,7 @@
 #include "types.h"
 
 
-inline void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten );
+void computeWenoCoefs( str_weno &weno, str_dom const &dom, Array<FP> const &sten );
 inline void convexify(Array<FP> &wts, int const n, FP const eps);
 inline void mapWeights( int const n , Array<FP> const &idl , Array<FP> &wts );
 inline FP computeTV(FP *a, int n);

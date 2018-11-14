@@ -146,6 +146,7 @@ struct str_trans {
   Array<FP> s2g;            //Transform a stencil of ord cell averages to ord GLL point values
   Array<FP> g2s;            //Transform ord GLL point values to a stencil of ord cell averages
   Array<FP> s2g_hi2lo;      //Transform ord cell averages to <= ord GLL point values
+  Array<FP> c2g_hi2lo;      //Transform ord polynomial coefficients to <= ord GLL point values(assume dx=1)
   Array<FP> c2g_hi2lo_x;    //Transform ord polynomial coefficients to <= ord GLL point values
   Array<FP> c2g_hi2lo_y;    //Transform ord polynomial coefficients to <= ord GLL point values
 };
