@@ -247,8 +247,8 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
           rad = sqrt((x-x0)*(x-x0)/(xr*xr) + (y-y0)*(y-y0)/(yr*yr));
           if (rad <= 1.) {
             tmp = (cos(PI*rad)+1.)/2.;
-            stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
-            // dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            // stat.sfc(j+hs,i+hs) = stat.sfc(j+hs,i+hs) + amp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
+            dyn.state(ID_H,j+hs,i+hs) = dyn.state(ID_H,j+hs,i+hs) + amp*tmp*tmp * trans.gll_wts_lo(ii)*trans.gll_wts_lo(jj);
           }
         }
       }
@@ -285,6 +285,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
         }
         computePolyCoefs  ( weno, dom, sten );
         computeWenoWeights( weno, dom );
+        weno.wts = weno.idl;
         computeWenoCoefs  ( weno, dom );
         tmp = 0;
         for (s=0; s<ord; s++) {
@@ -297,6 +298,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
         }
         computePolyCoefs  ( weno, dom, sten );
         computeWenoWeights( weno, dom );
+        weno.wts = weno.idl;
         computeWenoCoefs  ( weno, dom );
         tmp = 0;
         for (s=0; s<ord; s++) {
@@ -319,7 +321,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
         }
         computePolyCoefs  ( weno, dom, sten );
         computeWenoWeights( weno, dom );
-        // weno.wts = weno.idl;
+        weno.wts = weno.idl;
         computeWenoCoefs  ( weno, dom );
         stat.sfc_x_gll(j,i,ii) = 0;
         for (s=0; s<dom.ord; s++) {
@@ -331,7 +333,7 @@ void init( int *argc , char ***argv , str_dom &dom , str_par &par , str_stat &st
         }
         computePolyCoefs  ( weno, dom, sten );
         computeWenoWeights( weno, dom );
-        // weno.wts = weno.idl;
+        weno.wts = weno.idl;
         computeWenoCoefs  ( weno, dom );
         stat.sfc_y_gll(j,i,ii) = 0;
         for (s=0; s<dom.ord; s++) {

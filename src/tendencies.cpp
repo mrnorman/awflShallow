@@ -26,39 +26,12 @@ void computeTendenciesX(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
   //Reconstruct the intra-cell variation, perform ADER-DT temporal integration, then sample Riemann flux limits
   for (int j=0; j<dom.ny; j++) {
     for (int i=0; i<dom.nx; i++) {
-      // Reconstruct the intra-cell variation by projecting ord cell averages onto tord GLL points
-      sten = 0;
+      //Reconstruct the intra-cell variation by projecting ord cell averages onto tord GLL points
       for (int v=0; v<NUM_VARS; v++) {
-        //Compute the min and max over the stencil for this variable
-        FP mx = -100000;
-        FP mn =  100000;
-        for (int s=0; s<dom.ord; s++) {
-          if ( dyn.state(v,j+dom.hs,i+s) < mn ) { mn = dyn.state(v,j+dom.hs,i+s); }
-          if ( dyn.state(v,j+dom.hs,i+s) > mx ) { mx = dyn.state(v,j+dom.hs,i+s); }
-        }
-        //Add the normalized stencil for this variable to the overall stencil
-        for (int s=0; s<dom.ord; s++) {
-          if (mx-mn > 0) {
-            sten(s) += ( dyn.state(v,j+dom.hs,i+s) - mn ) / (mx-mn);
-          }
-        }
-      }
-      //Compute a single set of WENO weights based on the normalized summed stencil over variables
-      computePolyCoefs  ( weno, dom, sten );
-      computeWenoWeights( weno, dom );
-      //Apply these WENO weights for each variable
-      for (int v=0; v<NUM_VARS; v++) {
-        for (int s=0; s<dom.ord; s++) {
-          sten(s) = dyn.state(v,j+dom.hs,i+s);
-        }
-        computePolyCoefs  ( weno, dom, sten );
-        // computeWenoWeights( weno, dom );
-        weno.wts = weno.idl;
-        computeWenoCoefs  ( weno, dom );
         for (int ii=0; ii<dom.tord; ii++) {
           state_dts(v,0,ii) = 0;
           for (int s=0; s<dom.ord; s++) {
-            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.c2g_hi2lo(s,ii) * weno.limCoefs(s);
+            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.s2g_hi2lo(s,ii) * dyn.state(v,j+dom.hs,i+s);
           }
         }
       }
@@ -135,37 +108,11 @@ void computeTendenciesY(str_dom &dom, str_par &par, str_stat &stat, str_dyn &dyn
   for (int j=0; j<dom.ny; j++) {
     for (int i=0; i<dom.nx; i++) {
       //Reconstruct the intra-cell variation by projecting ord cell averages onto tord GLL points
-      sten = 0;
       for (int v=0; v<NUM_VARS; v++) {
-        //Compute the min and max over the stencil for this variable
-        FP mx = -100000;
-        FP mn =  100000;
-        for (int s=0; s<dom.ord; s++) {
-          if ( dyn.state(v,j+s,i+dom.hs) < mn ) { mn = dyn.state(v,j+s,i+dom.hs); }
-          if ( dyn.state(v,j+s,i+dom.hs) > mx ) { mx = dyn.state(v,j+s,i+dom.hs); }
-        }
-        //Add the normalized stencil for this variable to the overall stencil
-        for (int s=0; s<dom.ord; s++) {
-          if (mx-mn > 0) {
-            sten(s) += ( dyn.state(v,j+s,i+dom.hs) - mn ) / (mx-mn);
-          }
-        }
-      }
-      //Compute a single set of WENO weights based on the normalized summed stencil over variables
-      computePolyCoefs  ( weno, dom, sten );
-      computeWenoWeights( weno, dom );
-      for (int v=0; v<NUM_VARS; v++) {
-        for (int s=0; s<dom.ord; s++) {
-          sten(s) = dyn.state(v,j+s,i+dom.hs);
-        }
-        computePolyCoefs  ( weno, dom, sten );
-        // computeWenoWeights( weno, dom );
-        weno.wts = weno.idl;
-        computeWenoCoefs  ( weno, dom );
         for (int ii=0; ii<dom.tord; ii++) {
           state_dts(v,0,ii) = 0;
           for (int s=0; s<dom.ord; s++) {
-            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.c2g_hi2lo(s,ii) * weno.limCoefs(s);
+            state_dts(v,0,ii) = state_dts(v,0,ii) + trans.s2g_hi2lo(s,ii) * dyn.state(v,j+s,i+dom.hs);
           }
         }
       }

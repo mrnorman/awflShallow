@@ -32,10 +32,10 @@ struct str_dom {
   long nx, ny;                    //Number of local grid cells in the x- and y- dimensions for this MPI task
   FP   dx, dy;                    //Grid space length in x- and y-dimension (meters)
   long nx_glob, ny_glob;          //Number of total grid cells in the x- and y- dimensions
-  const int ord = 3;              //Spatial order of accuracy
+  const int ord = 5;              //Spatial order of accuracy
   const int tord = 3;             //Temporal order of accuracy
   const int hs  = (ord-1)/2;      //Number of halo cells
-  const FP cfl  = 0.60;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
+  const FP cfl  = 0.40;           //"Courant, Friedrichs, Lewy" number (for numerical stability)
   const int verbose = 1;          //Do verbose output
 };
 

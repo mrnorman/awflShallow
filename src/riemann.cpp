@@ -60,9 +60,9 @@ void GodunovLinearX(str_dom &dom, str_dyn &dyn) {
       dyn.flux(1,j,i) = (u-gw)*cvs[0] + (u+gw)*cvs[1];
       dyn.flux(2,j,i) = (v)   *cvs[0] + (v)   *cvs[1] + cvs[2];
 
-      // for (int ii=0; ii<NUM_VARS; ii++) {
-      //   dyn.flux(ii,j,i) = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) );
-      // }
+      for (int ii=0; ii<NUM_VARS; ii++) {
+        dyn.flux(ii,j,i) = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) - (abs(u)+gw) * ( dyn.state_riem(ii,1,j,i) - dyn.state_riem(ii,0,j,i) ) );
+      }
 
     }
   }
@@ -129,9 +129,9 @@ void GodunovLinearY(str_dom &dom, str_dyn &dyn) {
       dyn.flux(1,j,i) = (u)   *cvs[0] + (u)   *cvs[1] + cvs[2];
       dyn.flux(2,j,i) = (v-gw)*cvs[0] + (v+gw)*cvs[1];
 
-      // for (int ii=0; ii<NUM_VARS; ii++) {
-      //   dyn.flux(ii,j,i) = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) );
-      // }
+      for (int ii=0; ii<NUM_VARS; ii++) {
+        dyn.flux(ii,j,i) = 0.5 * ( dyn.flux_riem(ii,0,j,i) + dyn.flux_riem(ii,1,j,i) - (abs(v)+gw) * ( dyn.state_riem(ii,1,j,i) - dyn.state_riem(ii,0,j,i) ) );
+      }
 
     }
   }
