@@ -75,7 +75,7 @@ when debug mode is off, they equate to an empty context and are optimized out.
 
 template <class T> class Array {
 
-  public :
+protected:
 
   typedef unsigned long ulong;
 
@@ -84,6 +84,8 @@ template <class T> class Array {
   long  offsets [8];
   ulong totElems;
   T     *data;
+
+public :
 
   inline void nullify() {
     data = NULL;

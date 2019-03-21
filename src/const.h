@@ -3,11 +3,18 @@
 #define _CONST_H_
 
 typedef double rp;
-const int nx = 50;
-const int ord = 5;
-const int hs = (ord-1)/2;
-const int tord = 3;
-const rp dx = 1./nx;
-const rp cfl = 0.90;
+
+const int ord = 5;        // Order of accuracy
+
+const int hs = (ord-1)/2; // Halo size
+
+const int tord = 3;       // Temporal order of accuracy
+
+const int numVars = 3;    // Number of state variables
+
+const int ID_H  = 0;      // Index for height
+const int ID_HU = 1;      // Index for height * u-velocity
+const int ID_HV = 2;      // Index for height * v-velocity:w
+
 
 #endif

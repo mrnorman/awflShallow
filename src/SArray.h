@@ -15,11 +15,13 @@
 
 template <class T, unsigned long D0, unsigned long D1=1, unsigned long D2=1> class SArray {
 
-  public :
-
+protected:
+  
   typedef unsigned long ulong;
 
   T data[D0*D1*D2];
+
+public :
 
   SArray() { }
   SArray(SArray &&in) {
