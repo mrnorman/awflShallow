@@ -111,6 +111,13 @@ template <class T, unsigned long D0, unsigned long D1=1, unsigned long D2=1> cla
     }
   }
 
+  inline void operator*=(double rhs) {
+    //Scalar multiplication
+    for (ulong i=0; i<D0*D1*D2; i++) {
+      data[i] = data[i] * rhs;
+    }
+  }
+
   inline SArray<T,D0,D1,D2> operator*(double rhs) {
     //Scalar multiplication
     SArray<T,D0,D1,D2> ret;

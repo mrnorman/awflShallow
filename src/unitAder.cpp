@@ -15,10 +15,10 @@ void boundaries(Array<rp> &state) {
 
 
 void tendendies(Array<rp> const &state, SArray<rp,ord,ord,ord> &wenoRecon, SArray<rp,ord,tord> const &c2g_lower,
-                SArray<rp,tord,tord> const &deriv, Array<rp> &flux, Array<rp> &tend) {
+                SArray<rp,tord,tord> const &deriv, rp const dt, Array<rp> &flux, Array<rp> &tend) {
   SArray<rp,ord> stencil;
   SArray<rp,ord> coefs;
-  SArray<rp,tord> gll;
+  SArray<rp,tord,tord> gll;
   WenoLimiter<rp> weno;
 
   // Reconstruct and store fluxes
@@ -34,14 +34,34 @@ void tendendies(Array<rp> const &state, SArray<rp,ord,ord,ord> &wenoRecon, SArra
 
     // Compute GLL points from polynomial coefficients
     for (int ii=0; ii<tord; ii++) {
-      gll(ii) = 0.;
+      gll(0,ii) = 0.;
       for (int s=0; s<ord; s++) {
-        gll(ii) += c2g_lower(s,ii) * coefs(s);
+        gll(0,ii) += c2g_lower(s,ii) * coefs(s);
       }
     }
 
+    //Compute time derivatives at each of the GLL points
+    for (int kt=0; kt<tord-1; kt++) {
+      for (int ii=0; ii<tord; ii++) {
+        rp d_dx = 0.;
+        for (int s=0; s<tord; s++) {
+          d_dx += deriv(s,ii) * gll(kt,s);
+        }
+        gll(kt+1,ii) = -d_dx / (kt+1.);
+      }
+    }
+
+    //Compute the time average using the derivatives
+    rp dtmult = dt;
+    for (int kt=1; kt<tord; kt++) {
+      for (int ii=0; ii<tord; ii++) {
+        gll(0,ii) += gll(kt,ii) * dtmult / (kt+1.);
+      }
+      dtmult *= dt;
+    }
+
     // Store flux
-    flux(i+1) = gll(tord-1);
+    flux(i+1) = gll(0,tord-1);
   }
 
   // Enforce periodic BCs on the flux
@@ -56,7 +76,6 @@ void tendendies(Array<rp> const &state, SArray<rp,ord,ord,ord> &wenoRecon, SArra
 
 
 int main() {
-  Array<rp> state_tmp;
   Array<rp> state;
   Array<rp> flux;
   Array<rp> tend;
@@ -72,16 +91,14 @@ int main() {
   dt = dx*cfl;
 
   state.setup(nx+2*hs);
-  state_tmp.setup(nx+2*hs);
-  flux.setup(nx+1);
-  tend.setup(nx);
+  flux .setup(nx+1);
+  tend .setup(nx);
 
   transform.weno_sten_to_coefs( 1. , wenoRecon );
 
   transform.gll_to_coefs  (1. , g2c);
   transform.coefs_to_deriv(1. , c2d);
   transform.coefs_to_gll  (1. , c2g);
-
   deriv = ( c2g * c2d * g2c ) / dx;
 
   transform.coefs_to_gll_lower( 1. , c2g_lower_tmp );
@@ -104,21 +121,9 @@ int main() {
   while (etime < 1.) {
     if (etime + dt > 1.) { dt = 1. - etime; }
 
-    tendendies(state    , wenoRecon, c2g_lower, deriv, flux, tend);
+    tendendies(state    , wenoRecon, c2g_lower, deriv, dt, flux, tend);
     for (int i=0; i<nx; i++) {
-      state_tmp(hs+i) = state(hs+i) + dt / 3. * tend(i);
-    }
-    boundaries(state_tmp);
-
-    tendendies(state_tmp, wenoRecon, c2g_lower, deriv, flux, tend);
-    for (int i=0; i<nx; i++) {
-      state_tmp(hs+i) = state(hs+i) + dt / 2. * tend(i);
-    }
-    boundaries(state_tmp);
-
-    tendendies(state_tmp, wenoRecon, c2g_lower, deriv, flux, tend);
-    for (int i=0; i<nx; i++) {
-      state(hs+i) = state(hs+i) + dt / 1. * tend(i);
+      state(hs+i) = state(hs+i) + dt * tend(i);
     }
     boundaries(state);
 
