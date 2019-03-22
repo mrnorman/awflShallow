@@ -2,10 +2,10 @@
 CC := g++
 CFLAGS := -O3
 
-all: unitAder
+all: unitWenoAder
 
 unitAder:
-	${CC} ${CFLAGS} unitAder.cpp -o unitAder ${LDFLAGS}
+	${CC} ${CFLAGS} unitWenoAder.cpp -o unitWenoAder ${LDFLAGS}
 
 clean:
-	rm -f *.gch *.o *.dat unitAder
+	rm -f *.gch *.o *.dat unitWenoAder
