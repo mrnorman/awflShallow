@@ -59,11 +59,7 @@ public:
     FP lo_avg;
 
     // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0.;
-      }
-    }
+    a = 0.;
 
     // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
     for(int i=0; i<hs+1; i++) {
@@ -102,11 +98,7 @@ public:
     tv(hs+1) = transform.coefs_to_tv(hitmp);
 
     // Reduce the bridge polynomial TV to something closer to the other TV values
-    lo_avg = 0.;
-    for (int i=0; i<hs+1; i++) {
-      lo_avg += tv(i);
-    }
-    lo_avg /= hs+1;
+    lo_avg = (tv.sum() - tv(hs+1)) / (hs+1);
     tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
 
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
@@ -120,9 +112,7 @@ public:
     convexify(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    for (int i=0; i<ord; i++) {
-      aw(i) = 0;
-    }
+    aw = 0.;
     for (int i=0; i<hs+2; i++) {
       for (int ii=0; ii<ord; ii++) {
         aw(ii) += wts(i) * a(i,ii);
@@ -140,9 +130,7 @@ public:
 
 
   inline void convexify( SArray<FP,hs+2> &wts ) {
-    FP sum = 0.;
-    for (int i=0; i<hs+2; i++) { sum += wts(i); }
-    for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
+    wts /= (wts.sum() + eps);
   }
 
 };

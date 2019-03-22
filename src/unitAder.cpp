@@ -14,7 +14,8 @@ void boundaries(Array<rp> &state) {
 }
 
 
-void tendendies(Array<rp> const &state, SArray<rp,ord,ord,ord> &wenoRecon, SArray<rp,ord,tord> const &c2g_lower, Array<rp> &flux, Array<rp> &tend) {
+void tendendies(Array<rp> const &state, SArray<rp,ord,ord,ord> &wenoRecon, SArray<rp,ord,tord> const &c2g_lower,
+                SArray<rp,tord,tord> const &deriv, Array<rp> &flux, Array<rp> &tend) {
   SArray<rp,ord> stencil;
   SArray<rp,ord> coefs;
   SArray<rp,tord> gll;
@@ -62,6 +63,7 @@ int main() {
   SArray<rp,ord,ord,ord> c2g_lower_tmp;
   SArray<rp,ord,tord> c2g_lower;
   SArray<rp,ord,ord,ord> wenoRecon;
+  SArray<rp,tord,tord> g2c, c2g, c2d, deriv;
   TransformMatrices<rp> transform;
   int n, num_steps;
   rp etime;
@@ -75,6 +77,12 @@ int main() {
   tend.setup(nx);
 
   transform.weno_sten_to_coefs( 1. , wenoRecon );
+
+  transform.gll_to_coefs  (1. , g2c);
+  transform.coefs_to_deriv(1. , c2d);
+  transform.coefs_to_gll  (1. , c2g);
+
+  deriv = ( c2g * c2d * g2c ) / dx;
 
   transform.coefs_to_gll_lower( 1. , c2g_lower_tmp );
   for (int j=0; j<ord; j++) {
@@ -96,19 +104,19 @@ int main() {
   while (etime < 1.) {
     if (etime + dt > 1.) { dt = 1. - etime; }
 
-    tendendies(state    , wenoRecon, c2g_lower, flux, tend);
+    tendendies(state    , wenoRecon, c2g_lower, deriv, flux, tend);
     for (int i=0; i<nx; i++) {
       state_tmp(hs+i) = state(hs+i) + dt / 3. * tend(i);
     }
     boundaries(state_tmp);
 
-    tendendies(state_tmp, wenoRecon, c2g_lower, flux, tend);
+    tendendies(state_tmp, wenoRecon, c2g_lower, deriv, flux, tend);
     for (int i=0; i<nx; i++) {
       state_tmp(hs+i) = state(hs+i) + dt / 2. * tend(i);
     }
     boundaries(state_tmp);
 
-    tendendies(state_tmp, wenoRecon, c2g_lower, flux, tend);
+    tendendies(state_tmp, wenoRecon, c2g_lower, deriv, flux, tend);
     for (int i=0; i<nx; i++) {
       state(hs+i) = state(hs+i) + dt / 1. * tend(i);
     }
