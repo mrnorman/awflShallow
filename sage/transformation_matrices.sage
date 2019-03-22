@@ -36,58 +36,6 @@ def coefs_to_deriv(N,x) :
     return coefs_to_deriv
 
 
-#Weights that provide a zero value at the boundary (-dx/2) when applied as a dot product to the known internal stencil
-#Think of it as a simplistic embedded boundary constraint
-#M = hs = halo size. Fit a polynomial to the hs+1 existing cell averages plus a boundary point value.
-#Find coefs of the polynomial that fits the existing cell averages plus point value of zero (hs+2 total constraints).
-#Use that polynomial to compute the weights (over existing cell averages) that gives the integrated ghost values
-#that provide a boundary value of zero.
-def ghost_wts_dirichlet(M) :
-    N = M*2+1
-    hs = (N-1)/2
-    var('x,dx')
-    coefs = coefs_1d(M+2,0,'a')
-    p = poly_1d(M+2,coefs,x)
-    constr = vector([ 0*x for i in range(M+2) ])
-    stenconstr = vector([ integrate(p,x,(2*i-1)*dx/2,(2*i+1)*dx/2)/dx for i in range(-hs,hs+1) ])
-    constr[0:M+1] = stenconstr[0:M+1]
-    constr[M+1] = p.subs(x=dx/2)
-    r2c = jacobian(constr,coefs)^-1
-    vals = coefs_1d(M+2,1,'v')
-    vals[M+1] = 0
-    p = poly_1d(M+2,r2c*vals,x)
-    wts = matrix(M+1,M,[0*x for i in range((M+1)*M)])
-    for i in range(M) :
-        wts[:,i] = vector(jacobian(integrate(p,x,(2*i+1)*dx/2,(2*i+3)*dx/2)/dx,vals[0:M+1]).n().list())
-    return wts
-
-
-#Weights that provide a zero derivative at the boundary (-dx/2) when applied as a dot product to the known internal stencil
-#Think of it as a simplistic embedded boundary constraint
-#M = hs = halo size. Fit a polynomial to the hs+1 existing cell averages plus a boundary point derivative.
-#Find coefs of the polynomial that fits the existing cell averages plus point derivative of zero (hs+2 total constraints).
-#Use that polynomial to compute the weights (over existing cell averages) that gives the integrated ghost values
-#that provide a boundary derivative of zero.
-def ghost_wts_neumann(M) :
-    N = M*2+1
-    hs = (N-1)/2
-    var('x,dx')
-    coefs = coefs_1d(M+2,0,'a')
-    p = poly_1d(M+2,coefs,x)
-    constr = vector([ 0*x for i in range(M+2) ])
-    stenconstr = vector([ integrate(p,x,(2*i-1)*dx/2,(2*i+1)*dx/2)/dx for i in range(-hs,hs+1) ])
-    constr[0:M+1] = stenconstr[0:M+1]
-    constr[M+1] = p.diff(x).subs(x=dx/2)
-    r2c = jacobian(constr,coefs)^-1
-    vals = coefs_1d(M+2,1,'v')
-    vals[M+1] = 0
-    p = poly_1d(M+2,r2c*vals,x)
-    wts = matrix(M+1,M,[0*x for i in range((M+1)*M)])
-    for i in range(M) :
-        wts[:,i] = vector(jacobian(integrate(p,x,(2*i+1)*dx/2,(2*i+3)*dx/2)/dx,vals[0:M+1]).n().list())
-    return wts
-
-
 #Compute an Nth-order-accurage polynomial from N stencil averages. Then project that to fewer GLL point values
 def sten_to_gll_lower(N,x,dx) :
     #Compute a Nth-order-accurate polynomial from a stencil of N values

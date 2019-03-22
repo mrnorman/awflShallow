@@ -75,7 +75,7 @@ when debug mode is off, they equate to an empty context and are optimized out.
 
 template <class T> class Array {
 
-  protected :
+  public :
 
   typedef unsigned long ulong;
 
@@ -85,8 +85,6 @@ template <class T> class Array {
   ulong totElems;
   T     *data;
 
-  //Don't let the user have access to this. They might nullify an existing Array data, which
-  //would make the pointer no longer accessible and thus create a memory leak.
   inline void nullify() {
     data = NULL;
     ndims = 0;
@@ -96,8 +94,6 @@ template <class T> class Array {
       offsets [i] = 0;
     }
   }
-
-  public :
 
   /* CONSTRUCTORS
   You can declare the array empty or with many dimensions
@@ -865,7 +861,7 @@ template <class T> class Array {
     } else if (v.ndims == 2) {
       for (ulong j=0; j<v.dimSizes[1]; j++) {
         for (ulong i=0; i<v.dimSizes[0]; i++) {
-          os << std::setw(12) << v(j,i) << " ";
+          os << std::setw(12) << v(i,j) << " ";
         }
         os << "\n";
       }

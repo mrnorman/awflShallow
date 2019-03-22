@@ -1,13 +1,11 @@
 
-CC := mpiCC
+CC := g++
 CFLAGS := -O3
-INCLUDE := -I${PNETCDF_PATH}/include
-LDFLAGS := -L${PNETCDF_PATH}/lib -lpnetcdf -L${LAPACK_PATH}/lib
-OMPFLAGS := -mp
-ACCFLAGS := -ta=tesla,pinned,cc50,cuda9.0,ptxinfo -Minfo=accel
 
-all:
-	${CC} ${INCLUDE} ${CFLAGS} -o sw_cart weno.cpp tendencies.cpp riemann.cpp cfl.cpp diffTransform.cpp timeStepping.cpp haloExchange.cpp transform.cpp finalize.cpp init.cpp io.cpp main.cpp ${LDFLAGS}
+all: unitAder
+
+unitAder:
+	${CC} ${CFLAGS} unitAder.cpp -o unitAder ${LDFLAGS}
 
 clean:
-	rm -f *.o sw_cart
+	rm -f *.gch *.o *.dat unitAder
