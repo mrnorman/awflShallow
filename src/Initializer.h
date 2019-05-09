@@ -121,7 +121,7 @@ public:
           for (int ii=0; ii<ord; ii++) {
             real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
             real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
-            real const h0 = 10000._fp;
+            real const h0 = 1000._fp;
 
             real h = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
 
