@@ -82,9 +82,9 @@ public:
 
     // Create the file
     ncwrap( ncmpi_open( MPI_COMM_WORLD , "output.nc" , NC_WRITE , MPI_INFO_NULL , &ncid ) , __LINE__ );
-    ncwrap( ncmpi_inq_varid( ncid , "density" , &hVar  ) , __LINE__ );
-    ncwrap( ncmpi_inq_varid( ncid , "u"       , &uVar  ) , __LINE__ );
-    ncwrap( ncmpi_inq_varid( ncid , "v"       , &vVar  ) , __LINE__ );
+    ncwrap( ncmpi_inq_varid( ncid , "height" , &hVar  ) , __LINE__ );
+    ncwrap( ncmpi_inq_varid( ncid , "u"      , &uVar  ) , __LINE__ );
+    ncwrap( ncmpi_inq_varid( ncid , "v"      , &vVar  ) , __LINE__ );
 
     writeState(state, dom, par);
 
