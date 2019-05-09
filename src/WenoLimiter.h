@@ -17,39 +17,39 @@ protected:
 
 public:
 
-  WenoLimiter() {
+  _HOSTDEV WenoLimiter() {
     if        (ord == 3) {
-      FP sigma = 0.1;
-      idl(0) = 1.;
-      idl(1) = 1.;
-      idl(2) = 100.;
+      FP sigma = 0.1_fp;
+      idl(0) = 1._fp;
+      idl(1) = 1._fp;
+      idl(2) = 100._fp;
     } else if (ord == 5) {
-      FP sigma = 0.1;
-      idl(0) = 1.;
-      idl(1) = 100.;
-      idl(2) = 1.;
-      idl(3) = 1000.;
+      FP sigma = 0.1_fp;
+      idl(0) = 1._fp;
+      idl(1) = 100._fp;
+      idl(2) = 1._fp;
+      idl(3) = 1000._fp;
     } else if (ord == 7) {
-      FP sigma = 0.01;
-      idl(0) = 1.;
-      idl(1) = 20.;
-      idl(2) = 20.;
-      idl(3) = 1.;
-      idl(4) = 400.;
+      FP sigma = 0.01_fp;
+      idl(0) = 1._fp;
+      idl(1) = 20._fp;
+      idl(2) = 20._fp;
+      idl(3) = 1._fp;
+      idl(4) = 400._fp;
     } else if (ord == 9) {
-      sigma = 0.1;
-      idl(0) = 1.;
-      idl(1) = 18.;
-      idl(2) = 76.;
-      idl(3) = 18.;
-      idl(4) = 1.;
-      idl(5) = 5832.;
+      sigma = 0.1_fp;
+      idl(0) = 1._fp;
+      idl(1) = 18._fp;
+      idl(2) = 76._fp;
+      idl(3) = 18._fp;
+      idl(4) = 1._fp;
+      idl(5) = 5832._fp;
     }
     convexify( idl );
   }
 
 
-  inline void compute_weno_coefs( SArray<FP,ord,ord,ord> const &recon , SArray<FP,ord> const &u , SArray<FP,ord> &aw ) {
+  inline _HOSTDEV void compute_weno_coefs( SArray<FP,ord,ord,ord> const &recon , SArray<FP,ord> const &u , SArray<FP,ord> &aw ) {
     SArray<FP,hs+2> tv;
     SArray<FP,hs+2> wts;
     SArray<FP,hs+2,ord> a;
@@ -59,7 +59,11 @@ public:
     FP lo_avg;
 
     // Init to zero
-    a = 0.;
+    for (int j=0; j<hs+2; j++) {
+      for (int i=0; i<ord; i++) {
+        a(j,i) = 0._fp;
+      }
+    }
 
     // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
     for(int i=0; i<hs+1; i++) {
@@ -98,7 +102,11 @@ public:
     tv(hs+1) = transform.coefs_to_tv(hitmp);
 
     // Reduce the bridge polynomial TV to something closer to the other TV values
-    lo_avg = (tv.sum() - tv(hs+1)) / (hs+1);
+    lo_avg = 0._fp;
+    for (int i=0; i<hs+1; i++) {
+      lo_avg += tv(i);
+    }
+    lo_avg /= hs+1;
     tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
 
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
@@ -112,7 +120,9 @@ public:
     convexify(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    aw = 0.;
+    for (int i=0; i<ord; i++) {
+      aw(i) = 0._fp;
+    }
     for (int i=0; i<hs+2; i++) {
       for (int ii=0; ii<ord; ii++) {
         aw(ii) += wts(i) * a(i,ii);
@@ -121,16 +131,18 @@ public:
   }
 
 
-  inline void map_weights( SArray<FP,hs+2> const &idl , SArray<FP,hs+2> &wts ) {
+  inline _HOSTDEV void map_weights( SArray<FP,hs+2> const &idl , SArray<FP,hs+2> &wts ) {
     // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
     for (int i=0; i<hs+2; i++) {
-      wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3.*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1. - 2. * idl(i) ) );
+      wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
     }
   }
 
 
-  inline void convexify( SArray<FP,hs+2> &wts ) {
-    wts /= (wts.sum() + eps);
+  inline _HOSTDEV void convexify( SArray<FP,hs+2> &wts ) {
+    FP sum = 0._fp;
+    for (int i=0; i<hs+2; i++) { sum += wts(i); }
+    for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
   }
 
 };

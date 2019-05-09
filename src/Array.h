@@ -15,67 +15,13 @@
 
 
 /* Array<T>
-Implements an efficient multi-dimensional Array that allows basic matrix / vector arithmetic.
-Arrays up to 8 dimensions can be created through a few different constructors.
-You can also create an empty array and dimension it after-the-fact with Array.setup()
-
-This Array class is templated on the type of the data (float, double, int, etc)
-
-You can re-dimension an array with a subsequent call to Array.setup(), which deallocates the
-old data and creates a new internal array. The old data is destroyed.
-
-NOTE: This class was not developed with flexible dimension sizes in mind like std::vector. That
-setup does not perform well anyway, and it requires extra book keeping that I don't want to
-have to worry about. This class was designed for fixed-sized Arrays thorughout the object's
-lifetime. Redimensioning an array is expensive because it deallocates, allocates, and basically
-destroyed the previous data, requiring you to reset all of the data yourself. Arrays should only
-be redimensioned when you simply want to re-use the same object for a new application.
-
-You can access the array internals with accessor functions, but they are returned as const.
-
-I've added a number of global reductions for the Array class. I've tried to make them robust
-to integer types, but you'll have to look at the implementations to determine if they fit what
-you would expect for integer Array data. I always cast back to the class's templated type, meaning
-default rounding for integers in the mean, for instance.
-
-The only variable allocated on the heap with "new" is the Array's 1-D internall array "data". Since
-this structure is carefully handled internally, so long as you don't use "new", you'll never have
-a memory leak when using this class.
-
-This class is indexed by overloading the () operator, rather than the [] operator. This makes things
-a bit more flexible so you can create an array of Arrays if you wanted.
-
-All functions are templated, so you can index with whatever you want, but preferrably it would be
-integer-like to avoid undefined behavior.
-
-The internal indexing is always done with long and unsigned long so that you won't run into a case
-where the size is larger than the indexing can handle.
-
-For arithmetic, you can multiply by a constant, component-wise vectors, matvecs, and matmuls. 3-D or
-larger Arrays are multiplied component-wise. You can add a constant or another Array component-wise.
-
-By defining the ARRAY_DEBUG CPP variable at compile time, you can swich on "debug" mode, which is
-much slower than default mode without it. But it will catch all sorts of bugs you might otherwise
-introduce into the code by indexing out of bounds, with the wrong # dimensions, arithmetic on
-incompatible Array dimensions, etc.
-
-I've taken pains to make sure this class is (1) very fast in implementation and (2) able to be
-transferred to CUDA at a later date. Namely, there is no use of std:: outside of debug mode.
-It's more cumbersome up front, but CUDA doesn't recognize the standard template library yet
-(and maybe never will).
-
-Regarding fast implementation, everything but the data itself is part of the class data (i.e., on
-the stack and not on the heap), so it shouldn't create unnecessary cache misses. All accesses
-are into a 1-D array under the hood, so no pointer lookups. Integer arithmetic is reduced by
-creating "offsets" upon initialization for indexing. Further, the inline keyword is used everywhere
-to strongly encourage the compiler to do the right thing. Since debug functions are inlined
-when debug mode is off, they equate to an empty context and are optimized out.
+Multi-dimensional array with functor indexing up to eight dimensions.
 */
 
 
 template <class T> class Array {
 
-protected:
+  public :
 
   typedef unsigned long ulong;
 
@@ -84,8 +30,6 @@ protected:
   long  offsets [8];
   ulong totElems;
   T     *data;
-
-public :
 
   inline void nullify() {
     data = NULL;
@@ -187,7 +131,11 @@ public :
       finalize();
       ndims    = in.ndims;
       totElems = in.totElems;
-      data = new T[totElems];
+      #ifdef __NVCC__
+        cudaMallocManaged(&data,totElems*sizeof(T));
+      #else
+        data = new T[totElems];
+      #endif
       for (int i=0; i < ndims; i++) {
         dimSizes[i] = in.dimSizes[i];
         offsets [i] = in.offsets [i];
@@ -279,19 +227,29 @@ public :
       for (int i=ndims-2; i>=0; i--) {
         offsets[i] = offsets[i+1] * dimSizes[i+1];
       }
-      data = new T[totElems];
+      #ifdef __NVCC__
+        cudaMallocManaged(&data,totElems*sizeof(T));
+      #else
+        data = new T[totElems];
+      #endif
     }
   }
 
   inline void finalize() {
     //Never "nullify()" until after the data is deallocated
-    if (data != NULL) { delete[] data; nullify(); }
+    if (data != NULL) {
+      #ifdef __NVCC__
+        cudaFree(data);
+      #else
+        delete[] data; nullify();
+      #endif
+    }
   }
 
   /* ARRAY INDEXERS (FORTRAN index ordering)
   Return the element at the given index (either read-only or read-write)
   */
-  inline T &operator()(ulong const i0) {
+  inline _HOSTDEV T &operator()(ulong const i0) {
     #ifdef ARRAY_DEBUG
     this->check_dims(1,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -299,7 +257,7 @@ public :
     ulong ind = i0;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1) {
     #ifdef ARRAY_DEBUG
     this->check_dims(2,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -308,7 +266,7 @@ public :
     ulong ind = i0*offsets[0] + i1;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2) {
     #ifdef ARRAY_DEBUG
     this->check_dims(3,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -318,7 +276,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3) {
     #ifdef ARRAY_DEBUG
     this->check_dims(4,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -329,7 +287,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4) {
     #ifdef ARRAY_DEBUG
     this->check_dims(5,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -341,7 +299,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5) {
     #ifdef ARRAY_DEBUG
     this->check_dims(6,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -354,7 +312,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6) {
     #ifdef ARRAY_DEBUG
     this->check_dims(7,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -368,7 +326,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6;
     return data[ind];
   }
-  inline T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6, ulong const i7) {
+  inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6, ulong const i7) {
     #ifdef ARRAY_DEBUG
     this->check_dims(8,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -383,7 +341,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6*offsets[6] + i7;
     return data[ind];
   }
-  inline T operator()(ulong const i0) const {
+  inline _HOSTDEV T operator()(ulong const i0) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(1,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -391,7 +349,7 @@ public :
     ulong ind = i0;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(2,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -400,7 +358,7 @@ public :
     ulong ind = i0*offsets[0] + i1;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(3,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -410,7 +368,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(4,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -421,7 +379,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(5,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -433,7 +391,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(6,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -446,7 +404,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(7,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -460,7 +418,7 @@ public :
     ulong ind = i0*offsets[0] + i1*offsets[1] + i2*offsets[2] + i3*offsets[3] + i4*offsets[4] + i5*offsets[5] + i6;
     return data[ind];
   }
-  inline T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6, ulong const i7) const {
+  inline _HOSTDEV T operator()(ulong const i0, ulong const i1, ulong const i2, ulong const i3, ulong const i4, ulong const i5, ulong const i6, ulong const i7) const {
     #ifdef ARRAY_DEBUG
     this->check_dims(8,ndims,__FILE__,__LINE__);
     this->check_index(0,i0,0,dimSizes[0]-1,__FILE__,__LINE__);
@@ -476,7 +434,7 @@ public :
     return data[ind];
   }
 
-  inline void check_dims(int const ndims_called, int const ndims_actual, char const *file, int const line) const {
+  inline _HOSTDEV void check_dims(int const ndims_called, int const ndims_actual, char const *file, int const line) const {
     #ifdef ARRAY_DEBUG
     if (ndims_called != ndims_actual) {
       std::stringstream ss;
@@ -486,11 +444,11 @@ public :
     }
     #endif
   }
-  inline void check_index(int const dim, long const ind, long const lb, long const ub, char const *file, int const line) const {
+  inline _HOSTDEV void check_index(int const dim, long const ind, long const lb, long const ub, char const *file, int const line) const {
     #ifdef ARRAY_DEBUG
     if (ind < lb || ind > ub) {
       std::stringstream ss;
-      ss << "Index " << dim << " of " << this->ndims << " out of bounds\n";
+      ss << "Index " << dim+1 << " of " << this->ndims << " out of bounds\n";
       ss << "File, Line: " << file << ", " << line << "\n";
       ss << "Index: " << ind << ". Bounds: (" << lb << "," << ub << ")\n";
       throw std::out_of_range(ss.str());
@@ -501,7 +459,7 @@ public :
   /* OPERATOR+
   This will always be element-wise addition
   */
-  template <class I> inline Array operator+(Array<I> const &rhs) {
+  template <class I> inline _HOSTDEV Array operator+(Array<I> const &rhs) {
     #ifdef ARRAY_DEBUG
     if (this->totElems != rhs.totElems) {
       std::stringstream ss;
@@ -518,7 +476,7 @@ public :
     return ret;
   }
   //Add a scalar to the entire array
-  template <class I> inline Array operator+(I const rhs) {
+  template <class I> inline _HOSTDEV Array operator+(I const rhs) {
     Array<T> ret(*this);
     for (ulong i=0; i<ret.totElems; i++) {
       ret.data[i] += rhs;
@@ -533,7 +491,7 @@ public :
   2-D * 2-D: matrix-matrix
   higher-dimensions: element-wise
   */
-  template <class I> inline Array operator*(Array<I> const &rhs) {
+  template <class I> inline _HOSTDEV Array operator*(Array<I> const &rhs) {
     if ( (this->ndims == 1 && rhs.ndims == 1) || (this->ndims>2 && rhs.ndims>2) ) {
       //Element-wise multiplication
       #ifdef ARRAY_DEBUG
@@ -602,14 +560,14 @@ public :
     }
   }
   //Multiply by a scalar
-  template <class I> inline Array operator*(I const rhs) {
+  template <class I> inline _HOSTDEV Array operator*(I const rhs) {
     Array<T> ret(*this);
     for (ulong i=0; i<ret.totElems; i++) {
       ret.data[i] *= rhs;
     }
     return ret;
   }
-  template <class I> inline Array operator/(I const rhs) {
+  template <class I> inline _HOSTDEV Array operator/(I const rhs) {
     Array<T> ret(*this);
     for (ulong i=0; i<ret.totElems; i++) {
       ret.data[i] /= rhs;
@@ -619,13 +577,13 @@ public :
 
   /* OPERATOR=
   Allow the user to set the entire Array to a single value */
-  template <class I> inline void operator=(I const rhs) {
+  template <class I> inline _HOSTDEV void operator=(I const rhs) {
     for (ulong i=0; i < totElems; i++) {
       data[i] = rhs;
     }
   }
   /* Copy another Array's data to this one */
-  inline void operator=(Array const &rhs) {
+  inline _HOSTDEV void operator=(Array const &rhs) {
     #ifdef ARRAY_DEBUG
     if (this->totElems != rhs.totElems) {
       std::stringstream ss;
@@ -640,7 +598,7 @@ public :
     }
   }
   /* Copy an array of values into this Array's data */
-  template <class I> inline void operator=(I const *rhs) {
+  template <class I> inline _HOSTDEV void operator=(I const *rhs) {
     for (ulong i=0; i<totElems; i++) {
       data[i] = rhs[i];
     }
@@ -648,7 +606,7 @@ public :
 
   /* RANDOM
   Sets the Array's data to a random initialization \in [range1,range2] */
-  template <class I> inline void setRandom(I const range1, I const range2) {
+  template <class I> inline _HOSTDEV void setRandom(I const range1, I const range2) {
     srand(time(NULL));
     for (ulong i=0; i<totElems; i++) {
       data[i] = range1 + static_cast <T> (rand()) /( static_cast <T> (RAND_MAX/(range2-range1)));
@@ -657,28 +615,28 @@ public :
 
   /* REDUCTIONS
   Reductions over the Array. */
-  inline T minval() const {
+  inline _HOSTDEV T minval() const {
     T min = data[0];
     for (ulong i=1; i < totElems; i++) {
       if (data[i] < min) min = data[i];
     }
     return min;
   }
-  inline T maxval() const {
+  inline _HOSTDEV T maxval() const {
     T max = data[0];
     for (ulong i=1; i < totElems; i++) {
       if (data[i] > max) max = data[i];
     }
     return max;
   }
-  inline T maxabs() const {
+  inline _HOSTDEV T maxabs() const {
     T max = fabs(data[0]);
     for (ulong i=1; i < totElems; i++) {
       if (fabs(data[i]) > max) max = fabs(data[i]);
     }
     return max;
   }
-  inline T mean() const {
+  inline _HOSTDEV T mean() const {
     T avg = 0.;
     for (ulong i=0; i < totElems; i++) {
       avg += data[i];
@@ -686,21 +644,21 @@ public :
     avg = avg / ((float) totElems);
     return (T) avg;
   }
-  inline T product() const {
+  inline _HOSTDEV T product() const {
     T avg = 1.;
     for (ulong i=0; i < totElems; i++) {
       avg *= data[i];
     }
     return avg;
   }
-  inline T sum() const {
+  inline _HOSTDEV T sum() const {
     T sum = 0.;
     for (ulong i=0; i < totElems; i++) {
       sum += data[i];
     }
     return sum;
   }
-  inline T variance() const {
+  inline _HOSTDEV T variance() const {
     T mean = this->mean();
     T var = 0.;
     for (ulong i=0; i < totElems; i++) {
@@ -708,21 +666,21 @@ public :
     }
     return var;
   }
-  inline T norm1() const {
+  inline _HOSTDEV T norm1() const {
     T norm = 0.;
     for (ulong i=0; i < totElems; i++) {
       norm += fabs(data[i]);
     }
     return norm;
   }
-  inline T norm2() const {
+  inline _HOSTDEV T norm2() const {
     T norm = 0.;
     for (ulong i=0; i < totElems; i++) {
       norm += data[i]*data[i];
     }
     return norm;
   }
-  inline T rms() const {
+  inline _HOSTDEV T rms() const {
     T ret = 0.;
     for (ulong i=0; i < totElems; i++) {
       ret += data[i]*data[i];
@@ -732,7 +690,7 @@ public :
 
   /* NORMALIZERS */
   // mean of zero, standard deviation of 1
-  inline Array<T> &normalizeNormal() {
+  inline _HOSTDEV Array<T> &normalizeNormal() {
     T avg = this->mean();
     T std = (T) sqrt(this->variance());
     if (std > 0) {
@@ -745,7 +703,7 @@ public :
     return *this;
   }
   // Linearly squash to the domain [-1,1]
-  inline Array<T> &normalizeUnity() {
+  inline _HOSTDEV Array<T> &normalizeUnity() {
     T max = this->maxval();
     T min = this->minval();
     if (max-min > 0) {
@@ -758,7 +716,7 @@ public :
     return *this;
   }
   // Linearly squash to the domain [0,1]
-  inline Array<T> &normalizeUnityPositive() {
+  inline _HOSTDEV Array<T> &normalizeUnityPositive() {
     T max = this->maxval();
     T min = this->minval();
     if (max-min > 0) {
@@ -772,7 +730,7 @@ public :
   }
 
   /* COMPARISON */
-  int dimsMatch(Array const &a) const {
+  inline _HOSTDEV int dimsMatch(Array const &a) const {
     if (ndims != a.ndims) {
       return -1;
     }
@@ -783,7 +741,7 @@ public :
     }
     return 0;
   }
-  int dimsMatch(ulong const ndims, ulong const dimSizes[]) const {
+  inline _HOSTDEV int dimsMatch(ulong const ndims, ulong const dimSizes[]) const {
     if (this->ndims != ndims) {
       return -1;
     }
@@ -796,16 +754,16 @@ public :
   }
 
   /* ACCESSORS */
-  inline int get_ndims() const {
+  inline _HOSTDEV int get_ndims() const {
     return ndims;
   }
-  inline ulong get_totElems() const {
+  inline _HOSTDEV ulong get_totElems() const {
     return totElems;
   }
-  inline ulong const *get_dimSizes() const {
+  inline _HOSTDEV ulong const *get_dimSizes() const {
     return dimSizes;
   }
-  inline T *get_data() const {
+  inline _HOSTDEV T *get_data() const {
     return data;
   }
 

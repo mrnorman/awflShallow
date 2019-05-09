@@ -3,31 +3,35 @@
 #define _DOMAIN_H_
 
 #include "const.h"
-#include "Array.h"
 
 class Domain {
 
 public:
 
-  typdef unsigned long ulong;
+  ulong nx_glob;
+  ulong ny_glob;
+  ulong nz_glob;
 
-  ulong nx_glob; // Global number of cells in x direction
-  ulong ny_glob; // Global number of cells in y direction
+  int nx;
+  int ny;
+  int nz;
 
-  rp xlen; // x-direction extent
-  rp ylen; // y-direction extent
+  int run2d;
 
-  rp dx; // x-direction grid spacing
-  rp dy; // y-direction grid spacing
+  real xlen;
+  real ylen;
+  real zlen;
 
-  rp sim_time; // Total amount of time to simulate
-  rp dt;       // Time step
-  rp cfl;      // CFL value to use
+  real dx;
+  real dy;
+  real dz;
 
-  Array<rp> bath;   // Bathymetry height
-  Array<rp> bath_x; // Bathymetry height x-derivative
-  Array<rp> bath_y; // Bathymetry height y-derivative
+  real cfl;
+  real simLength;
 
+  real etime;
+
+  real dt;
 };
 
 #endif
