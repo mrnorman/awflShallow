@@ -3,7 +3,6 @@
 #define _INITIALIZER_H_
 
 #include "const.h"
-#include "Hydrostasis.h"
 #include "Exchange.h"
 #include "TransformMatrices.h"
 #include "TimeIntegrator.h"
@@ -34,8 +33,6 @@ public:
     SArray<real,ord> gllOrdWeights;
     SArray<real,tord> gllTordPoints;
     SArray<real,tord> gllTordWeights;
-
-    if (dom.ny_glob == 1) { dom.run2d = 1; } else { dom.run2d = 0; }
 
     //Get GLL points and weights
     TransformMatrices<real> trans;
@@ -101,10 +98,8 @@ public:
 
     // Initialize the grid
     dom.etime = 0;
-    dom.nz = dom.nz_glob;
     dom.dx = dom.xlen / dom.nx_glob;
     dom.dy = dom.ylen / dom.ny_glob;
-    dom.dz = dom.zlen / dom.nz_glob;
 
     tint.initialize(dom);
 
@@ -112,92 +107,26 @@ public:
     exch.allocate(dom);
 
     // Allocate the fluid state variable
-    state.state.setup( numState , dom.nz+2*hs , dom.ny+2*hs , dom.nx+2*hs );
-
-    state.hyDensCells     .setup( dom.nz+2*hs );
-    state.hyDensThetaCells.setup( dom.nz+2*hs );
-    state.hyPressureCells .setup( dom.nz+2*hs );
-
-    state.hyDensGLL     .setup( dom.nz , tord );
-    state.hyDensThetaGLL.setup( dom.nz , tord );
-    state.hyPressureGLL .setup( dom.nz , tord );
-
-    Hydrostasis hydro;
-
-    // Initialize the hydrostatic background state for cell averages
-    for (int k=0; k<dom.nz; k++) {
-      state.hyDensCells     (hs+k) = 0;
-      state.hyDensThetaCells(hs+k) = 0;
-      state.hyPressureCells (hs+k) = 0;
-      // Perform ord-point GLL quadrature for the cell averages
-      for (int kk=0; kk<ord; kk++) {
-        real zloc = (k + 0.5_fp)*dom.dz + gllOrdPoints(kk)*dom.dz;
-        real const t0 = 300._fp;
-        real r, t;
-
-        hydro.hydroConstTheta( t0 , zloc , r );
-        t = t0;
-
-        state.hyDensCells     (hs+k) += gllOrdWeights(kk) * r;
-        state.hyDensThetaCells(hs+k) += gllOrdWeights(kk) * r*t;
-        state.hyPressureCells (hs+k) += gllOrdWeights(kk) * mypow( r*t , GAMMA );
-      }
-    }
-
-    // Enforce vertical boundaries
-    for (int ii=0; ii<hs; ii++) {
-      state.hyDensCells     (ii) = state.hyDensCells     (hs);
-      state.hyDensThetaCells(ii) = state.hyDensThetaCells(hs);
-      state.hyPressureCells (ii) = state.hyPressureCells (hs);
-      state.hyDensCells     (dom.nz+hs+ii) = state.hyDensCells     (dom.nz+hs-1);
-      state.hyDensThetaCells(dom.nz+hs+ii) = state.hyDensThetaCells(dom.nz+hs-1);
-      state.hyPressureCells (dom.nz+hs+ii) = state.hyPressureCells (dom.nz+hs-1);
-    }
-
-    // Initialize the hydrostatic background state for GLL points
-    for (int k=0; k<dom.nz; k++) {
-      // Perform ord-point GLL quadrature for the cell averages
-      for (int kk=0; kk<tord; kk++) {
-        real zloc = (k + 0.5_fp)*dom.dz + gllTordPoints(kk)*dom.dz;
-        real const t0 = 300._fp;
-        real r, t;
-
-        hydro.hydroConstTheta( t0 , zloc , r );
-        t = t0;
-
-        state.hyDensGLL     (k,kk) = r;
-        state.hyDensThetaGLL(k,kk) = r*t;
-        state.hyPressureGLL (k,kk) = mypow( r*t , GAMMA );
-      }
-    }
+    state.state.setup( numState , dom.ny+2*hs , dom.nx+2*hs );
 
     // Initialize the state
-    for (int k=0; k<dom.nz; k++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          // Initialize the state to zero
-          for (int l=0; l<numState; l++) {
-            state.state(l,hs+k,hs+j,hs+i) = 0;
-          }
-          // Perform ord-point GLL quadrature for the cell averages
-          for (int kk=0; kk<ord; kk++) {
-            for (int jj=0; jj<ord; jj++) {
-              for (int ii=0; ii<ord; ii++) {
-                real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
-                real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
-                real zloc = (k + 0.5_fp)*dom.dz + gllOrdPoints(kk)*dom.dz;
-                real const t0 = 300._fp;
-                real r, t;
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        // Initialize the state to zero
+        for (int l=0; l<numState; l++) {
+          state.state(l,hs+j,hs+i) = 0;
+        }
+        // Perform ord-point GLL quadrature for the cell averages
+        for (int jj=0; jj<ord; jj++) {
+          for (int ii=0; ii<ord; ii++) {
+            real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
+            real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
+            real const h0 = 10000._fp;
 
-                if (dom.run2d) yloc = dom.ylen/2;
+            real h = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
 
-                hydro.hydroConstTheta( t0 , zloc , r );
-                t = ellipsoid_linear(xloc, yloc, zloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 2000, 2000, 2);
-
-                real wt = gllOrdWeights(ii)*gllOrdWeights(jj)*gllOrdWeights(kk);
-                state.state(idRT,hs+k,hs+j,hs+i) += wt * r*t;
-              }
-            }
+            real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
+            state.state(idH,hs+j,hs+i) += wt * (h0+h);
           }
         }
       }
@@ -205,24 +134,20 @@ public:
 
     dom.dt = 1.e12_fp;
     // Compute the time step based on the CFL value
-    for (int k=0; k<dom.nz; k++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          // Grab state variables
-          real r = state.state(idR ,hs+k,hs+j,hs+i) + state.hyDensCells(hs+k);
-          real u = state.state(idRU,hs+k,hs+j,hs+i) / r;
-          real v = state.state(idRV,hs+k,hs+j,hs+i) / r;
-          real w = state.state(idRW,hs+k,hs+j,hs+i) / r;
-          real t = ( state.state(idRT,hs+k,hs+j,hs+i) + state.hyDensThetaCells(hs+k) ) / r;
-          real p = C0 * mypow( r*t , GAMMA );
-          real cs = mysqrt( GAMMA * p / r );
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        // Grab state variables
+        real h = state.state(idH ,hs+j,hs+i);
+        real u = state.state(idHU,hs+j,hs+i) / h;
+        real v = state.state(idHV,hs+j,hs+i) / h;
+        real cg = mysqrt(GRAV*h);
 
-          // Compute the max wave
-          real maxWave = max( max( myfabs(u) , myfabs(v)) , myfabs(w)) + cs;
+        // Compute the max wave
+        real maxWave = max( myfabs(u) , myfabs(v)) + cg;
 
-          // Compute the time step
-          dom.dt = min( dom.dt , dom.cfl * dom.dx / maxWave );
-        }
+        // Compute the time step
+        real dxmin = min(dom.dx,dom.dy);
+        dom.dt = min( dom.dt , dom.cfl * dxmin / maxWave );
       }
     }
 
@@ -233,20 +158,18 @@ public:
     if (par.masterproc) {
       std::cout << "dx: " << dom.dx << "\n";
       std::cout << "dy: " << dom.dy << "\n";
-      std::cout << "dz: " << dom.dz << "\n";
       std::cout << "dt: " << dom.dt << "\n";
     }
 
   }
 
 
-  inline _HOSTDEV real ellipsoid_linear(real const x   , real const y   , real const z ,
-                        real const x0  , real const y0  , real const z0,
-                        real const xrad, real const yrad, real const zrad, real const amp) {
+  inline _HOSTDEV real ellipse_linear(real const x   , real const y   ,
+                                      real const x0  , real const y0  ,
+                                      real const xrad, real const yrad, real const amp) {
     real xn = (x-x0)/xrad;
     real yn = (y-y0)/yrad;
-    real zn = (z-z0)/zrad;
-    real dist = mysqrt( xn*xn + yn*yn + zn*zn );
+    real dist = mysqrt( xn*xn + yn*yn );
     return amp * max( 1._fp - dist , 0._fp );
   }
 

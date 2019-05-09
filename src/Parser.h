@@ -24,10 +24,8 @@ public:
     // Initialize all read-in values to -999
     dom.nx_glob   = 0;
     dom.ny_glob   = 0;
-    dom.nz_glob   = 0;
     dom.xlen      = -999;
     dom.ylen      = -999;
-    dom.zlen      = -999;
     dom.cfl       = -999;
     dom.simLength = -999;
     par.nproc_x   = -999;
@@ -58,10 +56,8 @@ public:
         // Match the key, and store the value
         if      ( !strcmp( "nx"        , key.c_str() ) ) { ssVal >> dom.nx_glob  ; }
         else if ( !strcmp( "ny"        , key.c_str() ) ) { ssVal >> dom.ny_glob  ; }
-        else if ( !strcmp( "nz"        , key.c_str() ) ) { ssVal >> dom.nz_glob  ; }
         else if ( !strcmp( "xlen"      , key.c_str() ) ) { ssVal >> dom.xlen     ; }
         else if ( !strcmp( "ylen"      , key.c_str() ) ) { ssVal >> dom.ylen     ; }
-        else if ( !strcmp( "zlen"      , key.c_str() ) ) { ssVal >> dom.zlen     ; }
         else if ( !strcmp( "cfl"       , key.c_str() ) ) { ssVal >> dom.cfl      ; }
         else if ( !strcmp( "simLength" , key.c_str() ) ) { ssVal >> dom.simLength; }
         else if ( !strcmp( "parNx"     , key.c_str() ) ) { ssVal >> par.nproc_x  ; }
@@ -79,10 +75,8 @@ public:
     // Test to make sure all values were initialized
     if (dom.nx_glob   == 0   ) { std::cout << "Error: key " << "nx"        << " not set."; exit(-1); }
     if (dom.ny_glob   == 0   ) { std::cout << "Error: key " << "ny"        << " not set."; exit(-1); }
-    if (dom.nz_glob   == 0   ) { std::cout << "Error: key " << "nz"        << " not set."; exit(-1); }
     if (dom.xlen      == -999) { std::cout << "Error: key " << "xlen"      << " not set."; exit(-1); }
     if (dom.ylen      == -999) { std::cout << "Error: key " << "ylen"      << " not set."; exit(-1); }
-    if (dom.zlen      == -999) { std::cout << "Error: key " << "zlen"      << " not set."; exit(-1); }
     if (dom.cfl       == -999) { std::cout << "Error: key " << "cfl"       << " not set."; exit(-1); }
     if (dom.simLength == -999) { std::cout << "Error: key " << "simLength" << " not set."; exit(-1); }
     if (par.nproc_x   == -999) { std::cout << "Error: key " << "parNx"     << " not set."; exit(-1); }
@@ -94,10 +88,8 @@ public:
     if (par.masterproc) {
       std::cout << "nx: "         << dom.nx_glob   << "\n";
       std::cout << "ny: "         << dom.ny_glob   << "\n";
-      std::cout << "nz: "         << dom.nz_glob   << "\n";
       std::cout << "xlen: "       << dom.xlen      << "\n";
       std::cout << "ylen: "       << dom.ylen      << "\n";
-      std::cout << "zlen: "       << dom.zlen      << "\n";
       std::cout << "cfl: "        << dom.cfl       << "\n";
       std::cout << "simLength: "  << dom.simLength << "\n";
       std::cout << "parNx: "      << par.nproc_x   << "\n";

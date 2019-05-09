@@ -13,16 +13,6 @@ public:
   // Fluid state
   Array<real> state;
 
-  // Hydrostatic background state cell averages (no halos)
-  Array<real> hyDensCells;
-  Array<real> hyDensThetaCells;
-  Array<real> hyPressureCells;
-
-  // Hydrostatic background state at tord GLL points within cells (no halos)
-  Array<real> hyDensGLL;
-  Array<real> hyDensThetaGLL;
-  Array<real> hyPressureGLL;
-
 };
 
 #endif

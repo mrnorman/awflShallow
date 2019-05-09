@@ -24,13 +24,11 @@ inline _HOSTDEV real operator"" _fp( long double x ) {
 #define tord 3
 int const hs = (ord-1)/2;
 
-int const numState = 5;
+int const numState = 3;
 
-int const idR  = 0;
-int const idRU = 1;
-int const idRV = 2;
-int const idRW = 3;
-int const idRT = 4;
+int const idH  = 0;
+int const idHU = 1;
+int const idHV = 2;
 
 // Some physical constants
 real const PI    = 3.1415926535897932384626433832795028842;

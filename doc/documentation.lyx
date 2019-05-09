@@ -1,5 +1,5 @@
-#LyX 2.2 created this file. For more info see http://www.lyx.org/
-\lyxformat 508
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
 \begin_document
 \begin_header
 \save_transient_properties true
@@ -21,6 +21,8 @@
 \font_osf false
 \font_sf_scale 100 100
 \font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
 \graphics default
 \default_output_format default
 \output_sync 0
@@ -49,6 +51,7 @@
 \suppress_date false
 \justification true
 \use_refstyle 1
+\use_minted 0
 \index Index
 \shortcut idx
 \color #008000
@@ -57,7 +60,10 @@
 \tocdepth 3
 \paragraph_separation indent
 \paragraph_indentation default
-\quotes_language english
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
@@ -107,8 +113,8 @@ hvu\\
 hv^{2}+\frac{1}{2}gh^{2}
 \end{array}\right]=\left[\begin{array}{c}
 0\\
--gh\frac{\partial h_{S}}{\partial x}-ghS_{fx}\\
--gh\frac{\partial h_{S}}{\partial y}-ghS_{fy}
+-gh\frac{\partial h_{S}}{\partial x}\\
+-gh\frac{\partial h_{S}}{\partial y}
 \end{array}\right]
 \]
 
@@ -243,62 +249,16 @@ P\left(k_{t}\right)=\sum_{r_{t}=0}^{k_{t}}Q_{1}\left(r_{t}\right)Q_{1}\left(k_{t
 
 \end_layout
 
-\begin_layout Subsection
-Dimensional Splitting
-\end_layout
-
-\begin_layout Subsubsection
-x-direction
+\begin_layout Section
+Flus Jacobians with Source Terms:
 \end_layout
 
 \begin_layout Standard
-\begin_inset Formula 
-\[
-\frac{\partial}{\partial t}\left[\begin{array}{c}
-h\\
-hu\\
-hv
-\end{array}\right]+\frac{\partial}{\partial x}\left[\begin{array}{c}
-hu\\
-hu^{2}+\frac{1}{2}gh^{2}\\
-huv
-\end{array}\right]=\left[\begin{array}{c}
-0\\
--gh\frac{\partial h_{S}}{\partial x}-ghS_{fx}\\
-0
-\end{array}\right]
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Subsubsection
-y-direction
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-\frac{\partial}{\partial t}\left[\begin{array}{c}
-h\\
-hu\\
-hv
-\end{array}\right]+\frac{\partial}{\partial y}\left[\begin{array}{c}
-hv\\
-hvu\\
-hv^{2}+\frac{1}{2}gh^{2}
-\end{array}\right]=\left[\begin{array}{c}
-0\\
-0\\
--gh\frac{\partial h_{S}}{\partial y}-ghS_{fy}
-\end{array}\right]
-\]
-
-\end_inset
-
-
+The source term does not affect the flux Jacobian at all, so the waves are
+ the same regardless of the source term for the Riemann solver.
+ The source term does, however, affect the time tendencies of the momenta.
+ I *think* that ADER-DT handling of the fluxes and source terms should help
+ the balancing between the fluxes and source terms.
 \end_layout
 
 \end_body
