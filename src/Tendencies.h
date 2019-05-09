@@ -155,6 +155,7 @@ public :
         riem.riemannX(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
+          flux(l,j,i) = ( fluxLimits(l,0,j,i) + fluxLimits(l,1,j,i) ) / 2;
         }
       }
     }
@@ -237,6 +238,7 @@ public :
         riem.riemannY(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
+          flux(l,j,i) = ( fluxLimits(l,0,j,i) + fluxLimits(l,1,j,i) ) / 2;
         }
       }
     }

@@ -33,6 +33,36 @@ public:
     real h = 0.5_fp * ( s1(idH ) + s2(idH ) );
     real u = 0.5_fp * ( s1(idHU) + s2(idHU) ) / h;
     real v = 0.5_fp * ( s1(idHV) + s2(idHV) ) / h;
+    real gw = mysqrt(GRAV*h);
+
+    // Compute left and right characteristic variables
+    ch1(0) =  f1(0)*(gw+u)/(2*gw) - f1(1)/(2*gw);
+    ch1(1) =  f1(0)*(gw-u)/(2*gw) + f1(1)/(2*gw);
+    ch1(2) = -f1(0)/v + f1(2);
+
+    ch2(0) =  f2(0)*(gw+u)/(2*gw) - f2(1)/(2*gw);
+    ch2(1) =  f2(0)*(gw-u)/(2*gw) + f2(1)/(2*gw);
+    ch2(2) = -f2(0)/v + f2(2);
+
+    ev(0) = u-gw;
+    ev(1) = u+gw;
+    ev(2) = u;
+
+    // Compute the upwind characteristics
+    for (int l=0; l<numState; l++) {
+      if        (ev(l) > 0._fp) {
+        chu(l) = ch1(l);
+      } else if (ev(l) < 0._fp) {
+        chu(l) = ch2(l);
+      } else {
+        chu(l) = 0.5_fp * (ch1(l) + ch2(l));
+      }
+    }
+
+    // Compute the fluxes
+    upw(0) = chu(0)        + chu(1);
+    upw(1) = chu(0)*(u-gw) + chu(1)*(u+gw);
+    upw(2) = chu(0)*v      + chu(1)*v      + chu(2);
   }
 
 
@@ -45,6 +75,36 @@ public:
     real h = 0.5_fp * ( s1(idH ) + s2(idH ) );
     real u = 0.5_fp * ( s1(idHU) + s2(idHU) ) / h;
     real v = 0.5_fp * ( s1(idHV) + s2(idHV) ) / h;
+    real gw = mysqrt(GRAV*h);
+
+    // Compute left and right characteristic variables
+    ch1(0) =  f1(0)*(gw+v)/(2*gw) - f1(2)/(2*gw);
+    ch1(1) =  f1(0)*(gw-v)/(2*gw) + f1(2)/(2*gw);
+    ch1(2) = -f1(0)/u + f1(1);
+
+    ch2(0) =  f2(0)*(gw+v)/(2*gw) - f2(2)/(2*gw);
+    ch2(1) =  f2(0)*(gw-v)/(2*gw) + f2(2)/(2*gw);
+    ch2(2) = -f2(0)/u + f2(1);
+
+    ev(0) = v-gw;
+    ev(1) = v+gw;
+    ev(2) = v;
+
+    // Compute the upwind characteristics
+    for (int l=0; l<numState; l++) {
+      if        (ev(l) > 0._fp) {
+        chu(l) = ch1(l);
+      } else if (ev(l) < 0._fp) {
+        chu(l) = ch2(l);
+      } else {
+        chu(l) = 0.5_fp * (ch1(l) + ch2(l));
+      }
+    }
+
+    // Compute the fluxes
+    upw(0) = chu(0)        + chu(1);
+    upw(1) = chu(0)*u      + chu(1)*u      + chu(2);
+    upw(2) = chu(0)*(v-gw) + chu(1)*(v+gw);
   }
 
 

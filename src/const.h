@@ -33,12 +33,6 @@ int const idHV = 2;
 // Some physical constants
 real const PI    = 3.1415926535897932384626433832795028842;
 real const GRAV  = 9.8;
-real const CP    = 1004.;
-real const CV    = 717.;
-real const RD    = 287.;
-real const P0    = 1.0e5;
-real const C0    = 27.5629410929725921310572974482;
-real const GAMMA  = 1.40027894002789400278940027894;
 
 inline _HOSTDEV double mypow ( double const x , double const p ) { return pow (x,p); }
 inline _HOSTDEV float  mypow ( float  const x , float  const p ) { return powf(x,p); }
