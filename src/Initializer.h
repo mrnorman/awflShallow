@@ -127,7 +127,7 @@ public:
             real const h0 = 1000._fp;
             real h = 0;
 
-            real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+            real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
 
             real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
             state.state(idH,hs+j,hs+i) += wt * (h0+h);
@@ -220,6 +220,20 @@ public:
     real yn = (y-y0)/yrad;
     real dist = mysqrt( xn*xn + yn*yn );
     return amp * max( 1._fp - dist , 0._fp );
+  }
+
+
+  inline _HOSTDEV real ellipse_cosine(real const x   , real const y   ,
+                                      real const x0  , real const y0  ,
+                                      real const xrad, real const yrad, real const amp, real const pwr) {
+    real xn = (x-x0)/xrad;
+    real yn = (y-y0)/yrad;
+    real dist = mysqrt( xn*xn + yn*yn );
+    real ret = 0;
+    if (dist < 1) {
+      ret = amp * mypow((cos(PI*dist)+1)/2,pwr);
+    }
+    return ret;
   }
 
 };
