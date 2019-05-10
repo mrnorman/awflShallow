@@ -38,11 +38,11 @@ public:
     // Compute left and right characteristic variables
     ch1(0) =  f1(0)*(gw+u)/(2*gw) - f1(1)/(2*gw);
     ch1(1) =  f1(0)*(gw-u)/(2*gw) + f1(1)/(2*gw);
-    ch1(2) = -f1(0)/v + f1(2);
+    ch1(2) = -f1(0)*v + f1(2);
 
     ch2(0) =  f2(0)*(gw+u)/(2*gw) - f2(1)/(2*gw);
     ch2(1) =  f2(0)*(gw-u)/(2*gw) + f2(1)/(2*gw);
-    ch2(2) = -f2(0)/v + f2(2);
+    ch2(2) = -f2(0)*v + f2(2);
 
     ev(0) = u-gw;
     ev(1) = u+gw;
@@ -80,11 +80,11 @@ public:
     // Compute left and right characteristic variables
     ch1(0) =  f1(0)*(gw+v)/(2*gw) - f1(2)/(2*gw);
     ch1(1) =  f1(0)*(gw-v)/(2*gw) + f1(2)/(2*gw);
-    ch1(2) = -f1(0)/u + f1(1);
+    ch1(2) = -f1(0)*u + f1(1);
 
     ch2(0) =  f2(0)*(gw+v)/(2*gw) - f2(2)/(2*gw);
     ch2(1) =  f2(0)*(gw-v)/(2*gw) + f2(2)/(2*gw);
-    ch2(2) = -f2(0)/u + f2(1);
+    ch2(2) = -f2(0)*u + f2(1);
 
     ev(0) = v-gw;
     ev(1) = v+gw;

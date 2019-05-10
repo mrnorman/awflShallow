@@ -23,9 +23,12 @@ public :
   inline void initialize(Domain &dom) {
     if (timeMethod == TIME_SSPRK3) {
       stateTmp  .setup(numState,dom.ny+2*hs,dom.nx+2*hs);
+      stateTmp = 0;
       tendArrTmp.setup(numState,dom.ny,dom.nx);
+      tendArrTmp = 0;
     }
     tendArr.setup(numState,dom.ny,dom.nx);
+    tendArr = 0;
     tend.initialize(dom);
     dsSwitch = 1;
   }

@@ -123,7 +123,7 @@ public:
             real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
             real const h0 = 1000._fp;
 
-            real h = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+            real h = ellipse_linear(xloc, yloc, dom.xlen/2-20, dom.ylen/2-20, 2000, 2000, 100);
 
             real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
             state.state(idH,hs+j,hs+i) += wt * (h0+h);
