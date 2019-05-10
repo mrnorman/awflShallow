@@ -11,7 +11,8 @@ class AderDT {
 public:
 
 
-  inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux, SArray<real,tord,tord> &deriv ) {
+  inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> &sfc_x, SArray<real,tord,tord> &deriv ) {
     SArray<real,tord,tord> huu, huv, hh;
     real tot_huu, tot_huv, tot_hh;
 
@@ -33,6 +34,10 @@ public:
       flux(idH ,0,ii) = h*u;
       flux(idHU,0,ii) = h*u*u + GRAV*h*h/2;
       flux(idHV,0,ii) = h*u*v;
+
+      src(idH ,0,ii) = 0;
+      src(idHU,0,ii) = -GRAV*h*sfc_x(ii);
+      src(idHV,0,ii) = 0;
     }
 
     // Loop over the time derivatives
@@ -44,7 +49,7 @@ public:
           for (int s=0; s<tord; s++) {
             d_dx += deriv(s,ii) * flux(l,kt,s);
           }
-          state(l,kt+1,ii) = -d_dx/(kt+1._fp);
+          state(l,kt+1,ii) = -d_dx/(kt+1._fp) + src(l,kt,ii)/(kt+1._fp);
         }
       }
 
@@ -66,12 +71,17 @@ public:
         flux(idH ,kt+1,ii) = state(idHU,kt+1,ii);
         flux(idHU,kt+1,ii) = huu(kt+1,ii) + GRAV/2*hh(kt+1,ii);
         flux(idHV,kt+1,ii) = huv(kt+1,ii);
+
+        src(idH ,kt+1,ii) = 0;
+        src(idHU,kt+1,ii) = -GRAV*state(idH,kt+1,ii)*sfc_x(ii);
+        src(idHV,kt+1,ii) = 0;
       }
     }
   }
 
 
-  inline _HOSTDEV void diffTransformSW_Y( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux, SArray<real,tord,tord> &deriv ) {
+  inline _HOSTDEV void diffTransformSW_Y( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> &sfc_y, SArray<real,tord,tord> &deriv ) {
     SArray<real,tord,tord> hvu, hvv, hh;
     real tot_hvu, tot_hvv, tot_hh;
 
@@ -93,6 +103,10 @@ public:
       flux(idH ,0,ii) = h*v;
       flux(idHU,0,ii) = h*v*u;
       flux(idHV,0,ii) = h*v*v + GRAV*h*h/2;
+
+      src(idH ,0,ii) = 0;
+      src(idHU,0,ii) = 0;
+      src(idHV,0,ii) = -GRAV*h*sfc_y(ii);
     }
 
     // Loop over the time derivatives
@@ -104,7 +118,7 @@ public:
           for (int s=0; s<tord; s++) {
             d_dy += deriv(s,ii) * flux(l,kt,s);
           }
-          state(l,kt+1,ii) = -d_dy/(kt+1._fp);
+          state(l,kt+1,ii) = -d_dy/(kt+1._fp) + src(l,kt,ii)/(kt+1._fp);
         }
       }
 
@@ -126,6 +140,10 @@ public:
         flux(idH ,kt+1,ii) = state(idHV,kt+1,ii);
         flux(idHU,kt+1,ii) = hvu(kt+1,ii);
         flux(idHV,kt+1,ii) = hvv(kt+1,ii) + GRAV/2*hh(kt+1,ii);
+
+        src(idH ,kt+1,ii) = 0;
+        src(idHU,kt+1,ii) = 0;
+        src(idHV,kt+1,ii) = -GRAV*state(idH,kt+1,ii)*sfc_y(ii);
       }
     }
   }

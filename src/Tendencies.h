@@ -262,7 +262,7 @@ public :
   }
 
 
-  inline void compSWTendADER_X(Array<real> &state, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendADER_X(Array<real> &state, Array<real> &sfc_x, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
     //Exchange halos in the x-direction
     exch.haloInit      ();
     exch.haloPackN_x   (dom, state, numState);
@@ -274,6 +274,8 @@ public :
       for (int i=0; i<dom.nx; i++) {
         SArray<real,numState,tord,tord> stateDTs;  // GLL state values
         SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
+        SArray<real,numState,tord,tord> srcDTs;   // GLL source values
+        SArray<real,tord> sfc_x_loc;
 
         // Compute tord GLL points of the state vector
         for (int l=0; l<numState; l++) {
@@ -285,9 +287,20 @@ public :
         }
 
         // Compute DTs of the state and flux, and collapse down into a time average
-        ader.diffTransformSW_X( stateDTs , fluxDTs , aderDerivX );
+        for (int ii=0 ;ii<tord; ii++) {
+          sfc_x_loc(ii) = sfc_x(j,i,ii);
+        }
+        ader.diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
         ader.timeAvg( stateDTs , dom );
         ader.timeAvg( fluxDTs  , dom );
+        ader.timeAvg( srcDTs   , dom );
+
+        for (int l=0; l<numState; l++) {
+          src(l,j,i) = 0;
+          for (int ii=0; ii<tord; ii++) {
+            src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
+          }
+        }
 
         // Store state and flux limits into a globally indexed array
         for (int l=0; l<numState; l++) {
@@ -332,14 +345,14 @@ public :
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx;
+          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
         }
       }
     }
   }
 
 
-  inline void compSWTendADER_Y(Array<real> &state, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendADER_Y(Array<real> &state, Array<real> &sfc_y, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);
@@ -351,6 +364,8 @@ public :
       for (int i=0; i<dom.nx; i++) {
         SArray<real,numState,tord,tord> stateDTs;  // GLL state values
         SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
+        SArray<real,numState,tord,tord> srcDTs;   // GLL source values
+        SArray<real,tord> sfc_y_loc;
 
         // Compute GLL points from cell averages
         for (int l=0; l<numState; l++) {
@@ -362,9 +377,20 @@ public :
         }
 
         // Compute DTs of the state and flux, and collapse down into a time average
-        ader.diffTransformSW_Y( stateDTs , fluxDTs , aderDerivY );
+        for (int ii=0 ;ii<tord; ii++) {
+          sfc_y_loc(ii) = sfc_y(j,i,ii);
+        }
+        ader.diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
         ader.timeAvg( stateDTs , dom );
         ader.timeAvg( fluxDTs  , dom );
+        ader.timeAvg( srcDTs   , dom );
+
+        for (int l=0; l<numState; l++) {
+          src(l,j,i) = 0;
+          for (int ii=0; ii<tord; ii++) {
+            src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
+          }
+        }
 
         // Store state and flux limits into a globally indexed array
         for (int l=0; l<numState; l++) {
@@ -408,7 +434,7 @@ public :
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy;
+          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
         }
       }
     }

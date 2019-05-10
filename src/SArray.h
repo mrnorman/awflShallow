@@ -35,12 +35,14 @@ public :
 
   inline _HOSTDEV T &operator()(ulong const i0)       {
     #ifdef ARRAY_DEBUG
+      if (D1*D2*D3 > 1) {std::cout << "SArray: Using 2D or higher array as 1D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
     #endif
     return data[i0];
   }
   inline _HOSTDEV T &operator()(ulong const i0, ulong const i1)       {
     #ifdef ARRAY_DEBUG
+      if (D2*D3 > 1) {std::cout << "SArray: Using 3D or higher array as 2D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
       if (i1>D1-1) { printf("i1 > D1-1"); exit(-1); }
     #endif
@@ -48,6 +50,7 @@ public :
   }
   inline _HOSTDEV T &operator()(ulong const i0, ulong const i1, ulong const i2)       {
     #ifdef ARRAY_DEBUG
+      if (D3 > 1) {std::cout << "SArray: Using 4D or higher array as 3D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
       if (i1>D1-1) { printf("i1 > D1-1"); exit(-1); }
       if (i2>D2-1) { printf("i2 > D2-1"); exit(-1); }
@@ -66,12 +69,14 @@ public :
 
   inline _HOSTDEV T  operator()(ulong const i0) const {
     #ifdef ARRAY_DEBUG
+      if (D1*D2*D3 > 1) {std::cout << "SArray: Using 2D or higher array as 1D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
     #endif
     return data[i0];
   }
   inline _HOSTDEV T  operator()(ulong const i0, ulong const i1) const {
     #ifdef ARRAY_DEBUG
+      if (D2*D3 > 1) {std::cout << "SArray: Using 3D or higher array as 2D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
       if (i1>D1-1) { printf("i1 > D1-1"); exit(-1); }
     #endif
@@ -79,6 +84,7 @@ public :
   }
   inline _HOSTDEV T  operator()(ulong const i0, ulong const i1, ulong const i2) const {
     #ifdef ARRAY_DEBUG
+      if (D3 > 1) {std::cout << "SArray: Using 4D or higher array as 3D array\n";}
       if (i0>D0-1) { printf("i0 > D0-1"); exit(-1); }
       if (i1>D1-1) { printf("i1 > D1-1"); exit(-1); }
       if (i2>D2-1) { printf("i2 > D2-1"); exit(-1); }

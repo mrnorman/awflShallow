@@ -49,15 +49,15 @@ public :
   inline void stepForwardADER(State &state, Domain &dom, Exchange &exch, Parallel &par) {
     if (dsSwitch) {
       dsSwitch = 0;
-      tend.compSWTendADER_X(state.state, dom, exch, par, tendArr);
+      tend.compSWTendADER_X(state.state, state.sfc_x, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
-      tend.compSWTendADER_Y(state.state, dom, exch, par, tendArr);
+      tend.compSWTendADER_Y(state.state, state.sfc_y, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
     } else {
       dsSwitch = 1;
-      tend.compSWTendADER_Y(state.state, dom, exch, par, tendArr);
+      tend.compSWTendADER_Y(state.state, state.sfc_y, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
-      tend.compSWTendADER_X(state.state, dom, exch, par, tendArr);
+      tend.compSWTendADER_X(state.state, state.sfc_x, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
     }
   }
