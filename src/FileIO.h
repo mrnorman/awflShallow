@@ -6,6 +6,7 @@
 #include "Array.h"
 #include "State.h"
 #include "pnetcdf.h"
+#include "TransformMatrices.h"
 #include "mpi.h"
 
 class FileIO {
@@ -15,15 +16,17 @@ protected:
   real outTimer;
   int ncid, numOut;
   int tDim, xDim, yDim;
-  int tVar, xVar, yVar, hVar, uVar, vVar;
+  int tVar, xVar, yVar, hVar, uVar, vVar, sfcVar, sfcxVar, sfcyVar;
+  TransformMatrices<real> trans;
 
 public:
 
   void outputInit(State &state, Domain const &dom, Parallel const &par) {
     int dimids[3];
-    MPI_Offset st[1], ct[1];
+    MPI_Offset st[3], ct[3];
     Array<real> xCoord(dom.nx);
     Array<real> yCoord(dom.ny);
+    Array<real> data(dom.ny,dom.nx);
 
     numOut = 0;
 
@@ -48,6 +51,10 @@ public:
     ncwrap( ncmpi_def_var( ncid , "height" , NC_FLOAT , 3 , dimids , &hVar  ) , __LINE__ );
     ncwrap( ncmpi_def_var( ncid , "u"      , NC_FLOAT , 3 , dimids , &uVar  ) , __LINE__ );
     ncwrap( ncmpi_def_var( ncid , "v"      , NC_FLOAT , 3 , dimids , &vVar  ) , __LINE__ );
+    dimids[0] = yDim; dimids[1] = xDim;
+    ncwrap( ncmpi_def_var( ncid , "sfc"    , NC_FLOAT , 2 , dimids , &sfcVar ) , __LINE__ );
+    ncwrap( ncmpi_def_var( ncid , "sfc_x"  , NC_FLOAT , 2 , dimids , &sfcxVar) , __LINE__ );
+    ncwrap( ncmpi_def_var( ncid , "sfc_y"  , NC_FLOAT , 2 , dimids , &sfcyVar) , __LINE__ );
 
     // End "define" mode
     ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
@@ -64,7 +71,35 @@ public:
     ct[0] = dom.ny;
     ncwrap( ncmpi_put_vara_float_all( ncid , yVar , st , ct , yCoord.get_data() ) , __LINE__ );
 
+    SArray<real,tord> gllWts;
+    trans.get_gll_weights(gllWts);
+    st[0] = par.j_beg; st[1] = par.i_beg;
+    ct[0] = dom.ny   ; ct[1] = dom.nx   ;
     writeState(state, dom, par);
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        data(j,i) = state.sfc(hs+j,hs+i);
+      }
+    }
+    ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.get_data() ) , __LINE__ );
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        data(j,i) = 0.;
+        for (int ii=0; ii<tord; ii++) {
+          data(j,i) += state.sfc_x(j,i,ii)*gllWts(ii);
+        }
+      }
+    }
+    ncwrap( ncmpi_put_vara_float_all( ncid , sfcxVar , st , ct , data.get_data() ) , __LINE__ );
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        data(j,i) = 0.;
+        for (int ii=0; ii<tord; ii++) {
+          data(j,i) += state.sfc_y(j,i,ii)*gllWts(ii);
+        }
+      }
+    }
+    ncwrap( ncmpi_put_vara_float_all( ncid , sfcyVar , st , ct , data.get_data() ) , __LINE__ );
 
     ncwrap( ncmpi_close(ncid) , __LINE__ );
 

@@ -86,7 +86,7 @@ public :
   }
 
 
-  inline void compSWTendSD_X(Array<real> &state, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendSD_X(Array<real> &state, Array<real> &sfc_x, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
 
     //Exchange halos in the x-direction
     exch.haloInit      ();
@@ -110,6 +110,9 @@ public :
         }
 
         // Compute fluxes and at the GLL points
+        for (int l=0; l<numState; l++) {
+          src(l,j,i) = 0;
+        }
         for (int ii=0; ii<tord; ii++) {
           real h = gllState(idH ,ii);
           real u = gllState(idHU,ii) / h;
@@ -118,6 +121,8 @@ public :
           gllFlux(idH ,ii) = h*u;
           gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2;
           gllFlux(idHV,ii) = h*u*v;
+
+          src(idHU,j,i) += -GRAV*h*sfc_x(j,i,ii) * gllWts(ii);
         }
 
         // Store state and flux limits into a globally indexed array
@@ -155,7 +160,6 @@ public :
         riem.riemannX(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
-          // flux(l,j,i) = ( fluxLimits(l,0,j,i) + fluxLimits(l,1,j,i) ) / 2;
         }
       }
     }
@@ -164,14 +168,14 @@ public :
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx;
+          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
         }
       }
     }
   }
 
 
-  inline void compSWTendSD_Y(Array<real> &state, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendSD_Y(Array<real> &state, Array<real> &sfc_y, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);
@@ -194,6 +198,9 @@ public :
         }
 
         // Compute fluxes and at the GLL points
+        for (int l=0; l<numState; l++) {
+          src(l,j,i) = 0;
+        }
         for (int ii=0; ii<tord; ii++) {
           real h = gllState(idH ,ii);
           real u = gllState(idHU,ii) / h;
@@ -202,6 +209,8 @@ public :
           gllFlux(idH ,ii) = h*v;
           gllFlux(idHU,ii) = h*v*u;
           gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2;
+
+          src(idHV,j,i) += -GRAV*h*sfc_y(j,i,ii) * gllWts(ii);
         }
 
         // Store state and flux limits into a globally indexed array
@@ -238,7 +247,6 @@ public :
         riem.riemannY(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
-          // flux(l,j,i) = ( fluxLimits(l,0,j,i) + fluxLimits(l,1,j,i) ) / 2;
         }
       }
     }
@@ -247,7 +255,7 @@ public :
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy;
+          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
         }
       }
     }

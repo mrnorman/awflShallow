@@ -12,6 +12,9 @@ public:
 
   // Fluid state
   Array<real> state;
+  Array<real> sfc;
+  Array<real> sfc_x;
+  Array<real> sfc_y;
 
 };
 

@@ -108,6 +108,9 @@ public:
 
     // Allocate the fluid state variable
     state.state.setup( numState , dom.ny+2*hs , dom.nx+2*hs );
+    state.sfc.setup( dom.ny+2*hs , dom.nx+2*hs );
+    state.sfc_x.setup( dom.ny , dom.nx , tord );
+    state.sfc_y.setup( dom.ny , dom.nx , tord );
 
     // Initialize the state
     for (int j=0; j<dom.ny; j++) {
@@ -122,11 +125,57 @@ public:
             real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
             real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
             real const h0 = 1000._fp;
+            real h = 0;
 
-            real h = ellipse_linear(xloc, yloc, dom.xlen/2-20, dom.ylen/2-20, 2000, 2000, 100);
+            real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
 
             real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
             state.state(idH,hs+j,hs+i) += wt * (h0+h);
+            state.sfc(hs+j,hs+i) = wt*sfc;
+          }
+        }
+      }
+    }
+
+    // Exchange surface elevation in x-direction
+    exch.haloInit      ();
+    exch.haloPack1_x   (dom, state.sfc);
+    exch.haloExchange_x(dom, par);
+    exch.haloUnpack1_x (dom, state.sfc);
+
+    // Exchange surface elevation in y-direction
+    exch.haloInit      ();
+    exch.haloPack1_y   (dom, state.sfc);
+    exch.haloExchange_y(dom, par);
+    exch.haloUnpack1_y (dom, state.sfc);
+
+    // Compute derivatives of the surface elevation in the x- and y- directions
+    SArray<real,tord,tord> derivX;
+    SArray<real,tord,tord> derivY;
+    SArray<real,ord,ord> s2c;
+    SArray<real,ord,ord> c2d;
+    SArray<real,ord,ord,ord> to_gll_tmp;
+    SArray<real,ord,tord> to_gll;
+    SArray<real,ord,tord> s2d2g_x;
+    SArray<real,ord,tord> s2d2g_y;
+    trans.sten_to_coefs (s2c);
+    trans.coefs_to_deriv(c2d);
+    trans.coefs_to_gll_lower(to_gll_tmp);
+    for (int j=0; j<ord; j++) {
+      for (int i=0; i<tord; i++) {
+        to_gll(j,i) = to_gll_tmp(tord-1,j,i);
+      }
+    }
+    s2d2g_x = ( to_gll * c2d * s2c ) / dom.dx;
+    s2d2g_y = ( to_gll * c2d * s2c ) / dom.dy;
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        for (int ii=0; ii<tord; ii++) {
+          state.sfc_x(j,i,ii) = 0;
+          state.sfc_y(j,i,ii) = 0;
+          for (int s=0; s<ord; s++) {
+            state.sfc_x(j,i,ii) += s2d2g_x(s,ii) * state.sfc(hs+j,i+s );
+            state.sfc_y(j,i,ii) += s2d2g_y(s,ii) * state.sfc(j+s ,hs+i);
           }
         }
       }
