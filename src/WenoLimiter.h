@@ -19,18 +19,18 @@ public:
 
   _HOSTDEV WenoLimiter() {
     if        (ord == 3) {
-      FP sigma = 0.1_fp;
+      sigma = 0.1_fp;
       idl(0) = 1._fp;
       idl(1) = 1._fp;
       idl(2) = 100._fp;
     } else if (ord == 5) {
-      FP sigma = 0.1_fp;
+      sigma = 0.1_fp;
       idl(0) = 1._fp;
       idl(1) = 100._fp;
       idl(2) = 1._fp;
       idl(3) = 1000._fp;
     } else if (ord == 7) {
-      FP sigma = 0.01_fp;
+      sigma = 0.01_fp;
       idl(0) = 1._fp;
       idl(1) = 20._fp;
       idl(2) = 20._fp;
