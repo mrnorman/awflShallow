@@ -69,10 +69,10 @@ public:
   }
 
   inline void haloPackN_x(Domain &dom, real3d &a, int n) {
-    haloPackN_x_ext(dom,a,n,haloSendBufW,haloSendBufE);
+    haloPackN_x_ext(dom,a,n,haloSendBufW,haloSendBufE, nPack);
     nPack = nPack + n;
   }
-  inline void haloPackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufW, real3d &haloSendBufE) {
+  inline void haloPackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufW, real3d &haloSendBufE, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
@@ -86,10 +86,10 @@ public:
 
 
   inline void haloPackN_y(Domain &dom, real3d &a, int n) {
-    haloPackN_y_ext(dom,a,n,haloSendBufS,haloSendBufN);
+    haloPackN_y_ext(dom,a,n,haloSendBufS,haloSendBufN, nPack);
     nPack = nPack + n;
   }
-  inline void haloPackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufS, real3d &haloSendBufN) {
+  inline void haloPackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufS, real3d &haloSendBufN, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -103,10 +103,10 @@ public:
 
 
   inline void haloPack1_x(Domain &dom, real2d &a) {
-    haloPack1_x_ext(dom, a, haloSendBufW, haloSendBufE);
+    haloPack1_x_ext(dom, a, haloSendBufW, haloSendBufE, nPack);
     nPack = nPack + 1;
   }
-  inline void haloPack1_x_ext(Domain &dom, real2d &a, real3d &haloSendBufW, real3d &haloSendBufE) {
+  inline void haloPack1_x_ext(Domain &dom, real2d &a, real3d &haloSendBufW, real3d &haloSendBufE, int const nPack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
     Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
@@ -119,10 +119,10 @@ public:
 
 
   inline void haloPack1_y(Domain &dom, real2d &a) {
-    haloPack1_y_ext(dom, a, haloSendBufS, haloSendBufN);
+    haloPack1_y_ext(dom, a, haloSendBufS, haloSendBufN, nPack);
     nPack = nPack + 1;
   }
-  inline void haloPack1_y_ext(Domain &dom, real2d &a, real3d &haloSendBufS, real3d &haloSendBufN) {
+  inline void haloPack1_y_ext(Domain &dom, real2d &a, real3d &haloSendBufS, real3d &haloSendBufN, int const nPack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -135,10 +135,10 @@ public:
 
 
   inline void haloUnpackN_x(Domain &dom, real3d &a, int n) {
-    haloUnpackN_x_ext(dom, a, n, haloRecvBufW, haloRecvBufE);
+    haloUnpackN_x_ext(dom, a, n, haloRecvBufW, haloRecvBufE, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void haloUnpackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufW, real3d &haloRecvBufE) {
+  inline void haloUnpackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufW, real3d &haloRecvBufE, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
@@ -152,10 +152,10 @@ public:
 
 
   inline void haloUnpackN_y(Domain &dom, real3d &a, int n) {
-    haloUnpackN_y_ext(dom, a, n, haloRecvBufS, haloRecvBufN);
+    haloUnpackN_y_ext(dom, a, n, haloRecvBufS, haloRecvBufN, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void haloUnpackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufS, real3d &haloRecvBufN) {
+  inline void haloUnpackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufS, real3d &haloRecvBufN, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -169,10 +169,10 @@ public:
 
 
   inline void haloUnpack1_x(Domain &dom, real2d &a) {
-    haloUnpack1_x_ext(dom, a, haloRecvBufW, haloRecvBufE);
+    haloUnpack1_x_ext(dom, a, haloRecvBufW, haloRecvBufE, nUnpack);
     nUnpack = nUnpack + 1;
   }
-  inline void haloUnpack1_x_ext(Domain &dom, real2d &a, real3d &haloRecvBufW, real3d &haloRecvBufE) {
+  inline void haloUnpack1_x_ext(Domain &dom, real2d &a, real3d &haloRecvBufW, real3d &haloRecvBufE, int const nUnpack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
     Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
@@ -185,10 +185,10 @@ public:
 
 
   inline void haloUnpack1_y(Domain &dom, real2d &a) {
-    haloUnpack1_y_ext(dom, a, haloRecvBufS, haloRecvBufN);
+    haloUnpack1_y_ext(dom, a, haloRecvBufS, haloRecvBufN, nUnpack);
     nUnpack = nUnpack + 1;
   }
-  inline void haloUnpack1_y_ext(Domain &dom, real2d &a, real3d &haloRecvBufS, real3d &haloRecvBufN) {
+  inline void haloUnpack1_y_ext(Domain &dom, real2d &a, real3d &haloRecvBufS, real3d &haloRecvBufN, int const nUnpack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -239,10 +239,10 @@ public:
 
 
   inline void edgePackN_x(Domain &dom, real4d &a, int n) {
-    edgePackN_x_ext(dom, a, n, edgeSendBufW, edgeSendBufE);
+    edgePackN_x_ext(dom, a, n, edgeSendBufW, edgeSendBufE, nPack);
     nPack = nPack + n;
   }
-  inline void edgePackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeSendBufW, real2d &edgeSendBufE) {
+  inline void edgePackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeSendBufW, real2d &edgeSendBufE, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
@@ -255,10 +255,10 @@ public:
 
 
   inline void edgePackN_y(Domain &dom, real4d &a, int n) {
-    edgePackN_y(dom, a, n, edgeSendBufS, edgeSendBufN);
+    edgePackN_y(dom, a, n, edgeSendBufS, edgeSendBufN, nPack);
     nPack = nPack + n;
   }
-  inline void edgePackN_y(Domain &dom, real4d &a, int n, real2d &edgeSendBufS, real2d &edgeSendBufN) {
+  inline void edgePackN_y(Domain &dom, real4d &a, int n, real2d &edgeSendBufS, real2d &edgeSendBufN, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -271,10 +271,10 @@ public:
 
 
   inline void edgeUnpackN_x(Domain &dom, real4d &a, int n) {
-    edgeUnpackN_x_ext(dom, a, n, edgeRecvBufW, edgeRecvBufE);
+    edgeUnpackN_x_ext(dom, a, n, edgeRecvBufW, edgeRecvBufE, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void edgeUnpackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufW, real2d &edgeRecvBufE) {
+  inline void edgeUnpackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufW, real2d &edgeRecvBufE, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
@@ -287,10 +287,10 @@ public:
 
 
   inline void edgeUnpackN_y(Domain &dom, real4d &a, int n) {
-    edgeUnpackN_y_ext(dom, a, n, edgeRecvBufS, edgeRecvBufN);
+    edgeUnpackN_y_ext(dom, a, n, edgeRecvBufS, edgeRecvBufN, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void edgeUnpackN_y_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufS, real2d &edgeRecvBufN) {
+  inline void edgeUnpackN_y_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufS, real2d &edgeRecvBufN, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -318,6 +318,8 @@ public:
     //Wait for the sends and receives to finish
     ierr = MPI_Waitall(2, sReq, sStat);
     ierr = MPI_Waitall(2, rReq, rStat);
+
+    Kokkos::fence();
   }
 
 

@@ -76,7 +76,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma);
+    reconSD_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -90,7 +90,7 @@ public :
     computeFlux_X(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_X(flux, tend, dom);
+    computeTend_X(flux, src, tend, dom);
   }
 
 
@@ -102,7 +102,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma);
+    reconSD_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -116,7 +116,7 @@ public :
     computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_Y(flux, tend, dom);
+    computeTend_Y(flux, src, tend, dom);
   }
 
 
@@ -128,7 +128,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX);
+    reconADER_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -142,7 +142,7 @@ public :
     computeFlux_X(stateLimits,fluxLimits,flux,dom);
 
     // Form the tendencies
-    computeTend_X(flux, tend, dom);
+    computeTend_X(flux, src, tend, dom);
   }
 
 
@@ -154,7 +154,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY);
+    reconADER_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -168,7 +168,7 @@ public :
     computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_Y(flux, tend, dom);
+    computeTend_Y(flux, src, tend, dom);
   }
 
 
@@ -195,7 +195,8 @@ public :
 
 
   inline void reconADER_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivX) {
+                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, 
+                          SArray<real,tord,tord> const &aderDerivX, real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -246,7 +247,8 @@ public :
 
 
   inline void reconADER_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivY) {
+                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
+                          SArray<real,tord,tord> const &aderDerivY, real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -297,7 +299,8 @@ public :
 
 
   inline void reconSD_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
+                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
+                        real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -346,7 +349,8 @@ public :
 
 
   inline void reconSD_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
+                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
+                        real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -394,7 +398,7 @@ public :
   }
 
 
-  inline void computeFlux_X(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
+  inline void computeFlux_X(real4d const &stateLimits, real4d const &fluxLimits, real3d &flux, Domain const &dom) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx+1; i++) {
     Kokkos::parallel_for( dom.ny*(dom.nx+1) , KOKKOS_LAMBDA (int iGlob) {
@@ -415,7 +419,7 @@ public :
   }
 
 
-  inline void computeFlux_Y(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
+  inline void computeFlux_Y(real4d const &stateLimits, real4d const &fluxLimits, real3d &flux, Domain const &dom) {
     // for (int j=0; j<dom.ny+1; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( (dom.ny+1)*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -436,7 +440,7 @@ public :
   }
 
 
-  inline void computeTend_X(real3d &flux, real3d &tend, Domain &dom) {
+  inline void computeTend_X(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom) {
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -448,7 +452,7 @@ public :
   }
 
 
-  inline void computeTend_Y(real3d &flux, real3d &tend, Domain &dom) {
+  inline void computeTend_Y(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom) {
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
