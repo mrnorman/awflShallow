@@ -149,35 +149,10 @@ public :
     exch.edgeUnpackN_x (dom, fluxLimits , numState);
 
     // Riemann solver
-    computeFlux_X(stateLimits,fluxLimits,flux,dom);
+    computeFlux_X(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
-        }
-      }
-    }
-  }
-
-
-  inline void computeFlux_X(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx+1; i++) {
-        SArray<real,numState> s1, s2, f1, f2, upw;
-        for (int l=0; l<numState; l++) {
-          s1(l) = stateLimits(l,0,j,i);
-          s2(l) = stateLimits(l,1,j,i);
-          f1(l) = fluxLimits (l,0,j,i);
-          f2(l) = fluxLimits (l,1,j,i);
-        }
-        riemannX(s1, s2, f1, f2, upw);
-        for (int l=0; l<numState; l++) {
-          flux(l,j,i) = upw(l);
-        }
-      }
-    }
+    computeTend_X(flux, tend, dom);
   }
 
 
@@ -242,35 +217,10 @@ public :
     exch.edgeUnpackN_y (dom, fluxLimits , numState);
 
     // Riemann solver
-    computeFlux_y(stateLimits, fluxLimits, flux, dom);
+    computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
-        }
-      }
-    }
-  }
-
-
-  inline void computeFlux_y(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
-    for (int j=0; j<dom.ny+1; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState> s1, s2, f1, f2, upw;
-        for (int l=0; l<numState; l++) {
-          s1(l) = stateLimits(l,0,j,i);
-          s2(l) = stateLimits(l,1,j,i);
-          f1(l) = fluxLimits (l,0,j,i);
-          f2(l) = fluxLimits (l,1,j,i);
-        }
-        riemannY(s1, s2, f1, f2, upw);
-        for (int l=0; l<numState; l++) {
-          flux(l,j,i) = upw(l);
-        }
-      }
-    }
+    computeTend_Y(flux, tend, dom);
   }
 
 
@@ -340,13 +290,7 @@ public :
     computeFlux_X(stateLimits,fluxLimits,flux,dom);
 
     // Form the tendencies
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
-        }
-      }
-    }
+    computeTend_X(flux, tend, dom);
   }
 
 
@@ -413,9 +357,63 @@ public :
     exch.edgeUnpackN_y (dom, fluxLimits , numState);
 
     // Riemann solver
-    computeFlux_y(stateLimits, fluxLimits, flux, dom);
+    computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
+    computeTend_Y(flux, tend, dom);
+  }
+
+
+  inline void computeFlux_X(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
+    for (int j=0; j<dom.ny; j++) {
+      for (int i=0; i<dom.nx+1; i++) {
+        SArray<real,numState> s1, s2, f1, f2, upw;
+        for (int l=0; l<numState; l++) {
+          s1(l) = stateLimits(l,0,j,i);
+          s2(l) = stateLimits(l,1,j,i);
+          f1(l) = fluxLimits (l,0,j,i);
+          f2(l) = fluxLimits (l,1,j,i);
+        }
+        riemannX(s1, s2, f1, f2, upw);
+        for (int l=0; l<numState; l++) {
+          flux(l,j,i) = upw(l);
+        }
+      }
+    }
+  }
+
+
+  inline void computeFlux_Y(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
+    for (int j=0; j<dom.ny+1; j++) {
+      for (int i=0; i<dom.nx; i++) {
+        SArray<real,numState> s1, s2, f1, f2, upw;
+        for (int l=0; l<numState; l++) {
+          s1(l) = stateLimits(l,0,j,i);
+          s2(l) = stateLimits(l,1,j,i);
+          f1(l) = fluxLimits (l,0,j,i);
+          f2(l) = fluxLimits (l,1,j,i);
+        }
+        riemannY(s1, s2, f1, f2, upw);
+        for (int l=0; l<numState; l++) {
+          flux(l,j,i) = upw(l);
+        }
+      }
+    }
+  }
+
+
+  inline void computeTend_X(real3d &flux, real3d &tend, Domain &dom) {
+    for (int l=0; l<numState; l++) {
+      for (int j=0; j<dom.ny; j++) {
+        for (int i=0; i<dom.nx; i++) {
+          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
+        }
+      }
+    }
+  }
+
+
+  inline void computeTend_Y(real3d &flux, real3d &tend, Domain &dom) {
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
