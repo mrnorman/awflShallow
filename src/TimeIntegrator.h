@@ -7,6 +7,7 @@
 #include "Domain.h"
 #include "State.h"
 #include "Tendencies.h"
+#include "Indexing.h"
 
 class TimeIntegrator {
 
@@ -80,13 +81,14 @@ public :
   inline void applyTendencies(real3d &state2, real const c0, real3d &state0,
                                               real const c1, real3d &state1,
                                               real const ct, real3d &tend  , Domain &dom) {
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          state2(l,hs+j,hs+i) = c0 * state0(l,hs+j,hs+i) + c1 * state1(l,hs+j,hs+i) + ct * dom.dt * tend(l,j,i);
-        }
-      }
-    }
+    // for (int l=0; l<numState; l++) {
+    //   for (int j=0; j<dom.ny; j++) {
+    //     for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+      int i, j, l;
+      unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
+      state2(l,hs+j,hs+i) = c0 * state0(l,hs+j,hs+i) + c1 * state1(l,hs+j,hs+i) + ct * dom.dt * tend(l,j,i);
+    });
   }
 
 
