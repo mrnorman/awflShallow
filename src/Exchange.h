@@ -169,6 +169,10 @@ public:
 
 
   inline void haloUnpack1_x(Domain &dom, real2d &a) {
+    haloUnpack1_x_ext(dom, a, haloRecvBufW, haloRecvBufE);
+    nUnpack = nUnpack + 1;
+  }
+  inline void haloUnpack1_x_ext(Domain &dom, real2d &a, real3d &haloRecvBufW, real3d &haloRecvBufE) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
     Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
@@ -177,11 +181,14 @@ public:
       a(hs+j,          ii) = haloRecvBufW(nUnpack,j,ii);
       a(hs+j,dom.nx+hs+ii) = haloRecvBufE(nUnpack,j,ii);
     });
-    nUnpack = nUnpack + 1;
   }
 
 
   inline void haloUnpack1_y(Domain &dom, real2d &a) {
+    haloUnpack1_y_ext(dom, a, haloRecvBufS, haloRecvBufN);
+    nUnpack = nUnpack + 1;
+  }
+  inline void haloUnpack1_y_ext(Domain &dom, real2d &a, real3d &haloRecvBufS, real3d &haloRecvBufN) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -190,7 +197,6 @@ public:
       a(          ii,hs+i) = haloRecvBufS(nUnpack,ii,i);
       a(dom.ny+hs+ii,hs+i) = haloRecvBufN(nUnpack,ii,i);
     });
-    nUnpack = nUnpack + 1;
   }
 
 
