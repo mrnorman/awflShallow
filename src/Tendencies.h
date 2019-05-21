@@ -11,6 +11,7 @@
 #include "WenoLimiter.h"
 #include "AderDT.h"
 #include "TransformMatrices.h"
+#include "Indexing.h"
 
 class Tendencies {
 
