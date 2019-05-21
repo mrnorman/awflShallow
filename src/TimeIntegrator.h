@@ -84,7 +84,7 @@ public :
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int i, j, l;
       unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
       state2(l,hs+j,hs+i) = c0 * state0(l,hs+j,hs+i) + c1 * state1(l,hs+j,hs+i) + ct * dom.dt * tend(l,j,i);
@@ -96,7 +96,7 @@ public :
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int i, j, l;
       unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
       tend(l,j,i) += tendTmp(l,j,i);

@@ -69,56 +69,68 @@ public:
   }
 
   inline void haloPackN_x(Domain &dom, real3d &a, int n) {
+    haloPackN_x_ext(dom,a,n,haloSendBufW,haloSendBufE);
+    nPack = nPack + n;
+  }
+  inline void haloPackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufW, real3d &haloSendBufE) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
       int v, j, ii;
       unpackIndices(iGlob,n,dom.ny,hs,v,j,ii);
       haloSendBufW(nPack+v,j,ii) = a(v,hs+j,hs    +ii);
       haloSendBufE(nPack+v,j,ii) = a(v,hs+j,dom.nx+ii);
     });
-    nPack = nPack + n;
   }
 
 
   inline void haloPackN_y(Domain &dom, real3d &a, int n) {
+    haloPackN_y_ext(dom,a,n,haloSendBufS,haloSendBufN);
+    nPack = nPack + n;
+  }
+  inline void haloPackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufS, real3d &haloSendBufN) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, ii, i;
       unpackIndices(iGlob,n,hs,dom.nx,v,ii,i);
       haloSendBufS(nPack+v,ii,i) = a(v,hs    +ii,hs+i);
       haloSendBufN(nPack+v,ii,i) = a(v,dom.ny+ii,hs+i);
     });
-    nPack = nPack + n;
   }
 
 
   inline void haloPack1_x(Domain &dom, real2d &a) {
+    haloPack1_x_ext(dom, a, haloSendBufW, haloSendBufE);
+    nPack = nPack + 1;
+  }
+  inline void haloPack1_x_ext(Domain &dom, real2d &a, real3d &haloSendBufW, real3d &haloSendBufE) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( dom.ny*hs , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
       int j, ii;
       unpackIndices(iGlob,dom.ny,hs,j,ii);
       haloSendBufW(nPack,j,ii) = a(hs+j,hs    +ii);
       haloSendBufE(nPack,j,ii) = a(hs+j,dom.nx+ii);
     });
-    nPack = nPack + 1;
   }
 
 
   inline void haloPack1_y(Domain &dom, real2d &a) {
+    haloPack1_y_ext(dom, a, haloSendBufS, haloSendBufN);
+    nPack = nPack + 1;
+  }
+  inline void haloPack1_y_ext(Domain &dom, real2d &a, real3d &haloSendBufS, real3d &haloSendBufN) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( hs*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int ii, i;
       unpackIndices(iGlob,hs,dom.nx,ii,i);
       haloSendBufS(nPack,ii,i) = a(hs    +ii,hs+i);
       haloSendBufN(nPack,ii,i) = a(dom.ny+ii,hs+i);
     });
-    nPack = nPack + 1;
   }
 
 
@@ -126,7 +138,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
       int v, j, ii;
       unpackIndices(iGlob,n,dom.ny,hs,v,j,ii);
       a(v,hs+j,          ii) = haloRecvBufW(nUnpack+v,j,ii);
@@ -140,7 +152,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, ii, i;
       unpackIndices(iGlob,n,hs,dom.nx,v,ii,i);
       a(v,          ii,hs+i) = haloRecvBufS(nUnpack+v,ii,i);
@@ -153,7 +165,7 @@ public:
   inline void haloUnpack1_x(Domain &dom, real2d &a) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( dom.ny*hs , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
       int j, ii;
       unpackIndices(iGlob,dom.ny,hs,j,ii);
       a(hs+j,          ii) = haloRecvBufW(nUnpack,j,ii);
@@ -166,7 +178,7 @@ public:
   inline void haloUnpack1_y(Domain &dom, real2d &a) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( hs*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int ii, i;
       unpackIndices(iGlob,hs,dom.nx,ii,i);
       a(          ii,hs+i) = haloRecvBufS(nUnpack,ii,i);
@@ -217,7 +229,7 @@ public:
   inline void edgePackN_x(Domain &dom, real4d &a, int n) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
-    Kokkos::parallel_for( n*dom.ny , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
       int v, j;
       unpackIndices(iGlob,n,dom.ny,v,j);
       edgeSendBufW(nPack+v,j) = a(v,1,j,0     );
@@ -230,7 +242,7 @@ public:
   inline void edgePackN_y(Domain &dom, real4d &a, int n) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, i;
       unpackIndices(iGlob,n,dom.nx,v,i);
       edgeSendBufS(nPack+v,i) = a(v,1,0     ,i);
@@ -243,7 +255,7 @@ public:
   inline void edgeUnpackN_x(Domain &dom, real4d &a, int n) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
-    Kokkos::parallel_for( n*dom.ny , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
       int v, j;
       unpackIndices(iGlob,n,dom.ny,v,j);
       a(v,0,j,0     ) = edgeRecvBufW(nUnpack+v,j);
@@ -256,7 +268,7 @@ public:
   inline void edgeUnpackN_y(Domain &dom, real4d &a, int n) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+    Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, i;
       unpackIndices(iGlob,n,dom.nx,v,i);
       a(v,0,0     ,i) = edgeRecvBufS(nUnpack+v,i);

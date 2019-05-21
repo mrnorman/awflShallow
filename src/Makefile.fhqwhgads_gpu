@@ -2,7 +2,7 @@
 KOKKOS_PATH = ${HOME}/kokkos
 KOKKOS_SRC_PATH = ${KOKKOS_PATH}
 SRC = driver.cpp
-EXE = cloudFV
+EXE = swm
 
 default: main
 
@@ -31,7 +31,7 @@ $(EXE): $(OBJ) $(KOKKOS_LINK_DEPENDS)
 	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) $(EXTRA_INC) -c $< -o $(notdir $@)
 
 clean:
-	rm -f *.gch *.o *.dat cloudFV
+	rm -f *.gch *.o *.dat swm
 
 realclean: clean kokkos-clean
 	rm -f KokkosCore_config.h KokkosCore_config.tmp libkokkos.a
