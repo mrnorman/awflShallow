@@ -271,6 +271,10 @@ public:
 
 
   inline void edgeUnpackN_x(Domain &dom, real4d &a, int n) {
+    edgeUnpackN_x_ext(dom, a, n, edgeRecvBufW, edgeRecvBufE);
+    nUnpack = nUnpack + n;
+  }
+  inline void edgeUnpackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufW, real2d &edgeRecvBufE) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
@@ -279,11 +283,14 @@ public:
       a(v,0,j,0     ) = edgeRecvBufW(nUnpack+v,j);
       a(v,1,j,dom.nx) = edgeRecvBufE(nUnpack+v,j);
     });
-    nUnpack = nUnpack + n;
   }
 
 
   inline void edgeUnpackN_y(Domain &dom, real4d &a, int n) {
+    edgeUnpackN_y_ext(dom, a, n, edgeRecvBufS, edgeRecvBufN);
+    nUnpack = nUnpack + n;
+  }
+  inline void edgeUnpackN_y_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufS, real2d &edgeRecvBufN) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -292,7 +299,6 @@ public:
       a(v,0,0     ,i) = edgeRecvBufS(nUnpack+v,i);
       a(v,1,dom.ny,i) = edgeRecvBufN(nUnpack+v,i);
     });
-    nUnpack = nUnpack + n;
   }
 
 
