@@ -5,7 +5,6 @@
 #include "const.h"
 #include "Parallel.h"
 #include "SArray.h"
-#include "Array.h"
 #include "Riemann.h"
 #include "Domain.h"
 #include "Exchange.h"
@@ -15,10 +14,10 @@
 
 class Tendencies {
 
-  Array<real> stateLimits;
-  Array<real> fluxLimits;
-  Array<real> flux;
-  Array<real> src;
+  real4d stateLimits;
+  real4d fluxLimits;
+  real3d flux;
+  real3d src;
   SArray<real,tord> gllWts;
   SArray<real,ord,tord> to_gll;
   SArray<real,ord,ord,ord> wenoRecon;
@@ -32,10 +31,10 @@ public :
 
   inline void initialize(Domain &dom) {
     TransformMatrices<real> trans;
-    fluxLimits .setup(numState,2,dom.ny+1,dom.nx+1);
-    stateLimits.setup(numState,2,dom.ny+1,dom.nx+1);
-    flux       .setup(numState  ,dom.ny+1,dom.nx+1);
-    src        .setup(numState  ,dom.ny  ,dom.nx  );
+    fluxLimits  = real4d("fluxLimits" ,numState,2,dom.ny+1,dom.nx+1);
+    stateLimits = real4d("stateLimits",numState,2,dom.ny+1,dom.nx+1);
+    flux        = real3d("flux"       ,numState  ,dom.ny+1,dom.nx+1);
+    src         = real3d("src"        ,numState  ,dom.ny  ,dom.nx  );
 
     SArray<real,ord,ord,ord> to_gll_tmp;
 
@@ -87,7 +86,7 @@ public :
   }
 
 
-  inline void compSWTendSD_X(Array<real> &state, Array<real> &sfc_x, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendSD_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
 
     //Exchange halos in the x-direction
     exch.haloInit      ();
@@ -176,7 +175,7 @@ public :
   }
 
 
-  inline void compSWTendSD_Y(Array<real> &state, Array<real> &sfc_y, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendSD_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);
@@ -263,7 +262,7 @@ public :
   }
 
 
-  inline void compSWTendADER_X(Array<real> &state, Array<real> &sfc_x, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendADER_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the x-direction
     exch.haloInit      ();
     exch.haloPackN_x   (dom, state, numState);
@@ -353,7 +352,7 @@ public :
   }
 
 
-  inline void compSWTendADER_Y(Array<real> &state, Array<real> &sfc_y, Domain &dom, Exchange &exch, Parallel &par, Array<real> &tend) {
+  inline void compSWTendADER_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);

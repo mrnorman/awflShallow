@@ -4,16 +4,15 @@
 
 #include "const.h"
 #include "Parallel.h"
-#include "Array.h"
 #include "Domain.h"
 #include "State.h"
 #include "Tendencies.h"
 
 class TimeIntegrator {
 
-  Array<real> stateTmp;
-  Array<real> tendArr;
-  Array<real> tendArrTmp;
+  real3d stateTmp;
+  real3d tendArr;
+  real3d tendArrTmp;
   Tendencies tend;
   int dsSwitch;
 
@@ -22,13 +21,10 @@ public :
 
   inline void initialize(Domain &dom) {
     if (timeMethod == TIME_SSPRK3) {
-      stateTmp  .setup(numState,dom.ny+2*hs,dom.nx+2*hs);
-      stateTmp = 0;
-      tendArrTmp.setup(numState,dom.ny,dom.nx);
-      tendArrTmp = 0;
+      stateTmp   = real3d("stateTmp"  ,numState,dom.ny+2*hs,dom.nx+2*hs);
+      tendArrTmp = real3d("tendArrTmp",numState,dom.ny,dom.nx);
     }
-    tendArr.setup(numState,dom.ny,dom.nx);
-    tendArr = 0;
+    tendArr = real3d("tendArr",numState,dom.ny,dom.nx);
     tend.initialize(dom);
     dsSwitch = 1;
   }
@@ -81,9 +77,9 @@ public :
   }
 
 
-  inline void applyTendencies(Array<real> &state2, real const c0, Array<real> &state0,
-                                                   real const c1, Array<real> &state1,
-                                                   real const ct, Array<real> &tend, Domain &dom) {
+  inline void applyTendencies(real3d &state2, real const c0, real3d &state0,
+                                              real const c1, real3d &state1,
+                                              real const ct, real3d &tend  , Domain &dom) {
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {
@@ -94,7 +90,7 @@ public :
   }
 
 
-  inline void appendTendencies(Array<real> &tend, Array<real> &tendTmp, Domain &dom) {
+  inline void appendTendencies(real3d &tend, real3d &tendTmp, Domain &dom) {
     for (int l=0; l<numState; l++) {
       for (int j=0; j<dom.ny; j++) {
         for (int i=0; i<dom.nx; i++) {

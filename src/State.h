@@ -4,17 +4,16 @@
 
 #include "const.h"
 #include "SArray.h"
-#include "Array.h"
 
 class State {
 
 public:
 
   // Fluid state
-  Array<real> state;
-  Array<real> sfc;
-  Array<real> sfc_x;
-  Array<real> sfc_y;
+  real3d state;
+  real2d sfc;
+  real3d sfc_x;
+  real3d sfc_y;
 
 };
 

@@ -2,8 +2,8 @@
 #ifndef _PARALLEL_H_
 #define _PARALLEL_H_
 
+#include "SArray.h"
 #include "const.h"
-#include "Array.h"
 
 class Parallel {
 
@@ -20,7 +20,7 @@ public:
   ulong i_end;
   ulong j_end;
   int masterproc;
-  Array<int> neigh;
+  SArray<int,3,3> neigh;
 };
 
 #endif

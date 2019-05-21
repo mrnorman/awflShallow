@@ -6,7 +6,6 @@
 #include "Exchange.h"
 #include "TransformMatrices.h"
 #include "TimeIntegrator.h"
-#include "Array.h"
 #include "mpi.h"
 
 class Initializer{
@@ -61,7 +60,6 @@ public:
     //Determine my number of grid cells
     dom.nx = par.i_end - par.i_beg + 1;
     dom.ny = par.j_end - par.j_beg + 1;
-    par.neigh.setup(3,3);
     for (int j = 0; j < 3; j++) {
       for (int i = 0; i < 3; i++) {
         int pxloc = par.px+i-1;
@@ -107,10 +105,10 @@ public:
     exch.allocate(dom);
 
     // Allocate the fluid state variable
-    state.state.setup( numState , dom.ny+2*hs , dom.nx+2*hs );
-    state.sfc.setup( dom.ny+2*hs , dom.nx+2*hs );
-    state.sfc_x.setup( dom.ny , dom.nx , tord );
-    state.sfc_y.setup( dom.ny , dom.nx , tord );
+    state.state = real3d( "state" , numState , dom.ny+2*hs , dom.nx+2*hs );
+    state.sfc   = real2d( "sfc"   , dom.ny+2*hs , dom.nx+2*hs );
+    state.sfc_x = real3d( "sfc_x" , dom.ny , dom.nx , tord );
+    state.sfc_y = real3d( "sfc_y" , dom.ny , dom.nx , tord );
 
     // Initialize the state
     for (int j=0; j<dom.ny; j++) {
