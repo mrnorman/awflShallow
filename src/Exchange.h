@@ -135,6 +135,10 @@ public:
 
 
   inline void haloUnpackN_x(Domain &dom, real3d &a, int n) {
+    haloUnpackN_x_ext(dom, a, n, haloRecvBufW, haloRecvBufE);
+    nUnpack = nUnpack + n;
+  }
+  inline void haloUnpackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufW, real3d &haloRecvBufE) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
@@ -144,11 +148,14 @@ public:
       a(v,hs+j,          ii) = haloRecvBufW(nUnpack+v,j,ii);
       a(v,hs+j,dom.nx+hs+ii) = haloRecvBufE(nUnpack+v,j,ii);
     });
-    nUnpack = nUnpack + n;
   }
 
 
   inline void haloUnpackN_y(Domain &dom, real3d &a, int n) {
+    haloUnpackN_y_ext(dom, a, n, haloRecvBufS, haloRecvBufN);
+    nUnpack = nUnpack + n;
+  }
+  inline void haloUnpackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufS, real3d &haloRecvBufN) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -158,7 +165,6 @@ public:
       a(v,          ii,hs+i) = haloRecvBufS(nUnpack+v,ii,i);
       a(v,dom.ny+hs+ii,hs+i) = haloRecvBufN(nUnpack+v,ii,i);
     });
-    nUnpack = nUnpack + n;
   }
 
 
