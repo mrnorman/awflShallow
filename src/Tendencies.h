@@ -120,105 +120,6 @@ public :
   }
 
 
-  inline void reconADER_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivX) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState,tord,tord> stateDTs;  // GLL state values
-        SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
-        SArray<real,numState,tord,tord> srcDTs;   // GLL source values
-        SArray<real,tord> sfc_x_loc;
-
-        // Compute tord GLL points of the state vector
-        for (int l=0; l<numState; l++) {
-          SArray<real,ord> stencil;
-          SArray<real,tord> gllPts;
-          for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
-          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
-          for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
-        }
-
-        // Compute DTs of the state and flux, and collapse down into a time average
-        for (int ii=0 ;ii<tord; ii++) {
-          sfc_x_loc(ii) = sfc_x(j,i,ii);
-        }
-        diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
-        timeAvg( stateDTs , dom );
-        timeAvg( fluxDTs  , dom );
-        timeAvg( srcDTs   , dom );
-
-        for (int l=0; l<numState; l++) {
-          src(l,j,i) = 0;
-          for (int ii=0; ii<tord; ii++) {
-            src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
-          }
-        }
-
-        // Store state and flux limits into a globally indexed array
-        for (int l=0; l<numState; l++) {
-          // Store the left cell edge state and flux estimates
-          stateLimits(l,1,j,i  ) = stateDTs(l,0,0);
-          fluxLimits (l,1,j,i  ) = fluxDTs (l,0,0);
-
-          // Store the Right cell edge state and flux estimates
-          stateLimits(l,0,j,i+1) = stateDTs(l,0,tord-1);
-          fluxLimits (l,0,j,i+1) = fluxDTs (l,0,tord-1);
-        }
-
-      }
-    }
-  }
-
-
-  inline void reconADER_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivY) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState,tord,tord> stateDTs;  // GLL state values
-        SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
-        SArray<real,numState,tord,tord> srcDTs;   // GLL source values
-        SArray<real,tord> sfc_y_loc;
-
-        // Compute GLL points from cell averages
-        for (int l=0; l<numState; l++) {
-          SArray<real,ord> stencil;
-          SArray<real,tord> gllPts;
-          for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
-          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
-          for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
-        }
-
-        // Compute DTs of the state and flux, and collapse down into a time average
-        for (int ii=0 ;ii<tord; ii++) {
-          sfc_y_loc(ii) = sfc_y(j,i,ii);
-        }
-        diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
-        timeAvg( stateDTs , dom );
-        timeAvg( fluxDTs  , dom );
-        timeAvg( srcDTs   , dom );
-
-        for (int l=0; l<numState; l++) {
-          src(l,j,i) = 0;
-          for (int ii=0; ii<tord; ii++) {
-            src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
-          }
-        }
-
-        // Store state and flux limits into a globally indexed array
-        for (int l=0; l<numState; l++) {
-          // Store the left cell edge state and flux estimates
-          stateLimits(l,1,j  ,i) = stateDTs(l,0,0);
-          fluxLimits (l,1,j  ,i) = fluxDTs (l,0,0);
-
-          // Store the Right cell edge state and flux estimates
-          stateLimits(l,0,j+1,i) = stateDTs(l,0,tord-1);
-          fluxLimits (l,0,j+1,i) = fluxDTs (l,0,tord-1);
-        }
-      }
-    }
-  }
-
-
   inline void compSWTendADER_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the x-direction
     exch.haloInit      ();
@@ -293,157 +194,269 @@ public :
   }
 
 
-  inline void reconSD_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
-                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState,tord> gllState;  // GLL state values
-        SArray<real,numState,tord> gllFlux;   // GLL flux values
+  inline void reconADER_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivX) {
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      SArray<real,numState,tord,tord> stateDTs;  // GLL state values
+      SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
+      SArray<real,numState,tord,tord> srcDTs;   // GLL source values
+      SArray<real,tord> sfc_x_loc;
 
-        // Compute tord GLL points of the state vector
-        for (int l=0; l<numState; l++) {
-          SArray<real,ord> stencil;
-          SArray<real,tord> gllPts;
-          for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
-          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
-          for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
-        }
+      // Compute tord GLL points of the state vector
+      for (int l=0; l<numState; l++) {
+        SArray<real,ord> stencil;
+        SArray<real,tord> gllPts;
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      }
 
-        // Compute fluxes and at the GLL points
-        for (int l=0; l<numState; l++) {
-          src(l,j,i) = 0;
-        }
+      // Compute DTs of the state and flux, and collapse down into a time average
+      for (int ii=0 ;ii<tord; ii++) {
+        sfc_x_loc(ii) = sfc_x(j,i,ii);
+      }
+      diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
+      timeAvg( stateDTs , dom );
+      timeAvg( fluxDTs  , dom );
+      timeAvg( srcDTs   , dom );
+
+      for (int l=0; l<numState; l++) {
+        src(l,j,i) = 0;
         for (int ii=0; ii<tord; ii++) {
-          real h = gllState(idH ,ii);
-          real u = gllState(idHU,ii) / h;
-          real v = gllState(idHV,ii) / h;
-
-          gllFlux(idH ,ii) = h*u;
-          gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2;
-          gllFlux(idHV,ii) = h*u*v;
-
-          src(idHU,j,i) += -GRAV*h*sfc_x(j,i,ii) * gllWts(ii);
-        }
-
-        // Store state and flux limits into a globally indexed array
-        for (int l=0; l<numState; l++) {
-          // Store the left cell edge state and flux estimates
-          stateLimits(l,1,j,i  ) = gllState(l,0);
-          fluxLimits (l,1,j,i  ) = gllFlux (l,0);
-
-          // Store the Right cell edge state and flux estimates
-          stateLimits(l,0,j,i+1) = gllState(l,tord-1);
-          fluxLimits (l,0,j,i+1) = gllFlux (l,tord-1);
+          src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
         }
       }
-    }
+
+      // Store state and flux limits into a globally indexed array
+      for (int l=0; l<numState; l++) {
+        // Store the left cell edge state and flux estimates
+        stateLimits(l,1,j,i  ) = stateDTs(l,0,0);
+        fluxLimits (l,1,j,i  ) = fluxDTs (l,0,0);
+
+        // Store the Right cell edge state and flux estimates
+        stateLimits(l,0,j,i+1) = stateDTs(l,0,tord-1);
+        fluxLimits (l,0,j,i+1) = fluxDTs (l,0,tord-1);
+      }
+    });
+  }
+
+
+  inline void reconADER_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+                          real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, SArray<real,tord,tord> const &aderDerivY) {
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      SArray<real,numState,tord,tord> stateDTs;  // GLL state values
+      SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
+      SArray<real,numState,tord,tord> srcDTs;   // GLL source values
+      SArray<real,tord> sfc_y_loc;
+
+      // Compute GLL points from cell averages
+      for (int l=0; l<numState; l++) {
+        SArray<real,ord> stencil;
+        SArray<real,tord> gllPts;
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      }
+
+      // Compute DTs of the state and flux, and collapse down into a time average
+      for (int ii=0 ;ii<tord; ii++) {
+        sfc_y_loc(ii) = sfc_y(j,i,ii);
+      }
+      diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
+      timeAvg( stateDTs , dom );
+      timeAvg( fluxDTs  , dom );
+      timeAvg( srcDTs   , dom );
+
+      for (int l=0; l<numState; l++) {
+        src(l,j,i) = 0;
+        for (int ii=0; ii<tord; ii++) {
+          src(l,j,i) += srcDTs(l,0,ii) * gllWts(ii);
+        }
+      }
+
+      // Store state and flux limits into a globally indexed array
+      for (int l=0; l<numState; l++) {
+        // Store the left cell edge state and flux estimates
+        stateLimits(l,1,j  ,i) = stateDTs(l,0,0);
+        fluxLimits (l,1,j  ,i) = fluxDTs (l,0,0);
+
+        // Store the Right cell edge state and flux estimates
+        stateLimits(l,0,j+1,i) = stateDTs(l,0,tord-1);
+        fluxLimits (l,0,j+1,i) = fluxDTs (l,0,tord-1);
+      }
+    });
+  }
+
+
+  inline void reconSD_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      SArray<real,numState,tord> gllState;  // GLL state values
+      SArray<real,numState,tord> gllFlux;   // GLL flux values
+
+      // Compute tord GLL points of the state vector
+      for (int l=0; l<numState; l++) {
+        SArray<real,ord> stencil;
+        SArray<real,tord> gllPts;
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
+      }
+
+      // Compute fluxes and at the GLL points
+      for (int l=0; l<numState; l++) {
+        src(l,j,i) = 0;
+      }
+      for (int ii=0; ii<tord; ii++) {
+        real h = gllState(idH ,ii);
+        real u = gllState(idHU,ii) / h;
+        real v = gllState(idHV,ii) / h;
+
+        gllFlux(idH ,ii) = h*u;
+        gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2;
+        gllFlux(idHV,ii) = h*u*v;
+
+        src(idHU,j,i) += -GRAV*h*sfc_x(j,i,ii) * gllWts(ii);
+      }
+
+      // Store state and flux limits into a globally indexed array
+      for (int l=0; l<numState; l++) {
+        // Store the left cell edge state and flux estimates
+        stateLimits(l,1,j,i  ) = gllState(l,0);
+        fluxLimits (l,1,j,i  ) = gllFlux (l,0);
+
+        // Store the Right cell edge state and flux estimates
+        stateLimits(l,0,j,i+1) = gllState(l,tord-1);
+        fluxLimits (l,0,j,i+1) = gllFlux (l,tord-1);
+      }
+    });
   }
 
 
   inline void reconSD_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                         real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState,tord> gllState;
-        SArray<real,numState,tord> gllFlux;
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      SArray<real,numState,tord> gllState;
+      SArray<real,numState,tord> gllFlux;
 
-        // Compute GLL points from cell averages
-        for (int l=0; l<numState; l++) {
-          SArray<real,ord> stencil;
-          SArray<real,tord> gllPts;
-          for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
-          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
-          for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
-        }
-
-        // Compute fluxes and at the GLL points
-        for (int l=0; l<numState; l++) {
-          src(l,j,i) = 0;
-        }
-        for (int ii=0; ii<tord; ii++) {
-          real h = gllState(idH ,ii);
-          real u = gllState(idHU,ii) / h;
-          real v = gllState(idHV,ii) / h;
-
-          gllFlux(idH ,ii) = h*v;
-          gllFlux(idHU,ii) = h*v*u;
-          gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2;
-
-          src(idHV,j,i) += -GRAV*h*sfc_y(j,i,ii) * gllWts(ii);
-        }
-
-        // Store state and flux limits into a globally indexed array
-        for (int l=0; l<numState; l++) {
-          // Store the left cell edge state and flux estimates
-          stateLimits(l,1,j  ,i) = gllState(l,0);
-          fluxLimits (l,1,j  ,i) = gllFlux (l,0);
-
-          // Store the Right cell edge state and flux estimates
-          stateLimits(l,0,j+1,i) = gllState(l,tord-1);
-          fluxLimits (l,0,j+1,i) = gllFlux (l,tord-1);
-        }
+      // Compute GLL points from cell averages
+      for (int l=0; l<numState; l++) {
+        SArray<real,ord> stencil;
+        SArray<real,tord> gllPts;
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
+        reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
+        for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
       }
-    }
+
+      // Compute fluxes and at the GLL points
+      for (int l=0; l<numState; l++) {
+        src(l,j,i) = 0;
+      }
+      for (int ii=0; ii<tord; ii++) {
+        real h = gllState(idH ,ii);
+        real u = gllState(idHU,ii) / h;
+        real v = gllState(idHV,ii) / h;
+
+        gllFlux(idH ,ii) = h*v;
+        gllFlux(idHU,ii) = h*v*u;
+        gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2;
+
+        src(idHV,j,i) += -GRAV*h*sfc_y(j,i,ii) * gllWts(ii);
+      }
+
+      // Store state and flux limits into a globally indexed array
+      for (int l=0; l<numState; l++) {
+        // Store the left cell edge state and flux estimates
+        stateLimits(l,1,j  ,i) = gllState(l,0);
+        fluxLimits (l,1,j  ,i) = gllFlux (l,0);
+
+        // Store the Right cell edge state and flux estimates
+        stateLimits(l,0,j+1,i) = gllState(l,tord-1);
+        fluxLimits (l,0,j+1,i) = gllFlux (l,tord-1);
+      }
+    });
   }
 
 
   inline void computeFlux_X(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx+1; i++) {
-        SArray<real,numState> s1, s2, f1, f2, upw;
-        for (int l=0; l<numState; l++) {
-          s1(l) = stateLimits(l,0,j,i);
-          s2(l) = stateLimits(l,1,j,i);
-          f1(l) = fluxLimits (l,0,j,i);
-          f2(l) = fluxLimits (l,1,j,i);
-        }
-        riemannX(s1, s2, f1, f2, upw);
-        for (int l=0; l<numState; l++) {
-          flux(l,j,i) = upw(l);
-        }
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx+1; i++) {
+    Kokkos::parallel_for( dom.ny*(dom.nx+1) , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx+1,j,i);
+      SArray<real,numState> s1, s2, f1, f2, upw;
+      for (int l=0; l<numState; l++) {
+        s1(l) = stateLimits(l,0,j,i);
+        s2(l) = stateLimits(l,1,j,i);
+        f1(l) = fluxLimits (l,0,j,i);
+        f2(l) = fluxLimits (l,1,j,i);
       }
-    }
+      riemannX(s1, s2, f1, f2, upw);
+      for (int l=0; l<numState; l++) {
+        flux(l,j,i) = upw(l);
+      }
+    });
   }
 
 
   inline void computeFlux_Y(real4d &stateLimits, real4d &fluxLimits, real3d &flux, Domain &dom) {
-    for (int j=0; j<dom.ny+1; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        SArray<real,numState> s1, s2, f1, f2, upw;
-        for (int l=0; l<numState; l++) {
-          s1(l) = stateLimits(l,0,j,i);
-          s2(l) = stateLimits(l,1,j,i);
-          f1(l) = fluxLimits (l,0,j,i);
-          f2(l) = fluxLimits (l,1,j,i);
-        }
-        riemannY(s1, s2, f1, f2, upw);
-        for (int l=0; l<numState; l++) {
-          flux(l,j,i) = upw(l);
-        }
+    // for (int j=0; j<dom.ny+1; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( (dom.ny+1)*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny+1,dom.nx,j,i);
+      SArray<real,numState> s1, s2, f1, f2, upw;
+      for (int l=0; l<numState; l++) {
+        s1(l) = stateLimits(l,0,j,i);
+        s2(l) = stateLimits(l,1,j,i);
+        f1(l) = fluxLimits (l,0,j,i);
+        f2(l) = fluxLimits (l,1,j,i);
       }
-    }
+      riemannY(s1, s2, f1, f2, upw);
+      for (int l=0; l<numState; l++) {
+        flux(l,j,i) = upw(l);
+      }
+    });
   }
 
 
   inline void computeTend_X(real3d &flux, real3d &tend, Domain &dom) {
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
-        }
-      }
-    }
+    // for (int l=0; l<numState; l++) {
+    //   for (int j=0; j<dom.ny; j++) {
+    //     for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j, l;
+      unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
+      tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
+    });
   }
 
 
   inline void computeTend_Y(real3d &flux, real3d &tend, Domain &dom) {
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
-        }
-      }
-    }
+    // for (int l=0; l<numState; l++) {
+    //   for (int j=0; j<dom.ny; j++) {
+    //     for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j, l;
+      unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
+      tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
+    });
   }
 
 

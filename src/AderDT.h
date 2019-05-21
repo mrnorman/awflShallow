@@ -6,7 +6,7 @@
 #include "SArray.h"
 
 
-  inline _HOSTDEV void timeAvg( SArray<real,numState,tord,tord> &dts , Domain &dom ) {
+  inline _HOSTDEV void timeAvg( SArray<real,numState,tord,tord> &dts , Domain const &dom ) {
     real dtmult = dom.dt;
     for (int kt=1; kt<tord; kt++) {
       for (int l=0; l<numState; l++) {
@@ -19,7 +19,7 @@
   }
 
 
-  inline _HOSTDEV void timeAvg( SArray<real,tord,tord> &dts , Domain &dom ) {
+  inline _HOSTDEV void timeAvg( SArray<real,tord,tord> &dts , Domain const &dom ) {
     real dtmult = dom.dt;
     for (int kt=1; kt<tord; kt++) {
       for (int ii=0; ii<tord; ii++) {
