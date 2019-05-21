@@ -40,7 +40,7 @@ public :
     SArray<real,ord,ord,ord> to_gll_tmp;
 
     // Setup the matrix to transform a stencil of ord cell averages into tord GLL points
-    if (doWeno) {
+    if (dom.doWeno) {
       trans.coefs_to_gll_lower( to_gll_tmp );
     } else {
       trans.sten_to_gll_lower( to_gll_tmp );
@@ -68,7 +68,9 @@ public :
 
 
   // Transform ord stencil cell averages into tord GLL point values
-  inline _HOSTDEV void reconStencil(SArray<real,ord> &stencil, SArray<real,tord> &gll, int const doWeno) {
+  inline _HOSTDEV void reconStencil(SArray<real,ord> const &stencil, SArray<real,tord> &gll, int const doWeno,
+                                    SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll,
+                                    SArray<real,hs+2> const &wenoIdl, real wenoSigma) {
     SArray<real,ord> coefs;
     if (doWeno) {
       compute_weno_coefs(wenoRecon,stencil,coefs,wenoIdl,wenoSigma);
@@ -106,7 +108,7 @@ public :
           SArray<real,ord> stencil;
           SArray<real,tord> gllPts;
           for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
-          reconStencil(stencil,gllPts,doWeno);
+          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
           for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
         }
 
@@ -174,7 +176,7 @@ public :
           SArray<real,ord> stencil;
           SArray<real,tord> gllPts;
           for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
-          reconStencil(stencil,gllPts,doWeno);
+          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
           for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
         }
 
@@ -244,7 +246,7 @@ public :
           SArray<real,ord> stencil;
           SArray<real,tord> gllPts;
           for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
-          reconStencil(stencil,gllPts,doWeno);
+          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
           for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
         }
 
@@ -314,7 +316,7 @@ public :
           SArray<real,ord> stencil;
           SArray<real,tord> gllPts;
           for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
-          reconStencil(stencil,gllPts,doWeno);
+          reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
           for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
         }
 
