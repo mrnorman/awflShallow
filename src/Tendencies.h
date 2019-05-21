@@ -89,15 +89,8 @@ public :
   }
 
 
-  inline void compSWTendSD_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
-
-    //Exchange halos in the x-direction
-    exch.haloInit      ();
-    exch.haloPackN_x   (dom, state, numState);
-    exch.haloExchange_x(dom, par);
-    exch.haloUnpackN_x (dom, state, numState);
-
-    // Reconstruct to tord GLL points in the x-direction
+  inline void reconSD_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
     for (int j=0; j<dom.ny; j++) {
       for (int i=0; i<dom.nx; i++) {
         SArray<real,numState,tord> gllState;  // GLL state values
@@ -138,34 +131,13 @@ public :
           stateLimits(l,0,j,i+1) = gllState(l,tord-1);
           fluxLimits (l,0,j,i+1) = gllFlux (l,tord-1);
         }
-
       }
     }
-
-    //Reconcile the edge fluxes via MPI exchange.
-    exch.haloInit      ();
-    exch.edgePackN_x   (dom, stateLimits, numState);
-    exch.edgePackN_x   (dom, fluxLimits , numState);
-    exch.edgeExchange_x(dom, par);
-    exch.edgeUnpackN_x (dom, stateLimits, numState);
-    exch.edgeUnpackN_x (dom, fluxLimits , numState);
-
-    // Riemann solver
-    computeFlux_X(stateLimits, fluxLimits, flux, dom);
-
-    // Form the tendencies
-    computeTend_X(flux, tend, dom);
   }
 
 
-  inline void compSWTendSD_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
-    //Exchange halos in the y-direction
-    exch.haloInit      ();
-    exch.haloPackN_y   (dom, state, numState);
-    exch.haloExchange_y(dom, par);
-    exch.haloUnpackN_y (dom, state, numState);
-
-    // Reconstruct to tord GLL points in the x-direction
+  inline void reconSD_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+                        real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma) {
     for (int j=0; j<dom.ny; j++) {
       for (int i=0; i<dom.nx; i++) {
         SArray<real,numState,tord> gllState;
@@ -206,9 +178,47 @@ public :
           stateLimits(l,0,j+1,i) = gllState(l,tord-1);
           fluxLimits (l,0,j+1,i) = gllFlux (l,tord-1);
         }
-
       }
     }
+  }
+
+
+  inline void compSWTendSD_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+
+    //Exchange halos in the x-direction
+    exch.haloInit      ();
+    exch.haloPackN_x   (dom, state, numState);
+    exch.haloExchange_x(dom, par);
+    exch.haloUnpackN_x (dom, state, numState);
+
+    // Reconstruct to tord GLL points in the x-direction
+    reconSD_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma);
+
+    //Reconcile the edge fluxes via MPI exchange.
+    exch.haloInit      ();
+    exch.edgePackN_x   (dom, stateLimits, numState);
+    exch.edgePackN_x   (dom, fluxLimits , numState);
+    exch.edgeExchange_x(dom, par);
+    exch.edgeUnpackN_x (dom, stateLimits, numState);
+    exch.edgeUnpackN_x (dom, fluxLimits , numState);
+
+    // Riemann solver
+    computeFlux_X(stateLimits, fluxLimits, flux, dom);
+
+    // Form the tendencies
+    computeTend_X(flux, tend, dom);
+  }
+
+
+  inline void compSWTendSD_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+    //Exchange halos in the y-direction
+    exch.haloInit      ();
+    exch.haloPackN_y   (dom, state, numState);
+    exch.haloExchange_y(dom, par);
+    exch.haloUnpackN_y (dom, state, numState);
+
+    // Reconstruct to tord GLL points in the x-direction
+    reconSD_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
