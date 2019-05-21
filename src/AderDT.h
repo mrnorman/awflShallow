@@ -31,7 +31,7 @@
 
 
   inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
-                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> &sfc_x, SArray<real,tord,tord> &deriv ) {
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_x, SArray<real,tord,tord> const &deriv ) {
     SArray<real,tord,tord> huu, huv, hh;
     real tot_huu, tot_huv, tot_hh;
 
@@ -100,7 +100,7 @@
 
 
   inline _HOSTDEV void diffTransformSW_Y( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
-                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> &sfc_y, SArray<real,tord,tord> &deriv ) {
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_y, SArray<real,tord,tord> const &deriv ) {
     SArray<real,tord,tord> hvu, hvv, hh;
     real tot_hvu, tot_hvv, tot_hh;
 
