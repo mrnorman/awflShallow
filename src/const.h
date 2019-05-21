@@ -39,17 +39,17 @@ inline _HOSTDEV real operator"" _fp( long double x ) {
 
 #define ord  5
 #define tord 3
-int const hs = (ord-1)/2;
+#define hs (ord-1)/2
 
-int const numState = 3;
+#define numState 3
 
-int const idH  = 0;
-int const idHU = 1;
-int const idHV = 2;
+#define idH  0
+#define idHU 1
+#define idHV 2
 
 // Some physical constants
-real const PI    = 3.1415926535897932384626433832795028842;
-real const GRAV  = 9.8;
+#define PI   3.1415926535897932384626433832795028842_fp
+#define GRAV 9.8_fp
 
 inline _HOSTDEV double mypow ( double const x , double const p ) { return pow (x,p); }
 inline _HOSTDEV float  mypow ( float  const x , float  const p ) { return powf(x,p); }
