@@ -7,6 +7,7 @@
 #include "pnetcdf.h"
 #include "TransformMatrices.h"
 #include "mpi.h"
+#include "Indexing.h"
 
 class FileIO {
 
@@ -58,8 +59,15 @@ public:
     ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
 
     // Compute x, y coordinates
-    for (int i=0; i<dom.nx; i++) { xCoord(i) = ( par.i_beg + i + 0.5_fp ) * dom.dx; }
-    for (int j=0; j<dom.ny; j++) { yCoord(j) = ( par.j_beg + j + 0.5_fp ) * dom.dy; }
+    // for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.nx , KOKKOS_LAMBDA(int i) {
+      xCoord(i) = ( par.i_beg + i + 0.5_fp ) * dom.dx;
+    });
+    // for (int j=0; j<dom.ny; j++) {
+    Kokkos::parallel_for( dom.ny , KOKKOS_LAMBDA(int j) {
+      yCoord(j) = ( par.j_beg + j + 0.5_fp ) * dom.dy;
+    });
+    Kokkos::fence();
 
     // Write out x, y coordinates
     st[0] = par.i_beg;
@@ -74,31 +82,44 @@ public:
     trans.get_gll_weights(gllWts);
     st[0] = par.j_beg; st[1] = par.i_beg;
     ct[0] = dom.ny   ; ct[1] = dom.nx   ;
-    writeState(state, dom, par);
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = state.sfc(hs+j,hs+i);
-      }
-    }
+
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = state.sfc(hs+j,hs+i);
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.data() ) , __LINE__ );
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = 0.;
-        for (int ii=0; ii<tord; ii++) {
-          data(j,i) += state.sfc_x(j,i,ii)*gllWts(ii);
-        }
+
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = 0.;
+      for (int ii=0; ii<tord; ii++) {
+        data(j,i) += state.sfc_x(j,i,ii)*gllWts(ii);
       }
-    }
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , sfcxVar , st , ct , data.data() ) , __LINE__ );
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = 0.;
-        for (int ii=0; ii<tord; ii++) {
-          data(j,i) += state.sfc_y(j,i,ii)*gllWts(ii);
-        }
+
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = 0.;
+      for (int ii=0; ii<tord; ii++) {
+        data(j,i) += state.sfc_y(j,i,ii)*gllWts(ii);
       }
-    }
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , sfcyVar , st , ct , data.data() ) , __LINE__ );
+
+    writeState(state, dom, par);
 
     ncwrap( ncmpi_close(ncid) , __LINE__ );
 
@@ -136,27 +157,36 @@ public:
     ct[0] = 1     ; ct[1] = dom.ny   ; ct[2] = dom.nx   ;
 
     // Write out density perturbation
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = state.state(idH,hs+j,hs+i);
-      }
-    }
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = state.state(idH,hs+j,hs+i);
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , hVar , st , ct , data.data() ) , __LINE__ );
 
     // Write out u wind
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = state.state(idHU,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
-      }
-    }
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = state.state(idHU,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.data() ) , __LINE__ );
 
     // Write out v wind
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        data(j,i) = state.state(idHV,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
-      }
-    }
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      data(j,i) = state.state(idHV,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
+    });
+    Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.data() ) , __LINE__ );
   }
 
