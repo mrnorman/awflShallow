@@ -5,10 +5,29 @@
 #include "const.h"
 #include "SArray.h"
 
-class AderDT {
+
+  inline _HOSTDEV void timeAvg( SArray<real,numState,tord,tord> &dts , Domain &dom ) {
+    real dtmult = dom.dt;
+    for (int kt=1; kt<tord; kt++) {
+      for (int l=0; l<numState; l++) {
+        for (int ii=0; ii<tord; ii++) {
+          dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1._fp);
+        }
+      }
+      dtmult *= dom.dt;
+    }
+  }
 
 
-public:
+  inline _HOSTDEV void timeAvg( SArray<real,tord,tord> &dts , Domain &dom ) {
+    real dtmult = dom.dt;
+    for (int kt=1; kt<tord; kt++) {
+      for (int ii=0; ii<tord; ii++) {
+        dts(0,ii) += dts(kt,ii) * dtmult / (kt+1._fp);
+      }
+      dtmult *= dom.dt;
+    }
+  }
 
 
   inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
@@ -148,31 +167,5 @@ public:
     }
   }
 
-
-  inline _HOSTDEV void timeAvg( SArray<real,numState,tord,tord> &dts , Domain &dom ) {
-    real dtmult = dom.dt;
-    for (int kt=1; kt<tord; kt++) {
-      for (int l=0; l<numState; l++) {
-        for (int ii=0; ii<tord; ii++) {
-          dts(l,0,ii) += dts(l,kt,ii) * dtmult / (kt+1._fp);
-        }
-      }
-      dtmult *= dom.dt;
-    }
-  }
-
-
-  inline _HOSTDEV void timeAvg( SArray<real,tord,tord> &dts , Domain &dom ) {
-    real dtmult = dom.dt;
-    for (int kt=1; kt<tord; kt++) {
-      for (int ii=0; ii<tord; ii++) {
-        dts(0,ii) += dts(kt,ii) * dtmult / (kt+1._fp);
-      }
-      dtmult *= dom.dt;
-    }
-  }
-
-
-};
 
 #endif

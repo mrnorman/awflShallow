@@ -17,7 +17,6 @@ protected:
   int ncid, numOut;
   int tDim, xDim, yDim;
   int tVar, xVar, yVar, hVar, uVar, vVar, sfcVar, sfcxVar, sfcyVar;
-  TransformMatrices<real> trans;
 
 public:
 
@@ -72,6 +71,7 @@ public:
     ncwrap( ncmpi_put_vara_float_all( ncid , yVar , st , ct , yCoord.get_data() ) , __LINE__ );
 
     SArray<real,tord> gllWts;
+    TransformMatrices<real> trans;
     trans.get_gll_weights(gllWts);
     st[0] = par.j_beg; st[1] = par.i_beg;
     ct[0] = dom.ny   ; ct[1] = dom.nx   ;

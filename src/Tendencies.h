@@ -20,19 +20,18 @@ class Tendencies {
   Array<real> flux;
   Array<real> src;
   SArray<real,tord> gllWts;
-  TransformMatrices<real> trans;
-  Riemann riem;
   SArray<real,ord,tord> to_gll;
-  WenoLimiter<real> weno;
   SArray<real,ord,ord,ord> wenoRecon;
-  AderDT ader;
   SArray<real,tord,tord> aderDerivX;
   SArray<real,tord,tord> aderDerivY;
+  SArray<real,hs+2> wenoIdl;
+  real wenoSigma;
 
 public :
 
 
   inline void initialize(Domain &dom) {
+    TransformMatrices<real> trans;
     fluxLimits .setup(numState,2,dom.ny+1,dom.nx+1);
     stateLimits.setup(numState,2,dom.ny+1,dom.nx+1);
     flux       .setup(numState  ,dom.ny+1,dom.nx+1);
@@ -63,6 +62,8 @@ public :
 
     trans.get_gll_weights(gllWts);
 
+    wenoSetIdealSigma(wenoIdl,wenoSigma);
+
   }
 
 
@@ -70,7 +71,7 @@ public :
   inline _HOSTDEV void reconStencil(SArray<real,ord> &stencil, SArray<real,tord> &gll) {
     SArray<real,ord> coefs;
     if (doWeno) {
-      weno.compute_weno_coefs(wenoRecon,stencil,coefs);
+      compute_weno_coefs(wenoRecon,stencil,coefs,wenoIdl,wenoSigma);
     } else {
       for (int ii=0; ii<ord; ii++) {
         coefs(ii) = stencil(ii);
@@ -157,7 +158,7 @@ public :
           f1(l) = fluxLimits (l,0,j,i);
           f2(l) = fluxLimits (l,1,j,i);
         }
-        riem.riemannX(s1, s2, f1, f2, upw);
+        riemannX(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
         }
@@ -244,7 +245,7 @@ public :
           f1(l) = fluxLimits (l,0,j,i);
           f2(l) = fluxLimits (l,1,j,i);
         }
-        riem.riemannY(s1, s2, f1, f2, upw);
+        riemannY(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
         }
@@ -290,10 +291,10 @@ public :
         for (int ii=0 ;ii<tord; ii++) {
           sfc_x_loc(ii) = sfc_x(j,i,ii);
         }
-        ader.diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
-        ader.timeAvg( stateDTs , dom );
-        ader.timeAvg( fluxDTs  , dom );
-        ader.timeAvg( srcDTs   , dom );
+        diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
+        timeAvg( stateDTs , dom );
+        timeAvg( fluxDTs  , dom );
+        timeAvg( srcDTs   , dom );
 
         for (int l=0; l<numState; l++) {
           src(l,j,i) = 0;
@@ -334,7 +335,7 @@ public :
           f1(l) = fluxLimits (l,0,j,i);
           f2(l) = fluxLimits (l,1,j,i);
         }
-        riem.riemannX(s1, s2, f1, f2, upw);
+        riemannX(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
         }
@@ -380,10 +381,10 @@ public :
         for (int ii=0 ;ii<tord; ii++) {
           sfc_y_loc(ii) = sfc_y(j,i,ii);
         }
-        ader.diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
-        ader.timeAvg( stateDTs , dom );
-        ader.timeAvg( fluxDTs  , dom );
-        ader.timeAvg( srcDTs   , dom );
+        diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
+        timeAvg( stateDTs , dom );
+        timeAvg( fluxDTs  , dom );
+        timeAvg( srcDTs   , dom );
 
         for (int l=0; l<numState; l++) {
           src(l,j,i) = 0;
@@ -423,7 +424,7 @@ public :
           f1(l) = fluxLimits (l,0,j,i);
           f2(l) = fluxLimits (l,1,j,i);
         }
-        riem.riemannY(s1, s2, f1, f2, upw);
+        riemannY(s1, s2, f1, f2, upw);
         for (int l=0; l<numState; l++) {
           flux(l,j,i) = upw(l);
         }
