@@ -7,6 +7,7 @@
 #include "TransformMatrices.h"
 #include "TimeIntegrator.h"
 #include "mpi.h"
+#include "Indexing.h"
 
 class Initializer{
 
@@ -111,29 +112,31 @@ public:
     state.sfc_y = real3d( "sfc_y" , dom.ny , dom.nx , tord );
 
     // Initialize the state
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        // Initialize the state to zero
-        for (int l=0; l<numState; l++) {
-          state.state(l,hs+j,hs+i) = 0;
-        }
-        // Perform ord-point GLL quadrature for the cell averages
-        for (int jj=0; jj<ord; jj++) {
-          for (int ii=0; ii<ord; ii++) {
-            real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
-            real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
-            real const h0 = 1000._fp;
-            real h = 0;
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      // Initialize the state to zero
+      for (int l=0; l<numState; l++) {
+        state.state(l,hs+j,hs+i) = 0;
+      }
+      // Perform ord-point GLL quadrature for the cell averages
+      for (int jj=0; jj<ord; jj++) {
+        for (int ii=0; ii<ord; ii++) {
+          real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
+          real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
+          real const h0 = 1000._fp;
+          real h = 0;
 
-            real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
+          real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
 
-            real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
-            state.state(idH,hs+j,hs+i) += wt * (h0+h);
-            state.sfc(hs+j,hs+i) = wt*sfc;
-          }
+          real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
+          state.state(idH,hs+j,hs+i) += wt * (h0+h);
+          state.sfc(hs+j,hs+i) = wt*sfc;
         }
       }
-    }
+    });
 
     // Exchange surface elevation in x-direction
     exch.haloInit      ();

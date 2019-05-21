@@ -12,8 +12,9 @@ LINK = ${CXX}
 CXXFLAGS = -O3 -I${PNETCDF_PATH}/include
 LDFLAGS = -L${PNETCDF_PATH}/lib -lpnetcdf
 
-KOKKOS_DEVICES = "OpenMP"
-KOKKOS_OPTIONS = "aggressive_vectorization,disable_profiling"
+KOKKOS_DEVICES = "Serial"
+# KOKKOS_DEVICES = "OpenMP"
+# KOKKOS_OPTIONS = "aggressive_vectorization,disable_profiling"
 
 DEPFLAGS = -M
 OBJ = $(notdir $(SRC:.cpp=.o))

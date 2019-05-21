@@ -2,8 +2,8 @@
 #ifndef _PARALLEL_H_
 #define _PARALLEL_H_
 
-#include "SArray.h"
 #include "const.h"
+#include "SArray.h"
 
 class Parallel {
 
