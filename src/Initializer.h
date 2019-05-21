@@ -169,37 +169,53 @@ public:
     }
     s2d2g_x = ( to_gll * c2d * s2c ) / dom.dx;
     s2d2g_y = ( to_gll * c2d * s2c ) / dom.dy;
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        for (int ii=0; ii<tord; ii++) {
-          state.sfc_x(j,i,ii) = 0;
-          state.sfc_y(j,i,ii) = 0;
-          for (int s=0; s<ord; s++) {
-            state.sfc_x(j,i,ii) += s2d2g_x(s,ii) * state.sfc(hs+j,i+s );
-            state.sfc_y(j,i,ii) += s2d2g_y(s,ii) * state.sfc(j+s ,hs+i);
-          }
+
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      for (int ii=0; ii<tord; ii++) {
+        state.sfc_x(j,i,ii) = 0;
+        state.sfc_y(j,i,ii) = 0;
+        for (int s=0; s<ord; s++) {
+          state.sfc_x(j,i,ii) += s2d2g_x(s,ii) * state.sfc(hs+j,i+s );
+          state.sfc_y(j,i,ii) += s2d2g_y(s,ii) * state.sfc(j+s ,hs+i);
         }
       }
-    }
+    });
+
+    real2d dt3d = real2d("dt3d",dom.ny,dom.nx);
 
     dom.dt = 1.e12_fp;
     // Compute the time step based on the CFL value
-    for (int j=0; j<dom.ny; j++) {
-      for (int i=0; i<dom.nx; i++) {
-        // Grab state variables
-        real h = state.state(idH ,hs+j,hs+i);
-        real u = state.state(idHU,hs+j,hs+i) / h;
-        real v = state.state(idHV,hs+j,hs+i) / h;
-        real cg = mysqrt(GRAV*h);
+    // for (int j=0; j<dom.ny; j++) {
+    //   for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
+      int i, j;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      // Grab state variables
+      real h = state.state(idH ,hs+j,hs+i);
+      real u = state.state(idHU,hs+j,hs+i) / h;
+      real v = state.state(idHV,hs+j,hs+i) / h;
+      real cg = mysqrt(GRAV*h);
 
-        // Compute the max wave
-        real maxWave = max( myfabs(u) , myfabs(v)) + cg;
+      // Compute the max wave
+      real maxWave = max( myfabs(u) , myfabs(v)) + cg;
 
-        // Compute the time step
-        real dxmin = min(dom.dx,dom.dy);
-        dom.dt = min( dom.dt , dom.cfl * dxmin / maxWave );
-      }
-    }
+      // Compute the time step
+      real dxmin = min(dom.dx,dom.dy);
+      dt3d(j,i) = dom.cfl * dxmin / maxWave;
+    });
+
+    dom.dt = 1.e12_fp;
+    Kokkos::parallel_reduce( dom.ny*dom.nx , KOKKOS_LAMBDA (int const iGlob, real &dt) {
+      int j, i;
+      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+      dt = min(dt,dt3d(j,i));
+    } , Kokkos::Min<real>(dom.dt) );
+
+    Kokkos::fence();
 
     real dtloc = dom.dt;
     ierr = MPI_Allreduce(&dtloc, &dom.dt, 1, MPI_REAL , MPI_MIN, MPI_COMM_WORLD);
