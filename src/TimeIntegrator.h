@@ -93,13 +93,14 @@ public :
 
 
   inline void appendTendencies(real3d &tend, real3d &tendTmp, Domain &dom) {
-    for (int l=0; l<numState; l++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          tend(l,j,i) += tendTmp(l,j,i);
-        }
-      }
-    }
+    // for (int l=0; l<numState; l++) {
+    //   for (int j=0; j<dom.ny; j++) {
+    //     for (int i=0; i<dom.nx; i++) {
+    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_CLASS_LAMBDA (int iGlob) {
+      int i, j, l;
+      unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
+      tend(l,j,i) += tendTmp(l,j,i);
+    });
   }
 
 };
