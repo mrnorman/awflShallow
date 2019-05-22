@@ -106,10 +106,12 @@ public:
     exch.allocate(dom);
 
     // Allocate the fluid state variable
-    state.state = real3d( "state" , numState , dom.ny+2*hs , dom.nx+2*hs );
-    state.sfc   = real2d( "sfc"   , dom.ny+2*hs , dom.nx+2*hs );
-    state.sfc_x = real3d( "sfc_x" , dom.ny , dom.nx , tord );
-    state.sfc_y = real3d( "sfc_y" , dom.ny , dom.nx , tord );
+    state.state   = real3d( "state"   , numState , dom.ny+2*hs , dom.nx+2*hs );
+    state.sfc     = real2d( "sfc"     , dom.ny+2*hs , dom.nx+2*hs );
+    state.sfcGllX = real3d( "sfcGllX" , dom.ny , dom.nx , tord );
+    state.sfcGllY = real3d( "sfcGllY" , dom.ny , dom.nx , tord );
+    state.sfc_x   = real3d( "sfc_x"   , dom.ny , dom.nx , tord );
+    state.sfc_y   = real3d( "sfc_y"   , dom.ny , dom.nx , tord );
 
     // Initialize the state
     // for (int j=0; j<dom.ny; j++) {
@@ -120,6 +122,7 @@ public:
       // Initialize the state to zero
       for (int l=0; l<numState; l++) {
         state.state(l,hs+j,hs+i) = 0;
+        state.sfc(l,hs+j,hs+i) = 0;
       }
       // Perform ord-point GLL quadrature for the cell averages
       for (int jj=0; jj<ord; jj++) {
@@ -133,7 +136,7 @@ public:
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
           state.state(idH,hs+j,hs+i) += wt * (h0+h);
-          state.sfc(hs+j,hs+i) = wt*sfc;
+          state.sfc(hs+j,hs+i) += wt*sfc;
         }
       }
     });

@@ -12,6 +12,8 @@ public:
   // Fluid state
   real3d state;
   real2d sfc;
+  real3d sfcGllX;
+  real3d sfcGllY;
   real3d sfc_x;
   real3d sfc_y;
 
