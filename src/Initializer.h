@@ -132,7 +132,9 @@ public:
           real const h0 = 1000._fp;
           real h = 0;
 
-          real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
+          // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
+          real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+          h -= sfc;
 
           real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
           state.state(idH,hs+j,hs+i) += wt * (h0+h);
