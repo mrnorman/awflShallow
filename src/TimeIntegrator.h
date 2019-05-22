@@ -46,15 +46,15 @@ public :
   inline void stepForwardADER(State &state, Domain &dom, Exchange &exch, Parallel &par) {
     if (dsSwitch) {
       dsSwitch = 0;
-      tend.compSWTendADER_X(state.state, state.sfc_x, dom, exch, par, tendArr);
+      tend.compSWTendADER_X(state.state, state.sfc_x, state.sfcGllX, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
-      tend.compSWTendADER_Y(state.state, state.sfc_y, dom, exch, par, tendArr);
+      tend.compSWTendADER_Y(state.state, state.sfc_y, state.sfcGllY, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
     } else {
       dsSwitch = 1;
-      tend.compSWTendADER_Y(state.state, state.sfc_y, dom, exch, par, tendArr);
+      tend.compSWTendADER_Y(state.state, state.sfc_y, state.sfcGllY, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
-      tend.compSWTendADER_X(state.state, state.sfc_x, dom, exch, par, tendArr);
+      tend.compSWTendADER_X(state.state, state.sfc_x, state.sfcGllX, dom, exch, par, tendArr);
       applyTendencies( state.state , 1._fp , state.state , 0._fp , state.state , 1._fp , tendArr, dom);
     }
   }
@@ -62,18 +62,18 @@ public :
 
   inline void stepForwardSSPRK3(State &state, Domain &dom, Exchange &exch, Parallel &par) {
     // Stage 1
-    tend.compSWTendSD_X(state.state, state.sfc_x, dom, exch, par, tendArr   );
-    tend.compSWTendSD_Y(state.state, state.sfc_y, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
+    tend.compSWTendSD_X(state.state, state.sfc_x, state.sfcGllX, dom, exch, par, tendArr   );
+    tend.compSWTendSD_Y(state.state, state.sfc_y, state.sfcGllY, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
     applyTendencies( stateTmp , 1._fp , state.state , 0._fp , stateTmp , 1._fp , tendArr, dom);
 
     // Stage 2
-    tend.compSWTendSD_X(stateTmp, state.sfc_x, dom, exch, par, tendArr   );
-    tend.compSWTendSD_Y(stateTmp, state.sfc_y, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
+    tend.compSWTendSD_X(stateTmp, state.sfc_x, state.sfcGllX, dom, exch, par, tendArr   );
+    tend.compSWTendSD_Y(stateTmp, state.sfc_y, state.sfcGllY, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
     applyTendencies( stateTmp , 0.75_fp , state.state , 0.25_fp , stateTmp , 0.25_fp , tendArr, dom);
 
     // Stage 3
-    tend.compSWTendSD_X(stateTmp, state.sfc_x, dom, exch, par, tendArr   );
-    tend.compSWTendSD_Y(stateTmp, state.sfc_y, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
+    tend.compSWTendSD_X(stateTmp, state.sfc_x, state.sfcGllX, dom, exch, par, tendArr   );
+    tend.compSWTendSD_Y(stateTmp, state.sfc_y, state.sfcGllY, dom, exch, par, tendArrTmp); appendTendencies(tendArr, tendArrTmp, dom);
     applyTendencies( state.state , 1._fp/3._fp , state.state , 2._fp/3._fp , stateTmp , 2._fp/3._fp , tendArr , dom);
   }
 

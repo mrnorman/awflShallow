@@ -122,23 +122,29 @@ public:
       // Initialize the state to zero
       for (int l=0; l<numState; l++) {
         state.state(l,hs+j,hs+i) = 0;
-        state.sfc(l,hs+j,hs+i) = 0;
+        state.sfc(hs+j,hs+i) = 0;
+        for (int ii=0; ii<tord; ii++) {
+          state.sfcGllX(j,i,ii) = 0;
+          state.sfcGllY(j,i,ii) = 0;
+        }
       }
       // Perform ord-point GLL quadrature for the cell averages
-      for (int jj=0; jj<ord; jj++) {
-        for (int ii=0; ii<ord; ii++) {
-          real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllOrdPoints(ii)*dom.dx;
-          real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllOrdPoints(jj)*dom.dy;
+      for (int jj=0; jj<tord; jj++) {
+        for (int ii=0; ii<tord; ii++) {
+          real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllTordPoints(ii)*dom.dx;
+          real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllTordPoints(jj)*dom.dy;
           real const h0 = 1000._fp;
           real h = 0;
 
           // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
           real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
-          h -= sfc;
+          h += sfc;
 
-          real wt = gllOrdWeights(ii)*gllOrdWeights(jj);
+          real wt = gllTordWeights(ii)*gllTordWeights(jj);
           state.state(idH,hs+j,hs+i) += wt * (h0+h);
           state.sfc(hs+j,hs+i) += wt*sfc;
+          state.sfcGllX(j,i,ii) += gllTordWeights(jj)*sfc;
+          state.sfcGllY(j,i,jj) += gllTordWeights(ii)*sfc;
         }
       }
     });

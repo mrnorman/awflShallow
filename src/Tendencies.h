@@ -67,7 +67,7 @@ public :
   }
 
 
-  inline void compSWTendSD_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+  inline void compSWTendSD_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
 
     //Exchange halos in the x-direction
     exch.haloInit      ();
@@ -76,7 +76,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
+    reconSD_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -94,7 +94,7 @@ public :
   }
 
 
-  inline void compSWTendSD_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+  inline void compSWTendSD_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);
@@ -102,7 +102,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
+    reconSD_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -120,7 +120,7 @@ public :
   }
 
 
-  inline void compSWTendADER_X(real3d &state, real3d &sfc_x, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+  inline void compSWTendADER_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the x-direction
     exch.haloInit      ();
     exch.haloPackN_x   (dom, state, numState);
@@ -128,7 +128,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_X(state, sfc_x, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX, src, gllWts);
+    reconADER_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -146,7 +146,7 @@ public :
   }
 
 
-  inline void compSWTendADER_Y(real3d &state, real3d &sfc_y, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+  inline void compSWTendADER_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
     //Exchange halos in the y-direction
     exch.haloInit      ();
     exch.haloPackN_y   (dom, state, numState);
@@ -154,7 +154,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_Y(state, sfc_y, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY, src, gllWts);
+    reconADER_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY, src, gllWts);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -194,7 +194,7 @@ public :
   }
 
 
-  inline void reconADER_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+  inline void reconADER_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                           real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, 
                           SArray<real,tord,tord> const &aderDerivX, real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
@@ -214,6 +214,9 @@ public :
         for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
         reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
         for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      }
+      for (int ii=0; ii<tord; ii++) {
+        stateDTs(idH,0,ii) -= sfcGllX(j,i,ii);
       }
 
       // Compute DTs of the state and flux, and collapse down into a time average
@@ -246,7 +249,7 @@ public :
   }
 
 
-  inline void reconADER_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+  inline void reconADER_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                           real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
                           SArray<real,tord,tord> const &aderDerivY, real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
@@ -266,6 +269,9 @@ public :
         for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
         reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
         for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
+      }
+      for (int ii=0; ii<tord; ii++) {
+        stateDTs(idH,0,ii) -= sfcGllY(j,i,ii);
       }
 
       // Compute DTs of the state and flux, and collapse down into a time average
@@ -298,7 +304,7 @@ public :
   }
 
 
-  inline void reconSD_X(real3d &state, real3d &sfc_x, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+  inline void reconSD_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                         real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
                         real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
@@ -316,6 +322,9 @@ public :
         for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,hs+j,i+ii); }
         reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
         for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
+      }
+      for (int ii=0; ii<tord; ii++) {
+        gllState(idH,ii) -= sfcGllX(j,i,ii);
       }
 
       // Compute fluxes and at the GLL points
@@ -348,7 +357,7 @@ public :
   }
 
 
-  inline void reconSD_Y(real3d &state, real3d &sfc_y, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
+  inline void reconSD_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                         real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
                         real3d &src, SArray<real,tord> const &gllWts) {
     // for (int j=0; j<dom.ny; j++) {
@@ -366,6 +375,9 @@ public :
         for (int ii=0; ii<ord; ii++) { stencil(ii) = state(l,j+ii,hs+i); }
         reconStencil(stencil, gllPts, dom.doWeno, wenoRecon, to_gll, wenoIdl, wenoSigma);
         for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
+      }
+      for (int ii=0; ii<tord; ii++) {
+        gllState(idH,ii) -= sfcGllY(j,i,ii);
       }
 
       // Compute fluxes and at the GLL points
