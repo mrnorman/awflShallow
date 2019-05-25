@@ -136,7 +136,8 @@ public:
           real h = 0;
 
           // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
-          real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+          // real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+          real sfc = ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
           h += sfc;
 
           real wt = gllTordWeights(ii)*gllTordWeights(jj);
@@ -259,6 +260,20 @@ public:
     real ret = 0;
     if (dist < 1) {
       ret = amp * mypow((cos(PI*dist)+1)/2,pwr);
+    }
+    return ret;
+  }
+
+
+  inline _HOSTDEV real ellipse_cylinder(real const x   , real const y   ,
+                                       real const x0  , real const y0  ,
+                                       real const xrad, real const yrad, real const amp) {
+    real xn = (x-x0)/xrad;
+    real yn = (y-y0)/yrad;
+    real dist = mysqrt( xn*xn + yn*yn );
+    real ret = 0;
+    if (dist < 1) {
+      ret = 1;
     }
     return ret;
   }

@@ -113,7 +113,7 @@ hvu\\
 hv^{2}+\frac{1}{2}gh^{2}
 \end{array}\right]=\left[\begin{array}{c}
 0\\
-\left(-gh\frac{\partial h_{S}}{\partial x}\right)\\
+-gh\frac{\partial h_{S}}{\partial x}\\
 -gh\frac{\partial h_{S}}{\partial y}
 \end{array}\right]
 \]
@@ -189,6 +189,18 @@ We could transform the bottom topography terms to include a portion of them
 
 , which is guaranteed to be smaller (thus permitting a larger stable time
  step).
+\end_layout
+
+\begin_layout Standard
+There exists a rest state balance:
+\begin_inset Formula 
+\[
+\frac{\partial h_{B}}{\partial x}=-\frac{\partial h_{S}}{\partial x}\implies h_{B}=h_{0}-h_{S}
+\]
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Subsection
