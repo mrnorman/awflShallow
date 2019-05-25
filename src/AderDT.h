@@ -31,7 +31,8 @@
 
 
   inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
-                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_x, SArray<real,tord,tord> const &deriv ) {
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_x, SArray<real,tord,tord> const &deriv, 
+                                          SArray<real,tord> const &sfcGll , Domain const &dom ) {
     SArray<real,tord,tord> huu, huv, hh;
     real tot_huu, tot_huv, tot_hh;
 
@@ -46,16 +47,18 @@
       real u = state(idHU,0,ii) / h;
       real v = state(idHV,0,ii) / h;
 
+      real hb = dom.h0 - sfcGll(ii);
+
       huu(0,ii) = h*u*u;
       huv(0,ii) = h*u*v;
       hh (0,ii) = h*h;
 
       flux(idH ,0,ii) = h*u;
-      flux(idHU,0,ii) = h*u*u + GRAV*h*h/2;
+      flux(idHU,0,ii) = h*u*u + GRAV*h*h/2 - GRAV*hb*hb/2;
       flux(idHV,0,ii) = h*u*v;
 
       src(idH ,0,ii) = 0;
-      src(idHU,0,ii) = -GRAV*h*sfc_x(ii);
+      src(idHU,0,ii) = -GRAV*(h-hb)*sfc_x(ii);
       src(idHV,0,ii) = 0;
     }
 
@@ -100,7 +103,8 @@
 
 
   inline _HOSTDEV void diffTransformSW_Y( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
-                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_y, SArray<real,tord,tord> const &deriv ) {
+                                          SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_y, SArray<real,tord,tord> const &deriv, 
+                                          SArray<real,tord> const &sfcGll , Domain const &dom ) {
     SArray<real,tord,tord> hvu, hvv, hh;
     real tot_hvu, tot_hvv, tot_hh;
 
@@ -115,17 +119,19 @@
       real u = state(idHU,0,ii) / h;
       real v = state(idHV,0,ii) / h;
 
+      real hb = dom.h0 - sfcGll(ii);
+
       hvu(0,ii) = h*v*u;
       hvv(0,ii) = h*v*v;
       hh (0,ii) = h*h;
 
       flux(idH ,0,ii) = h*v;
       flux(idHU,0,ii) = h*v*u;
-      flux(idHV,0,ii) = h*v*v + GRAV*h*h/2;
+      flux(idHV,0,ii) = h*v*v + GRAV*h*h/2 - GRAV*hb*hb/2;
 
       src(idH ,0,ii) = 0;
       src(idHU,0,ii) = 0;
-      src(idHV,0,ii) = -GRAV*h*sfc_y(ii);
+      src(idHV,0,ii) = -GRAV*(h-hb)*sfc_y(ii);
     }
 
     // Loop over the time derivatives

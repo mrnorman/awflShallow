@@ -17,6 +17,8 @@ public:
   real3d sfc_x;
   real3d sfc_y;
 
+  real3d sfcAvg;
+
 };
 
 #endif

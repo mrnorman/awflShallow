@@ -133,7 +133,6 @@ public:
         for (int ii=0; ii<tord; ii++) {
           real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllTordPoints(ii)*dom.dx;
           real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllTordPoints(jj)*dom.dy;
-          real const h0 = 1000._fp;
           real h = 0;
 
           // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
@@ -141,7 +140,7 @@ public:
           h += sfc;
 
           real wt = gllTordWeights(ii)*gllTordWeights(jj);
-          state.state(idH,hs+j,hs+i) += wt * (h0+h);
+          state.state(idH,hs+j,hs+i) += wt * (dom.h0+h);
           state.sfc(hs+j,hs+i) += wt*sfc;
           state.sfcGllX(j,i,ii) += gllTordWeights(jj)*sfc;
           state.sfcGllY(j,i,jj) += gllTordWeights(ii)*sfc;

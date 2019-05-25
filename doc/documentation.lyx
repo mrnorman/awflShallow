@@ -113,7 +113,7 @@ hvu\\
 hv^{2}+\frac{1}{2}gh^{2}
 \end{array}\right]=\left[\begin{array}{c}
 0\\
--gh\frac{\partial h_{S}}{\partial x}\\
+\left(-gh\frac{\partial h_{S}}{\partial x}\right)\\
 -gh\frac{\partial h_{S}}{\partial y}
 \end{array}\right]
 \]

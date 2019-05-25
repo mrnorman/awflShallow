@@ -206,6 +206,7 @@ public :
       SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
       SArray<real,numState,tord,tord> srcDTs;   // GLL source values
       SArray<real,tord> sfc_x_loc;
+      SArray<real,tord> sfcGll_loc;
 
       // Compute tord GLL points of the state vector
       for (int l=0; l<numState; l++) {
@@ -221,9 +222,10 @@ public :
 
       // Compute DTs of the state and flux, and collapse down into a time average
       for (int ii=0 ;ii<tord; ii++) {
-        sfc_x_loc(ii) = sfc_x(j,i,ii);
+        sfc_x_loc (ii) = sfc_x  (j,i,ii);
+        sfcGll_loc(ii) = sfcGllX(j,i,ii);
       }
-      diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX );
+      diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX , sfcGll_loc , dom );
       timeAvg( stateDTs , dom );
       timeAvg( fluxDTs  , dom );
       timeAvg( srcDTs   , dom );
@@ -261,6 +263,7 @@ public :
       SArray<real,numState,tord,tord> fluxDTs;   // GLL flux values
       SArray<real,numState,tord,tord> srcDTs;   // GLL source values
       SArray<real,tord> sfc_y_loc;
+      SArray<real,tord> sfcGll_loc;
 
       // Compute GLL points from cell averages
       for (int l=0; l<numState; l++) {
@@ -276,9 +279,10 @@ public :
 
       // Compute DTs of the state and flux, and collapse down into a time average
       for (int ii=0 ;ii<tord; ii++) {
-        sfc_y_loc(ii) = sfc_y(j,i,ii);
+        sfc_y_loc (ii) = sfc_y  (j,i,ii);
+        sfcGll_loc(ii) = sfcGllY(j,i,ii);
       }
-      diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY );
+      diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY , sfcGll_loc , dom );
       timeAvg( stateDTs , dom );
       timeAvg( fluxDTs  , dom );
       timeAvg( srcDTs   , dom );
@@ -336,11 +340,13 @@ public :
         real u = gllState(idHU,ii) / h;
         real v = gllState(idHV,ii) / h;
 
+        real hb = dom.h0 - sfcGllX(j,i,ii);
+
         gllFlux(idH ,ii) = h*u;
-        gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2;
+        gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2 - GRAV*hb*hb/2;
         gllFlux(idHV,ii) = h*u*v;
 
-        src(idHU,j,i) += -GRAV*h*sfc_x(j,i,ii) * gllWts(ii);
+        src(idHU,j,i) += -GRAV*(h-hb)*sfc_x(j,i,ii) * gllWts(ii);
       }
 
       // Store state and flux limits into a globally indexed array
@@ -389,11 +395,13 @@ public :
         real u = gllState(idHU,ii) / h;
         real v = gllState(idHV,ii) / h;
 
+        real hb = dom.h0 - sfcGllY(j,i,ii);
+
         gllFlux(idH ,ii) = h*v;
         gllFlux(idHU,ii) = h*v*u;
-        gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2;
+        gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2 - GRAV*hb*hb/2;
 
-        src(idHV,j,i) += -GRAV*h*sfc_y(j,i,ii) * gllWts(ii);
+        src(idHV,j,i) += -GRAV*(h-hb)*sfc_y(j,i,ii) * gllWts(ii);
       }
 
       // Store state and flux limits into a globally indexed array

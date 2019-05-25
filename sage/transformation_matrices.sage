@@ -122,15 +122,16 @@ def coefs_to_TV(N) :
 
 def gll_to_prim_gll(N) :
     coefs = coefs_1d(N,0,'a')
-    p = poly_1d(N,coefs,x)
-    pts = points_gll(N)
-    gll = vector([ p.subs(x=pts[i]) for i in range(N) ])
-    gll_to_coefs = jacobian(gll,coefs)^-1
-    gllvals = coefs_1d(N,0,'v')
-    coefs = gll_to_coefs * gllvals
-    p = poly_1d(N,coefs,x)
-    pp = integrate(p,x)
-    gllprim = vector([ pp.subs(x=pts[i]) for i in range(N) ])
-    gll_to_prim_gll = jacobian(gllprim,gllvals)
+    p = poly_1d(N,coefs,x)   #Create a generic polynomial
+    pts = points_gll(N)      #Compute the GLL points
+    gll = vector([ p.subs(x=pts[i]) for i in range(N) ])  #Compute the generic poly at GLL points
+    gll_to_coefs = jacobian(gll,coefs)^-1                 #Compute the transformation from GLL points to coefficients
+    gllvals = coefs_1d(N,0,'v')                           #Create dummy GLL values
+    coefs = gll_to_coefs * gllvals                        #Compute coefficients from those dummy GLL values
+    p = poly_1d(N,coefs,x)                                #Create a polynomial from those coefficients
+    pp = integrate(p,x)                                   #Compute the integral of that polynomial
+    # pp = pp - integrate(pp,x,-1/2,1/2)                    #Subract off the average of the integrated polynomial
+    gllprim = vector([ pp.subs(x=pts[i]) for i in range(N) ]) #Compute the primitive at GLL points
+    gll_to_prim_gll = jacobian(gllprim,gllvals)           #Compute the primitive GLL points using original GLL points
     return gll_to_prim_gll
 
