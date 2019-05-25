@@ -130,7 +130,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX, src, gllWts);
+    reconADER_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivX, src, gllWts, fluxBalEdges);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -156,7 +156,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconADER_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY, src, gllWts);
+    reconADER_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, aderDerivY, src, gllWts, fluxBalEdges);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -198,7 +198,7 @@ public :
 
   inline void reconADER_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                           real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma, 
-                          SArray<real,tord,tord> const &aderDerivX, real3d &src, SArray<real,tord> const &gllWts) {
+                          SArray<real,tord,tord> const &aderDerivX, real3d &src, SArray<real,tord> const &gllWts, real3d &fluxBalEdges) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -209,6 +209,7 @@ public :
       SArray<real,numState,tord,tord> srcDTs;   // GLL source values
       SArray<real,tord> sfc_x_loc;
       SArray<real,tord> sfcGll_loc;
+      real h0loc = 0;
 
       // Compute tord GLL points of the state vector
       for (int l=0; l<numState; l++) {
@@ -219,18 +220,28 @@ public :
         for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
       }
       for (int ii=0; ii<tord; ii++) {
+        h0loc += stateDTs(idH,0,ii) * gllWts(ii);
         stateDTs(idH,0,ii) -= sfcGllX(j,i,ii);
       }
+
+      real hb;
+      hb = h0loc - sfcGllX(j,i,0     );
+      fluxBalEdges(0,j,i) = -GRAV*hb*hb/2;
+      hb = h0loc - sfcGllX(j,i,tord-1);
+      fluxBalEdges(1,j,i) = -GRAV*hb*hb/2;
 
       // Compute DTs of the state and flux, and collapse down into a time average
       for (int ii=0 ;ii<tord; ii++) {
         sfc_x_loc (ii) = sfc_x  (j,i,ii);
         sfcGll_loc(ii) = sfcGllX(j,i,ii);
       }
-      diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX , sfcGll_loc , dom );
+      diffTransformSW_X( stateDTs , fluxDTs , srcDTs , sfc_x_loc , aderDerivX , sfcGll_loc , h0loc );
       timeAvg( stateDTs , dom );
       timeAvg( fluxDTs  , dom );
       timeAvg( srcDTs   , dom );
+
+      fluxDTs(idHU,0,0     ) -= fluxBalEdges(0,j,i);
+      fluxDTs(idHU,0,tord-1) -= fluxBalEdges(1,j,i);
 
       for (int l=0; l<numState; l++) {
         src(l,j,i) = 0;
@@ -255,7 +266,7 @@ public :
 
   inline void reconADER_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                           real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
-                          SArray<real,tord,tord> const &aderDerivY, real3d &src, SArray<real,tord> const &gllWts) {
+                          SArray<real,tord,tord> const &aderDerivY, real3d &src, SArray<real,tord> const &gllWts, real3d &fluxBalEdges) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -266,6 +277,7 @@ public :
       SArray<real,numState,tord,tord> srcDTs;   // GLL source values
       SArray<real,tord> sfc_y_loc;
       SArray<real,tord> sfcGll_loc;
+      real h0loc = 0;
 
       // Compute GLL points from cell averages
       for (int l=0; l<numState; l++) {
@@ -276,18 +288,28 @@ public :
         for (int ii=0; ii<tord; ii++) { stateDTs(l,0,ii) = gllPts(ii); }
       }
       for (int ii=0; ii<tord; ii++) {
+        h0loc += stateDTs(idH,0,ii) * gllWts(ii);
         stateDTs(idH,0,ii) -= sfcGllY(j,i,ii);
       }
+
+      real hb;
+      hb = h0loc - sfcGllY(j,i,0     );
+      fluxBalEdges(0,j,i) = -GRAV*hb*hb/2;
+      hb = h0loc - sfcGllY(j,i,tord-1);
+      fluxBalEdges(1,j,i) = -GRAV*hb*hb/2;
 
       // Compute DTs of the state and flux, and collapse down into a time average
       for (int ii=0 ;ii<tord; ii++) {
         sfc_y_loc (ii) = sfc_y  (j,i,ii);
         sfcGll_loc(ii) = sfcGllY(j,i,ii);
       }
-      diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY , sfcGll_loc , dom );
+      diffTransformSW_Y( stateDTs , fluxDTs , srcDTs , sfc_y_loc , aderDerivY , sfcGll_loc , h0loc );
       timeAvg( stateDTs , dom );
       timeAvg( fluxDTs  , dom );
       timeAvg( srcDTs   , dom );
+
+      fluxDTs(idHV,0,0     ) -= fluxBalEdges(0,j,i);
+      fluxDTs(idHV,0,tord-1) -= fluxBalEdges(1,j,i);
 
       for (int l=0; l<numState; l++) {
         src(l,j,i) = 0;

@@ -32,7 +32,7 @@
 
   inline _HOSTDEV void diffTransformSW_X( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
                                           SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_x, SArray<real,tord,tord> const &deriv, 
-                                          SArray<real,tord> const &sfcGll , Domain const &dom ) {
+                                          SArray<real,tord> const &sfcGll , real const &h0loc ) {
     SArray<real,tord,tord> huu, huv, hh;
     real tot_huu, tot_huv, tot_hh;
 
@@ -47,7 +47,7 @@
       real u = state(idHU,0,ii) / h;
       real v = state(idHV,0,ii) / h;
 
-      real hb = dom.h0 - sfcGll(ii);
+      real hb = h0loc - sfcGll(ii);
 
       huu(0,ii) = h*u*u;
       huv(0,ii) = h*u*v;
@@ -104,7 +104,7 @@
 
   inline _HOSTDEV void diffTransformSW_Y( SArray<real,numState,tord,tord> &state, SArray<real,numState,tord,tord> &flux,
                                           SArray<real,numState,tord,tord> &src, SArray<real,tord> const &sfc_y, SArray<real,tord,tord> const &deriv, 
-                                          SArray<real,tord> const &sfcGll , Domain const &dom ) {
+                                          SArray<real,tord> const &sfcGll , real const &h0loc ) {
     SArray<real,tord,tord> hvu, hvv, hh;
     real tot_hvu, tot_hvv, tot_hh;
 
@@ -119,7 +119,7 @@
       real u = state(idHU,0,ii) / h;
       real v = state(idHV,0,ii) / h;
 
-      real hb = dom.h0 - sfcGll(ii);
+      real hb = h0loc - sfcGll(ii);
 
       hvu(0,ii) = h*v*u;
       hvv(0,ii) = h*v*v;
