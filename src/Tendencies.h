@@ -17,6 +17,7 @@ class Tendencies {
 
   real4d stateLimits;
   real4d fluxLimits;
+  real3d fluxBalEdges;
   real3d flux;
   real3d src;
   SArray<real,tord> gllWts;
@@ -32,10 +33,11 @@ public :
 
   inline void initialize(Domain &dom) {
     TransformMatrices<real> trans;
-    fluxLimits  = real4d("fluxLimits" ,numState,2,dom.ny+1,dom.nx+1);
-    stateLimits = real4d("stateLimits",numState,2,dom.ny+1,dom.nx+1);
-    flux        = real3d("flux"       ,numState  ,dom.ny+1,dom.nx+1);
-    src         = real3d("src"        ,numState  ,dom.ny  ,dom.nx  );
+    fluxLimits   = real4d("fluxLimits"  ,numState,2,dom.ny+1,dom.nx+1);
+    stateLimits  = real4d("stateLimits" ,numState,2,dom.ny+1,dom.nx+1);
+    flux         = real3d("flux"        ,numState  ,dom.ny+1,dom.nx+1);
+    src          = real3d("src"         ,numState  ,dom.ny  ,dom.nx  );
+    fluxBalEdges = real3d("fluxBalEdges",2,dom.ny,dom.nx);
 
     SArray<real,ord,ord,ord> to_gll_tmp;
 
@@ -76,7 +78,7 @@ public :
     exch.haloUnpackN_x (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
+    reconSD_X(state, sfc_x, sfcGllX, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts, fluxBalEdges);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -90,7 +92,7 @@ public :
     computeFlux_X(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_X(flux, src, tend, dom);
+    computeTend_X(flux, src, tend, dom, fluxBalEdges);
   }
 
 
@@ -102,7 +104,7 @@ public :
     exch.haloUnpackN_y (dom, state, numState);
 
     // Reconstruct to tord GLL points in the x-direction
-    reconSD_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts);
+    reconSD_Y(state, sfc_y, sfcGllY, dom, wenoRecon, to_gll, stateLimits, fluxLimits, wenoIdl, wenoSigma, src, gllWts, fluxBalEdges);
 
     //Reconcile the edge fluxes via MPI exchange.
     exch.haloInit      ();
@@ -116,7 +118,7 @@ public :
     computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_Y(flux, src, tend, dom);
+    computeTend_Y(flux, src, tend, dom, fluxBalEdges);
   }
 
 
@@ -142,7 +144,7 @@ public :
     computeFlux_X(stateLimits,fluxLimits,flux,dom);
 
     // Form the tendencies
-    computeTend_X(flux, src, tend, dom);
+    computeTend_X(flux, src, tend, dom, fluxBalEdges);
   }
 
 
@@ -168,7 +170,7 @@ public :
     computeFlux_Y(stateLimits, fluxLimits, flux, dom);
 
     // Form the tendencies
-    computeTend_Y(flux, src, tend, dom);
+    computeTend_Y(flux, src, tend, dom, fluxBalEdges);
   }
 
 
@@ -310,7 +312,7 @@ public :
 
   inline void reconSD_X(real3d &state, real3d &sfc_x, real3d &sfcGllX, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                         real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
-                        real3d &src, SArray<real,tord> const &gllWts) {
+                        real3d &src, SArray<real,tord> const &gllWts, real3d &fluxBalEdges) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -318,6 +320,7 @@ public :
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
       SArray<real,numState,tord> gllState;  // GLL state values
       SArray<real,numState,tord> gllFlux;   // GLL flux values
+      real h0loc = 0;
 
       // Compute tord GLL points of the state vector
       for (int l=0; l<numState; l++) {
@@ -328,6 +331,7 @@ public :
         for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
       }
       for (int ii=0; ii<tord; ii++) {
+        h0loc += gllState(idH,ii) * gllWts(ii);
         gllState(idH,ii) -= sfcGllX(j,i,ii);
       }
 
@@ -340,10 +344,13 @@ public :
         real u = gllState(idHU,ii) / h;
         real v = gllState(idHV,ii) / h;
 
-        real hb = dom.h0 - sfcGllX(j,i,ii);
+        real hb = h0loc - sfcGllX(j,i,ii);
+
+        if (ii == 0     ) { fluxBalEdges(0,j,i) = -GRAV*hb*hb/2; }
+        if (ii == tord-1) { fluxBalEdges(1,j,i) = -GRAV*hb*hb/2; }
 
         gllFlux(idH ,ii) = h*u;
-        gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2 - GRAV*hb*hb/2;
+        gllFlux(idHU,ii) = h*u*u + GRAV*h*h/2;
         gllFlux(idHV,ii) = h*u*v;
 
         src(idHU,j,i) += -GRAV*(h-hb)*sfc_x(j,i,ii) * gllWts(ii);
@@ -365,7 +372,7 @@ public :
 
   inline void reconSD_Y(real3d &state, real3d &sfc_y, real3d &sfcGllY, Domain &dom, SArray<real,ord,ord,ord> const &wenoRecon, SArray<real,ord,tord> const &to_gll, 
                         real4d &stateLimits, real4d &fluxLimits, SArray<real,hs+2> const &wenoIdl, real &wenoSigma,
-                        real3d &src, SArray<real,tord> const &gllWts) {
+                        real3d &src, SArray<real,tord> const &gllWts, real3d &fluxBalEdges) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -373,6 +380,7 @@ public :
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
       SArray<real,numState,tord> gllState;
       SArray<real,numState,tord> gllFlux;
+      real h0loc = 0;
 
       // Compute GLL points from cell averages
       for (int l=0; l<numState; l++) {
@@ -383,6 +391,7 @@ public :
         for (int ii=0; ii<tord; ii++) { gllState(l,ii) = gllPts(ii); }
       }
       for (int ii=0; ii<tord; ii++) {
+        h0loc += gllState(idH,ii) * gllWts(ii);
         gllState(idH,ii) -= sfcGllY(j,i,ii);
       }
 
@@ -395,11 +404,14 @@ public :
         real u = gllState(idHU,ii) / h;
         real v = gllState(idHV,ii) / h;
 
-        real hb = dom.h0 - sfcGllY(j,i,ii);
+        real hb = h0loc - sfcGllY(j,i,ii);
+
+        if (ii == 0     ) { fluxBalEdges(0,j,i) = -GRAV*hb*hb/2; }
+        if (ii == tord-1) { fluxBalEdges(1,j,i) = -GRAV*hb*hb/2; }
 
         gllFlux(idH ,ii) = h*v;
         gllFlux(idHU,ii) = h*v*u;
-        gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2 - GRAV*hb*hb/2;
+        gllFlux(idHV,ii) = h*v*v + GRAV*h*h/2;
 
         src(idHV,j,i) += -GRAV*(h-hb)*sfc_y(j,i,ii) * gllWts(ii);
       }
@@ -460,26 +472,38 @@ public :
   }
 
 
-  inline void computeTend_X(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom) {
+  inline void computeTend_X(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom, real3d &fluxBalEdges) {
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int i, j, l;
       unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
-      tend(l,j,i) = - ( flux(l,j,i+1) - flux(l,j,i) ) / dom.dx + src(l,j,i);
+      real f1 = flux(l,j,i  );
+      real f2 = flux(l,j,i+1);
+      if (l == idHU) {
+        f1 += fluxBalEdges(0,j,i);
+        f2 += fluxBalEdges(1,j,i);
+      }
+      tend(l,j,i) = - (f2-f1) / dom.dx + src(l,j,i);
     });
   }
 
 
-  inline void computeTend_Y(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom) {
+  inline void computeTend_Y(real3d const &flux, real3d const &src, real3d &tend, Domain const &dom, real3d &fluxBalEdges) {
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int i, j, l;
       unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
-      tend(l,j,i) = - ( flux(l,j+1,i) - flux(l,j,i) ) / dom.dy + src(l,j,i);
+      real f1 = flux(l,j  ,i);
+      real f2 = flux(l,j+1,i);
+      if (l == idHV) {
+        f1 += fluxBalEdges(0,j,i);
+        f2 += fluxBalEdges(1,j,i);
+      }
+      tend(l,j,i) = - (f2-f1) / dom.dy + src(l,j,i);
     });
   }
 

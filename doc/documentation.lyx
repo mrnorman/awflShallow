@@ -191,18 +191,6 @@ We could transform the bottom topography terms to include a portion of them
  step).
 \end_layout
 
-\begin_layout Standard
-There exists a rest state balance:
-\begin_inset Formula 
-\[
-\frac{\partial h_{B}}{\partial x}=-\frac{\partial h_{S}}{\partial x}\implies h_{B}=h_{0}-h_{S}
-\]
-
-\end_inset
-
-
-\end_layout
-
 \begin_layout Subsection
 Differential Transforms
 \end_layout
@@ -262,15 +250,132 @@ P\left(k_{t}\right)=\sum_{r_{t}=0}^{k_{t}}Q_{1}\left(r_{t}\right)Q_{1}\left(k_{t
 \end_layout
 
 \begin_layout Section
-Flus Jacobians with Source Terms:
+Balancing Attempts
+\end_layout
+
+\begin_layout Subsection
+Subtract a balanced state
 \end_layout
 
 \begin_layout Standard
-The source term does not affect the flux Jacobian at all, so the waves are
- the same regardless of the source term for the Riemann solver.
- The source term does, however, affect the time tendencies of the momenta.
- I *think* that ADER-DT handling of the fluxes and source terms should help
- the balancing between the fluxes and source terms.
+In a fluid with zero momentum 
+\begin_inset Formula $hu=hv=0$
+\end_inset
+
+, there is a balance between the gradient of the balanced fluid depth, 
+\begin_inset Formula $h_{B}$
+\end_inset
+
+, and the gradient of the terrain, 
+\begin_inset Formula $h_{S}$
+\end_inset
+
+:
+\begin_inset Formula 
+\[
+\frac{\partial h_{B}}{\partial x}=-\frac{\partial h_{S}}{\partial x}\implies h_{B}=h_{0}-h_{S}\implies\frac{\partial gh_{B}^{2}/2}{\partial x}=-gh_{B}\frac{\partial h_{S}}{\partial x}
+\]
+
+\end_inset
+
+To respect this balance in a realistic flow, I use the same technique used
+ in handling hydrostatic balance in a stratified fluid.
+ I subtract the balanced state from the momentum equations as:
+\begin_inset Formula 
+\[
+\frac{\partial}{\partial t}\left[\begin{array}{c}
+h\\
+hu\\
+hv
+\end{array}\right]+\frac{\partial}{\partial x}\left[\begin{array}{c}
+hu\\
+hu^{2}+\frac{1}{2}gh^{2}-\frac{1}{2}gh_{B}^{2}\\
+huv
+\end{array}\right]+\frac{\partial}{\partial y}\left[\begin{array}{c}
+hv\\
+hvu\\
+hv^{2}+\frac{1}{2}gh^{2}-\frac{1}{2}gh_{B}^{2}
+\end{array}\right]=\left[\begin{array}{c}
+0\\
+-g\left(h-h_{B}\right)\frac{\partial h_{S}}{\partial x}\\
+-g\left(h-h_{B}\right)\frac{\partial h_{S}}{\partial y}
+\end{array}\right]
+\]
+
+\end_inset
+
+In doing this, I should be essentially adding zero to the momentum equations
+ since the subtractions are, by definition, balanced.
+ In numerical experiments, this would be cheating for a true fluid at rest,
+ but when I add a fluid perturbation to the free surface height with terrain,
+ it gets rid of the imprinting due to imbalance between the momentum fluxes
+ and source terms.
+\end_layout
+
+\begin_layout Subsubsection
+How close does 
+\begin_inset Formula $h_{0}$
+\end_inset
+
+ need to be?
+\end_layout
+
+\begin_layout Standard
+It turns out that 
+\begin_inset Formula $h_{B}$
+\end_inset
+
+ needs to be very close to 
+\begin_inset Formula $h$
+\end_inset
+
+ to make the imbalance effects sufficiently small.
+ But if we use a separate 
+\begin_inset Formula $h_{0}$
+\end_inset
+
+ for every cell, then the fluxes aren't compatible in the Riemann solver.
+ Therefore, we need a way to correct for the differences in 
+\begin_inset Formula $h_{0}$
+\end_inset
+
+ between different cells.
+ Luckily, we already have a stencil in order to do this.
+\end_layout
+
+\begin_layout Subsubsection
+Getting 
+\begin_inset Formula $h_{0}$
+\end_inset
+
+ as close to 
+\begin_inset Formula $h$
+\end_inset
+
+ as possible
+\end_layout
+
+\begin_layout Standard
+To subtract out as much of the source term as possible via the balance subtracti
+on method, each cell will use its own local 
+\begin_inset Formula $h_{0}$
+\end_inset
+
+, which is the cell-average of 
+\begin_inset Formula $h$
+\end_inset
+
+.
+ To keep the fluxes consistent in the Riemann solver, the locally computed
+ balance corrections are saved and the fluxes are left alone during reconstructi
+on.
+ The balance corrections are applied in the tendency calculation instead.
+ By doing this, even with 
+\begin_inset Formula $\mathcal{C}^{0}$
+\end_inset
+
+ discontinuous terrain, the terrain is not visible during the simulation.
+ 
 \end_layout
 
 \end_body
