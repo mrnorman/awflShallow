@@ -5,29 +5,32 @@ load("quadrature_utils.sage")
 
 
 #Matrices that convert N GLL points on the domain [-dx/2,dx/2] into Nth-order-accurate polynomial coefficients and vice versa
-def points_gll_to_coefs(N,x,dx) :
+def points_gll_to_coefs(N) :
+    var('x')
     coefs = coefs_1d(N,0,'a')
     p = poly_1d(N,coefs,x)
     gll = points_gll(N)
-    pnts = vector([ p.subs(x=gll[i]*dx) for i in range(N) ])
+    pnts = vector([ p.subs(x=gll[i]) for i in range(N) ])
     coefs_to_pnts = jacobian(pnts,coefs)
     pnts_to_coefs = coefs_to_pnts^-1
     return pnts_to_coefs,coefs_to_pnts
 
 
 #Matrices that convert N stencil averages centered about zero with dx grid spacing into Nth-order-accurate polynomial coefficients and vice versa
-def stencil_to_coefs(N,x,dx) :
+def stencil_to_coefs(N) :
+    var('x')
     hs = (N-1)/2
     coefs = coefs_1d(N,0,'a')
     p = poly_1d(N,coefs,x)
-    constr = vector([ integrate(p,x,(2*i-1)*dx/2,(2*i+1)*dx/2)/dx for i in range(-hs,hs+1) ])
+    constr = vector([ integrate(p,x,(2*i-1)/2,(2*i+1)/2) for i in range(-hs,hs+1) ])
     coefs_to_constr = jacobian(constr,coefs)
     constr_to_coefs = coefs_to_constr^-1
     return constr_to_coefs,coefs_to_constr
 
 
 #Matrix that converts polynomial coefficients into differentiated polynomial coefficients
-def coefs_to_deriv(N,x) :
+def coefs_to_deriv(N) :
+    var('x')
     coefs = coefs_1d(N,0,'a')
     p = poly_1d(N,coefs,x)
     dp = diff(p,x)
@@ -37,13 +40,14 @@ def coefs_to_deriv(N,x) :
 
 
 #Compute an Nth-order-accurage polynomial from N stencil averages. Then project that to fewer GLL point values
-def sten_to_gll_lower(N,x,dx) :
+def sten_to_gll_lower(N) :
+    var('x')
     #Compute a Nth-order-accurate polynomial from a stencil of N values
     gs = (N-1)/2
-    coefs = coefs_1d(N,1,'a')
-    uvals = coefs_1d(N,1,'u')
+    coefs = coefs_1d(N,0,'a')
+    uvals = coefs_1d(N,0,'u')
     p = poly_1d(N,coefs,x)
-    constr = vector([ integrate(p,x,(2*i-1)*dx/2,(2*i+1)*dx/2) / dx for i in range(-gs,gs+1) ])
+    constr = vector([ integrate(p,x,(2*i-1)/2,(2*i+1)/2) for i in range(-gs,gs+1) ])
     p = poly_1d( N , jacobian(constr,coefs)^-1 * uvals , x )
     sten_to_gll  = [ [ [ 0*x for i in range(N) ] for j in range(N) ] for k in range(N) ]
     for j in range(1,N+1) :
@@ -52,7 +56,7 @@ def sten_to_gll_lower(N,x,dx) :
             locs = vector([ 0*x ])
         else :
             locs = points_gll(j)
-        gll = vector([ p.subs(x=locs[i]*dx).expand() for i in range(j) ])
+        gll = vector([ p.subs(x=locs[i]).expand() for i in range(j) ])
         s2g = jacobian(gll,uvals)
         for i2 in range(j) :
             for i1 in range(N) :
@@ -61,10 +65,11 @@ def sten_to_gll_lower(N,x,dx) :
 
 
 #Project Nth-order-accurate polynomial coefficients to fewer GLL point values
-def coefs_to_gll_lower(N,x,dx) :
+def coefs_to_gll_lower(N) :
+    var('x')
     #Compute a Nth-order-accurate polynomial from a stencil of N values
     gs = (N-1)/2
-    coefs = coefs_1d(N,1,'a')
+    coefs = coefs_1d(N,0,'a')
     p = poly_1d( N , coefs , x )
     coefs_to_gll  = [ [ [ 0*x for i in range(N) ] for j in range(N) ] for k in range(N) ]
     for j in range(1,N+1) :
@@ -73,7 +78,7 @@ def coefs_to_gll_lower(N,x,dx) :
             locs = vector([ 0*x ])
         else :
             locs = points_gll(j)
-        gll = vector([ p.subs(x=locs[i]*dx).expand() for i in range(j) ])
+        gll = vector([ p.subs(x=locs[i]).expand() for i in range(j) ])
         c2g = jacobian(gll,coefs)
         for i2 in range(j) :
             for i1 in range(N) :
@@ -82,10 +87,10 @@ def coefs_to_gll_lower(N,x,dx) :
 
 
 def weno_sten_to_coefs(N) :
+    var('x')
     hs = (N-1)/2
-    var('dx')
     wenopolys = [[[ 0*x for i in range(N) ] for j in range(N) ] for k in range(hs+2) ]
-    locs = vector([ (2*i-1)/2*dx for i in range(-hs,hs+2) ])
+    locs = vector([ (2*i-1)/2 for i in range(-hs,hs+2) ])
     #Lower-ordered polynomials
     for j in range(hs+1) :
         coefs = coefs_1d(hs+1,0,'a')
@@ -107,18 +112,25 @@ def weno_sten_to_coefs(N) :
 
 
 def coefs_to_TV(N) :
+    var('x')
     hs = (N-1)/2
-    coefs = coefs_1d(N,1,'a')
+    coefs = coefs_1d(N,0,'a')
     p = poly_1d(N,coefs,x)
     TV = sum( vector([ integrate_poly(N, p.diff(x,i)^2 ,x,-1/2,1/2) for i in range(1,N)]) )
     return TV
 
 
-#Matrix that converts polynomial coefficients into differentiated polynomial coefficients
-def coefs_to_prim(N,x) :
+def gll_to_prim_gll(N) :
     coefs = coefs_1d(N,0,'a')
     p = poly_1d(N,coefs,x)
+    pts = points_gll(N)
+    gll = vector([ p.subs(x=pts[i]) for i in range(N) ])
+    gll_to_coefs = jacobian(gll,coefs)^-1
+    gllvals = coefs_1d(N,0,'v')
+    coefs = gll_to_coefs * gllvals
+    p = poly_1d(N,coefs,x)
     pp = integrate(p,x)
-    prim_coefs = compute_coefs(N,pp,x)
-    coefs_to_prim = jacobian(prim_coefs,coefs)
-    return coefs_to_prim
+    gllprim = vector([ pp.subs(x=pts[i]) for i in range(N) ])
+    gll_to_prim_gll = jacobian(gllprim,gllvals)
+    return gll_to_prim_gll
+
