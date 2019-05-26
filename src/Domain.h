@@ -28,8 +28,6 @@ public:
   int doWeno;
 
   real dt;
-
-  real const h0=1000.;
 };
 
 #endif
