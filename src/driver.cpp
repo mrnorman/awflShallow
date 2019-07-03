@@ -11,6 +11,7 @@
 #include "TimeIntegrator.h"
 #include "FileIO.h"
 #include "Exchange.h"
+#include "cfl.h"
 
 int main(int argc, char** argv) {
   Kokkos::initialize();
@@ -41,6 +42,7 @@ int main(int argc, char** argv) {
     io.outputInit(state, dom, par);
 
     while (dom.etime < dom.simLength) {
+      computeTimeStep(state.state, dom);
       if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
       tint.stepForward(state, dom, exch, par);
       dom.etime += dom.dt;

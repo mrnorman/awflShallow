@@ -8,6 +8,7 @@
 #include "TimeIntegrator.h"
 #include "mpi.h"
 #include "Indexing.h"
+#include "cfl.h"
 
 class Initializer{
 
@@ -134,11 +135,19 @@ public:
           real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllTordPoints(ii)*dom.dx;
           real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllTordPoints(jj)*dom.dy;
           real h = 0;
-          real h0 = 100;
+          real h0 = 0;
 
           // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
           // real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
-          real sfc = ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+          // real sfc = ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+          real sfc = 0;
+
+          if (xloc < dom.xlen/2) {
+            h = 1;
+          } else {
+            h = 3;
+          }
+
           h += sfc;
 
           real wt = gllTordWeights(ii)*gllTordWeights(jj);
@@ -197,41 +206,7 @@ public:
       }
     });
 
-    real2d dt3d = real2d("dt3d",dom.ny,dom.nx);
-
-    dom.dt = 1.e12_fp;
-    // Compute the time step based on the CFL value
-    // for (int j=0; j<dom.ny; j++) {
-    //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      // Grab state variables
-      real h = state.state(idH ,hs+j,hs+i);
-      real u = state.state(idHU,hs+j,hs+i) / h;
-      real v = state.state(idHV,hs+j,hs+i) / h;
-      real cg = mysqrt(GRAV*h);
-
-      // Compute the max wave
-      real maxWave = max( myfabs(u) , myfabs(v)) + cg;
-
-      // Compute the time step
-      real dxmin = min(dom.dx,dom.dy);
-      dt3d(j,i) = dom.cfl * dxmin / maxWave;
-    });
-
-    dom.dt = 1.e12_fp;
-    Kokkos::parallel_reduce( dom.ny*dom.nx , KOKKOS_LAMBDA (int const iGlob, real &dt) {
-      int j, i;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      dt = min(dt,dt3d(j,i));
-    } , Kokkos::Min<real>(dom.dt) );
-
-    Kokkos::fence();
-
-    real dtloc = dom.dt;
-    ierr = MPI_Allreduce(&dtloc, &dom.dt, 1, MPI_REAL , MPI_MIN, MPI_COMM_WORLD);
-
+    computeTimeStep(state.state, dom);
 
     if (par.masterproc) {
       std::cout << "dx: " << dom.dx << "\n";
