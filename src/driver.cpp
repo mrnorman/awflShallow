@@ -25,8 +25,8 @@ int main(int argc, char** argv) {
     Exchange       exch;
     TimeIntegrator tint;
 
-    real3d state;
-    real2d sfc;
+    realArr state;
+    realArr sfc;
 
     // Initialize MPI and read the input file
     init.initialize_mpi( &argc , &argv , par );

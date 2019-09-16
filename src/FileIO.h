@@ -18,12 +18,12 @@ protected:
 
 public:
 
-  void outputInit(real3d &state, real2d &sfc, Domain const &dom, Parallel const &par) {
+  void outputInit(realArr &state, realArr &sfc, Domain const &dom, Parallel const &par) {
     int dimids[3];
     MPI_Offset st[3], ct[3];
-    real1d xCoord = real1d("xCoord",dom.nx);
-    real1d yCoord = real1d("yCoord",dom.ny);
-    real2d data   = real2d("data",dom.ny,dom.nx);
+    realArr xCoord = realArr("xCoord",dom.nx);
+    realArr yCoord = realArr("yCoord",dom.ny);
+    realArr data   = realArr("data",dom.ny,dom.nx);
 
     numOut = 0;
 
@@ -94,7 +94,7 @@ public:
   }
 
 
-  void output(real3d &state, Domain const &dom, Parallel const &par) {
+  void output(realArr &state, Domain const &dom, Parallel const &par) {
     outTimer += dom.dt;
     if (outTimer < dom.outFreq) {
       return;
@@ -116,8 +116,8 @@ public:
   }
 
 
-  void writeState(real3d &state, Domain const &dom, Parallel const &par) {
-    real2d data = real2d("data",dom.ny,dom.nx);
+  void writeState(realArr &state, Domain const &dom, Parallel const &par) {
+    realArr data = realArr("data",dom.ny,dom.nx);
     MPI_Offset st[3], ct[3];
 
     st[0] = numOut; st[1] = par.j_beg; st[2] = par.i_beg;

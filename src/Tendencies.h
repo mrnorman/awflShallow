@@ -11,17 +11,17 @@
 
 class Tendencies {
 
-  real4d fwaves;
+  realArr fwaves;
 
 public :
 
 
   inline void initialize(Domain &dom) {
-    fwaves = real4d("fwaves"      ,numState,2,dom.ny+1,dom.nx+1);
+    fwaves = realArr("fwaves"      ,numState,2,dom.ny+1,dom.nx+1);
   }
 
 
-  inline void compSWTend(real3d &state, real2d &sfc, Domain &dom, Exchange &exch, Parallel &par, real3d &tend) {
+  inline void compSWTend(realArr &state, realArr &sfc, Domain &dom, Exchange &exch, Parallel &par, realArr &tend) {
 
     //Exchange halos in the x-direction
     exch.haloInit      ();

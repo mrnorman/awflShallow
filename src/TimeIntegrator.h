@@ -10,19 +10,19 @@
 
 class TimeIntegrator {
 
-  real3d tendArr;
+  realArr tendArr;
   Tendencies tend;
 
 public :
 
 
   inline void initialize(Domain &dom) {
-    tendArr = real3d("tendArr",numState,dom.ny,dom.nx);
+    tendArr = realArr("tendArr",numState,dom.ny,dom.nx);
     tend.initialize(dom);
   }
 
 
-  inline void stepForward(real3d &state, real2d &sfc, Domain &dom, Exchange &exch, Parallel &par) {
+  inline void stepForward(realArr &state, realArr &sfc, Domain &dom, Exchange &exch, Parallel &par) {
     tend.compSWTend(state, sfc, dom, exch, par, tendArr);
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {

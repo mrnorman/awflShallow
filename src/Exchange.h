@@ -21,45 +21,45 @@ protected:
   int nPack;
   int nUnpack;
 
-  real3d haloSendBufS;
-  real3d haloSendBufN;
-  real3d haloSendBufW;
-  real3d haloSendBufE;
-  real3d haloRecvBufS;
-  real3d haloRecvBufN;
-  real3d haloRecvBufW;
-  real3d haloRecvBufE;
+  realArr haloSendBufS;
+  realArr haloSendBufN;
+  realArr haloSendBufW;
+  realArr haloSendBufE;
+  realArr haloRecvBufS;
+  realArr haloRecvBufN;
+  realArr haloRecvBufW;
+  realArr haloRecvBufE;
 
-  real2d edgeRecvBufE;
-  real2d edgeRecvBufW;
-  real2d edgeSendBufE;
-  real2d edgeSendBufW;
-  real2d edgeRecvBufN;
-  real2d edgeRecvBufS;
-  real2d edgeSendBufN;
-  real2d edgeSendBufS;
+  realArr edgeRecvBufE;
+  realArr edgeRecvBufW;
+  realArr edgeSendBufE;
+  realArr edgeSendBufW;
+  realArr edgeRecvBufN;
+  realArr edgeRecvBufS;
+  realArr edgeSendBufN;
+  realArr edgeSendBufS;
 
 public:
 
 
   inline void allocate(Domain &dom) {
-    haloSendBufS = real3d("haloSendBufS",maxPack,hs,dom.nx);
-    haloSendBufN = real3d("haloSendBufN",maxPack,hs,dom.nx);
-    haloSendBufW = real3d("haloSendBufW",maxPack,dom.ny,hs);
-    haloSendBufE = real3d("haloSendBufE",maxPack,dom.ny,hs);
-    haloRecvBufS = real3d("haloRecvBufS",maxPack,hs,dom.nx);
-    haloRecvBufN = real3d("haloRecvBufN",maxPack,hs,dom.nx);
-    haloRecvBufW = real3d("haloRecvBufW",maxPack,dom.ny,hs);
-    haloRecvBufE = real3d("haloRecvBufE",maxPack,dom.ny,hs);
+    haloSendBufS = realArr("haloSendBufS",maxPack,hs,dom.nx);
+    haloSendBufN = realArr("haloSendBufN",maxPack,hs,dom.nx);
+    haloSendBufW = realArr("haloSendBufW",maxPack,dom.ny,hs);
+    haloSendBufE = realArr("haloSendBufE",maxPack,dom.ny,hs);
+    haloRecvBufS = realArr("haloRecvBufS",maxPack,hs,dom.nx);
+    haloRecvBufN = realArr("haloRecvBufN",maxPack,hs,dom.nx);
+    haloRecvBufW = realArr("haloRecvBufW",maxPack,dom.ny,hs);
+    haloRecvBufE = realArr("haloRecvBufE",maxPack,dom.ny,hs);
 
-    edgeSendBufS = real2d("edgeSendBufS",maxPack,dom.nx);
-    edgeSendBufN = real2d("edgeSendBufN",maxPack,dom.nx);
-    edgeSendBufW = real2d("edgeSendBufW",maxPack,dom.ny);
-    edgeSendBufE = real2d("edgeSendBufE",maxPack,dom.ny);
-    edgeRecvBufS = real2d("edgeRecvBufS",maxPack,dom.nx);
-    edgeRecvBufN = real2d("edgeRecvBufN",maxPack,dom.nx);
-    edgeRecvBufW = real2d("edgeRecvBufW",maxPack,dom.ny);
-    edgeRecvBufE = real2d("edgeRecvBufE",maxPack,dom.ny);
+    edgeSendBufS = realArr("edgeSendBufS",maxPack,dom.nx);
+    edgeSendBufN = realArr("edgeSendBufN",maxPack,dom.nx);
+    edgeSendBufW = realArr("edgeSendBufW",maxPack,dom.ny);
+    edgeSendBufE = realArr("edgeSendBufE",maxPack,dom.ny);
+    edgeRecvBufS = realArr("edgeRecvBufS",maxPack,dom.nx);
+    edgeRecvBufN = realArr("edgeRecvBufN",maxPack,dom.nx);
+    edgeRecvBufW = realArr("edgeRecvBufW",maxPack,dom.ny);
+    edgeRecvBufE = realArr("edgeRecvBufE",maxPack,dom.ny);
   }
 
 
@@ -68,11 +68,11 @@ public:
     nUnpack = 0;
   }
 
-  inline void haloPackN_x(Domain &dom, real3d &a, int n) {
+  inline void haloPackN_x(Domain &dom, realArr &a, int n) {
     haloPackN_x_ext(dom,a,n,haloSendBufW,haloSendBufE, nPack);
     nPack = nPack + n;
   }
-  inline void haloPackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufW, real3d &haloSendBufE, int const nPack) {
+  inline void haloPackN_x_ext(Domain &dom, realArr &a, int n, realArr &haloSendBufW, realArr &haloSendBufE, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
@@ -85,11 +85,11 @@ public:
   }
 
 
-  inline void haloPackN_y(Domain &dom, real3d &a, int n) {
+  inline void haloPackN_y(Domain &dom, realArr &a, int n) {
     haloPackN_y_ext(dom,a,n,haloSendBufS,haloSendBufN, nPack);
     nPack = nPack + n;
   }
-  inline void haloPackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloSendBufS, real3d &haloSendBufN, int const nPack) {
+  inline void haloPackN_y_ext(Domain &dom, realArr &a, int n, realArr &haloSendBufS, realArr &haloSendBufN, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -102,11 +102,11 @@ public:
   }
 
 
-  inline void haloPack1_x(Domain &dom, real2d &a) {
+  inline void haloPack1_x(Domain &dom, realArr &a) {
     haloPack1_x_ext(dom, a, haloSendBufW, haloSendBufE, nPack);
     nPack = nPack + 1;
   }
-  inline void haloPack1_x_ext(Domain &dom, real2d &a, real3d &haloSendBufW, real3d &haloSendBufE, int const nPack) {
+  inline void haloPack1_x_ext(Domain &dom, realArr &a, realArr &haloSendBufW, realArr &haloSendBufE, int const nPack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
     Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
@@ -118,11 +118,11 @@ public:
   }
 
 
-  inline void haloPack1_y(Domain &dom, real2d &a) {
+  inline void haloPack1_y(Domain &dom, realArr &a) {
     haloPack1_y_ext(dom, a, haloSendBufS, haloSendBufN, nPack);
     nPack = nPack + 1;
   }
-  inline void haloPack1_y_ext(Domain &dom, real2d &a, real3d &haloSendBufS, real3d &haloSendBufN, int const nPack) {
+  inline void haloPack1_y_ext(Domain &dom, realArr &a, realArr &haloSendBufS, realArr &haloSendBufN, int const nPack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -134,11 +134,11 @@ public:
   }
 
 
-  inline void haloUnpackN_x(Domain &dom, real3d &a, int n) {
+  inline void haloUnpackN_x(Domain &dom, realArr &a, int n) {
     haloUnpackN_x_ext(dom, a, n, haloRecvBufW, haloRecvBufE, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void haloUnpackN_x_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufW, real3d &haloRecvBufE, int const nUnpack) {
+  inline void haloUnpackN_x_ext(Domain &dom, realArr &a, int n, realArr &haloRecvBufW, realArr &haloRecvBufE, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
@@ -151,11 +151,11 @@ public:
   }
 
 
-  inline void haloUnpackN_y(Domain &dom, real3d &a, int n) {
+  inline void haloUnpackN_y(Domain &dom, realArr &a, int n) {
     haloUnpackN_y_ext(dom, a, n, haloRecvBufS, haloRecvBufN, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void haloUnpackN_y_ext(Domain &dom, real3d &a, int n, real3d &haloRecvBufS, real3d &haloRecvBufN, int const nUnpack) {
+  inline void haloUnpackN_y_ext(Domain &dom, realArr &a, int n, realArr &haloRecvBufS, realArr &haloRecvBufN, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
@@ -168,11 +168,11 @@ public:
   }
 
 
-  inline void haloUnpack1_x(Domain &dom, real2d &a) {
+  inline void haloUnpack1_x(Domain &dom, realArr &a) {
     haloUnpack1_x_ext(dom, a, haloRecvBufW, haloRecvBufE, nUnpack);
     nUnpack = nUnpack + 1;
   }
-  inline void haloUnpack1_x_ext(Domain &dom, real2d &a, real3d &haloRecvBufW, real3d &haloRecvBufE, int const nUnpack) {
+  inline void haloUnpack1_x_ext(Domain &dom, realArr &a, realArr &haloRecvBufW, realArr &haloRecvBufE, int const nUnpack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
     Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
@@ -184,11 +184,11 @@ public:
   }
 
 
-  inline void haloUnpack1_y(Domain &dom, real2d &a) {
+  inline void haloUnpack1_y(Domain &dom, realArr &a) {
     haloUnpack1_y_ext(dom, a, haloRecvBufS, haloRecvBufN, nUnpack);
     nUnpack = nUnpack + 1;
   }
-  inline void haloUnpack1_y_ext(Domain &dom, real2d &a, real3d &haloRecvBufS, real3d &haloRecvBufN, int const nUnpack) {
+  inline void haloUnpack1_y_ext(Domain &dom, realArr &a, realArr &haloRecvBufS, realArr &haloRecvBufN, int const nUnpack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -221,7 +221,7 @@ public:
       haloExchangeLocX(dom, nPack, haloSendBufW, haloSendBufE, haloRecvBufW, haloRecvBufE);
     }
   }
-  inline void haloExchangeLocX(Domain const &dom, int nPack, real3d const &haloSendBufW, real3d const &haloSendBufE, real3d &haloRecvBufW, real3d &haloRecvBufE) {
+  inline void haloExchangeLocX(Domain const &dom, int nPack, realArr const &haloSendBufW, realArr const &haloSendBufE, realArr &haloRecvBufW, realArr &haloRecvBufE) {
     Kokkos::parallel_for( nPack*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
       int v, j, ii;
       unpackIndices(iGlob,nPack,dom.ny,hs,v,j,ii);
@@ -252,7 +252,7 @@ public:
       haloExchangeLocY(dom, nPack, haloSendBufS, haloSendBufN, haloRecvBufS, haloRecvBufN);
     }
   }
-  inline void haloExchangeLocY(Domain const &dom, int nPack, real3d const &haloSendBufS, real3d const &haloSendBufN, real3d &haloRecvBufS, real3d &haloRecvBufN) {
+  inline void haloExchangeLocY(Domain const &dom, int nPack, realArr const &haloSendBufS, realArr const &haloSendBufN, realArr &haloRecvBufS, realArr &haloRecvBufN) {
     Kokkos::parallel_for( nPack*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, ii, i;
       unpackIndices(iGlob,nPack,hs,dom.nx,v,ii,i);
@@ -262,11 +262,11 @@ public:
   }
 
 
-  inline void edgePackN_x(Domain &dom, real4d &a, int n) {
+  inline void edgePackN_x(Domain &dom, realArr &a, int n) {
     edgePackN_x_ext(dom, a, n, edgeSendBufW, edgeSendBufE, nPack);
     nPack = nPack + n;
   }
-  inline void edgePackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeSendBufW, real2d &edgeSendBufE, int const nPack) {
+  inline void edgePackN_x_ext(Domain &dom, realArr &a, int n, realArr &edgeSendBufW, realArr &edgeSendBufE, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
@@ -278,11 +278,11 @@ public:
   }
 
 
-  inline void edgePackN_y(Domain &dom, real4d &a, int n) {
+  inline void edgePackN_y(Domain &dom, realArr &a, int n) {
     edgePackN_y(dom, a, n, edgeSendBufS, edgeSendBufN, nPack);
     nPack = nPack + n;
   }
-  inline void edgePackN_y(Domain &dom, real4d &a, int n, real2d &edgeSendBufS, real2d &edgeSendBufN, int const nPack) {
+  inline void edgePackN_y(Domain &dom, realArr &a, int n, realArr &edgeSendBufS, realArr &edgeSendBufN, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -294,11 +294,11 @@ public:
   }
 
 
-  inline void edgeUnpackN_x(Domain &dom, real4d &a, int n) {
+  inline void edgeUnpackN_x(Domain &dom, realArr &a, int n) {
     edgeUnpackN_x_ext(dom, a, n, edgeRecvBufW, edgeRecvBufE, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void edgeUnpackN_x_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufW, real2d &edgeRecvBufE, int const nUnpack) {
+  inline void edgeUnpackN_x_ext(Domain &dom, realArr &a, int n, realArr &edgeRecvBufW, realArr &edgeRecvBufE, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
@@ -310,11 +310,11 @@ public:
   }
 
 
-  inline void edgeUnpackN_y(Domain &dom, real4d &a, int n) {
+  inline void edgeUnpackN_y(Domain &dom, realArr &a, int n) {
     edgeUnpackN_y_ext(dom, a, n, edgeRecvBufS, edgeRecvBufN, nUnpack);
     nUnpack = nUnpack + n;
   }
-  inline void edgeUnpackN_y_ext(Domain &dom, real4d &a, int n, real2d &edgeRecvBufS, real2d &edgeRecvBufN, int const nUnpack) {
+  inline void edgeUnpackN_y_ext(Domain &dom, realArr &a, int n, realArr &edgeRecvBufS, realArr &edgeRecvBufN, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
     Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
@@ -347,7 +347,7 @@ public:
       edgeExchangeLocX(dom, nPack, edgeSendBufW, edgeSendBufE, edgeRecvBufW, edgeRecvBufE);
     }
   }
-  inline void edgeExchangeLocX(Domain const &dom, int nPack, real2d const &edgeSendBufW, real2d const &edgeSendBufE, real2d &edgeRecvBufW, real2d &edgeRecvBufE) {
+  inline void edgeExchangeLocX(Domain const &dom, int nPack, realArr const &edgeSendBufW, realArr const &edgeSendBufE, realArr &edgeRecvBufW, realArr &edgeRecvBufE) {
     Kokkos::parallel_for( nPack*dom.ny , KOKKOS_LAMBDA (int iGlob) {
       int v, j;
       unpackIndices(iGlob,nPack,dom.ny,v,j);
@@ -378,7 +378,7 @@ public:
       edgeExchangeLocY(dom, nPack, edgeSendBufS, edgeSendBufN, edgeRecvBufS, edgeRecvBufN);
     }
   }
-  inline void edgeExchangeLocY(Domain const &dom, int nPack, real2d const &edgeSendBufS, real2d const &edgeSendBufN, real2d &edgeRecvBufS, real2d &edgeRecvBufN) {
+  inline void edgeExchangeLocY(Domain const &dom, int nPack, realArr const &edgeSendBufS, realArr const &edgeSendBufN, realArr &edgeRecvBufS, realArr &edgeRecvBufN) {
     Kokkos::parallel_for( nPack*dom.nx , KOKKOS_LAMBDA (int iGlob) {
       int v, i;
       unpackIndices(iGlob,nPack,dom.nx,v,i);

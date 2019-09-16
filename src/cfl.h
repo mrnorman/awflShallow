@@ -7,9 +7,9 @@
 #include "mpi.h"
 #include "Indexing.h"
 
-inline void computeTimeStep(real3d &state, Domain &dom) {
+inline void computeTimeStep(realArr &state, Domain &dom) {
 
-  real2d dt3d = real2d("dt3d",dom.ny,dom.nx);
+  realArr dt3d = realArr("dt3d",dom.ny,dom.nx);
 
   dom.dt = 1.e12_fp;
   // Compute the time step based on the CFL value

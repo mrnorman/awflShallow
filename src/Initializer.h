@@ -27,7 +27,7 @@ public:
     }
   }
 
-  void initialize(real3d &state, real2d &sfc, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint) {
+  void initialize(realArr &state, realArr &sfc, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint) {
     int ierr;
 
     if (par.nranks != par.nproc_x*par.nproc_y) {
@@ -96,8 +96,8 @@ public:
     exch.allocate(dom);
 
     // Allocate the fluid state variable
-    state   = real3d( "state"   , numState , dom.ny+2*hs , dom.nx+2*hs );
-    sfc     = real2d( "sfc"     , dom.ny+2*hs , dom.nx+2*hs );
+    state   = realArr( "state"   , numState , dom.ny+2*hs , dom.nx+2*hs );
+    sfc     = realArr( "sfc"     , dom.ny+2*hs , dom.nx+2*hs );
 
     // Initialize the state
     // for (int j=0; j<dom.ny; j++) {
