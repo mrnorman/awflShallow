@@ -50,8 +50,6 @@ public:
     ncwrap( ncmpi_def_var( ncid , "v"      , NC_FLOAT , 3 , dimids , &vVar  ) , __LINE__ );
     dimids[0] = yDim; dimids[1] = xDim;
     ncwrap( ncmpi_def_var( ncid , "sfc"    , NC_FLOAT , 2 , dimids , &sfcVar ) , __LINE__ );
-    ncwrap( ncmpi_def_var( ncid , "sfc_x"  , NC_FLOAT , 2 , dimids , &sfcxVar) , __LINE__ );
-    ncwrap( ncmpi_def_var( ncid , "sfc_y"  , NC_FLOAT , 2 , dimids , &sfcyVar) , __LINE__ );
 
     // End "define" mode
     ncwrap( ncmpi_enddef( ncid ) , __LINE__ );
