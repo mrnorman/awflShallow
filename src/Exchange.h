@@ -39,6 +39,24 @@ protected:
   realArr edgeSendBufN;
   realArr edgeSendBufS;
 
+  realArrHost haloSendBufS_cpu;
+  realArrHost haloSendBufN_cpu;
+  realArrHost haloSendBufW_cpu;
+  realArrHost haloSendBufE_cpu;
+  realArrHost haloRecvBufS_cpu;
+  realArrHost haloRecvBufN_cpu;
+  realArrHost haloRecvBufW_cpu;
+  realArrHost haloRecvBufE_cpu;
+
+  realArrHost edgeRecvBufE_cpu;
+  realArrHost edgeRecvBufW_cpu;
+  realArrHost edgeSendBufE_cpu;
+  realArrHost edgeSendBufW_cpu;
+  realArrHost edgeRecvBufN_cpu;
+  realArrHost edgeRecvBufS_cpu;
+  realArrHost edgeSendBufN_cpu;
+  realArrHost edgeSendBufS_cpu;
+
 public:
 
 
@@ -60,6 +78,24 @@ public:
     edgeRecvBufN = realArr("edgeRecvBufN",maxPack,dom.nx);
     edgeRecvBufW = realArr("edgeRecvBufW",maxPack,dom.ny);
     edgeRecvBufE = realArr("edgeRecvBufE",maxPack,dom.ny);
+
+    haloSendBufS_cpu = realArrHost("haloSendBufS",maxPack,hs,dom.nx);
+    haloSendBufN_cpu = realArrHost("haloSendBufN",maxPack,hs,dom.nx);
+    haloSendBufW_cpu = realArrHost("haloSendBufW",maxPack,dom.ny,hs);
+    haloSendBufE_cpu = realArrHost("haloSendBufE",maxPack,dom.ny,hs);
+    haloRecvBufS_cpu = realArrHost("haloRecvBufS",maxPack,hs,dom.nx);
+    haloRecvBufN_cpu = realArrHost("haloRecvBufN",maxPack,hs,dom.nx);
+    haloRecvBufW_cpu = realArrHost("haloRecvBufW",maxPack,dom.ny,hs);
+    haloRecvBufE_cpu = realArrHost("haloRecvBufE",maxPack,dom.ny,hs);
+
+    edgeSendBufS_cpu = realArrHost("edgeSendBufS",maxPack,dom.nx);
+    edgeSendBufN_cpu = realArrHost("edgeSendBufN",maxPack,dom.nx);
+    edgeSendBufW_cpu = realArrHost("edgeSendBufW",maxPack,dom.ny);
+    edgeSendBufE_cpu = realArrHost("edgeSendBufE",maxPack,dom.ny);
+    edgeRecvBufS_cpu = realArrHost("edgeRecvBufS",maxPack,dom.nx);
+    edgeRecvBufN_cpu = realArrHost("edgeRecvBufN",maxPack,dom.nx);
+    edgeRecvBufW_cpu = realArrHost("edgeRecvBufW",maxPack,dom.ny);
+    edgeRecvBufE_cpu = realArrHost("edgeRecvBufE",maxPack,dom.ny);
   }
 
 
@@ -207,16 +243,23 @@ public:
       Kokkos::fence();
 
       //Pre-post the receives
-      ierr = MPI_Irecv( haloRecvBufW.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
-      ierr = MPI_Irecv( haloRecvBufE.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
+      ierr = MPI_Irecv( haloRecvBufW_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
+      ierr = MPI_Irecv( haloRecvBufE_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
+
+      haloSendBufW.copyToArray(haloSendBufW_cpu);
+      haloSendBufE.copyToArray(haloSendBufE_cpu);
 
       //Send the data
-      ierr = MPI_Isend( haloSendBufW.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
-      ierr = MPI_Isend( haloSendBufE.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &sReq[1] );
+      ierr = MPI_Isend( haloSendBufW_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
+      ierr = MPI_Isend( haloSendBufE_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &sReq[1] );
 
       //Wait for the sends and receives to finish
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
+
+      haloRecvBufW_cpu.copyToArray(haloRecvBufW);
+      haloRecvBufE_cpu.copyToArray(haloRecvBufE);
+
     } else {
       haloExchangeLocX(dom, nPack, haloSendBufW, haloSendBufE, haloRecvBufW, haloRecvBufE);
     }
@@ -238,16 +281,23 @@ public:
       Kokkos::fence();
 
       //Pre-post the receives
-      ierr = MPI_Irecv( haloRecvBufS.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
-      ierr = MPI_Irecv( haloRecvBufN.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
+      ierr = MPI_Irecv( haloRecvBufS_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
+      ierr = MPI_Irecv( haloRecvBufN_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
+
+      haloSendBufS.copyToArray(haloSendBufS_cpu);
+      haloSendBufN.copyToArray(haloSendBufN_cpu);
 
       //Send the data
-      ierr = MPI_Isend( haloSendBufS.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
-      ierr = MPI_Isend( haloSendBufN.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &sReq[1] );
+      ierr = MPI_Isend( haloSendBufS_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
+      ierr = MPI_Isend( haloSendBufN_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &sReq[1] );
 
       //Wait for the sends and receives to finish
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
+
+      haloRecvBufS_cpu.copyToArray(haloRecvBufS);
+      haloRecvBufN_cpu.copyToArray(haloRecvBufN);
+
     } else {
       haloExchangeLocY(dom, nPack, haloSendBufS, haloSendBufN, haloRecvBufS, haloRecvBufN);
     }
@@ -333,16 +383,23 @@ public:
       Kokkos::fence();
 
       //Pre-post the receives
-      ierr = MPI_Irecv( edgeRecvBufW.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
-      ierr = MPI_Irecv( edgeRecvBufE.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
+      ierr = MPI_Irecv( edgeRecvBufW_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
+      ierr = MPI_Irecv( edgeRecvBufE_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
+
+      edgeSendBufW.copyToArray(edgeSendBufW_cpu);
+      edgeSendBufE.copyToArray(edgeSendBufE_cpu);
 
       //Send the data
-      ierr = MPI_Isend( edgeSendBufW.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
-      ierr = MPI_Isend( edgeSendBufE.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &sReq[1] );
+      ierr = MPI_Isend( edgeSendBufW_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
+      ierr = MPI_Isend( edgeSendBufE_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 0 , MPI_COMM_WORLD , &sReq[1] );
 
       //Wait for the sends and receives to finish
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
+
+      edgeRecvBufW_cpu.copyToArray(edgeRecvBufW);
+      edgeRecvBufE_cpu.copyToArray(edgeRecvBufE);
+
     } else {
       edgeExchangeLocX(dom, nPack, edgeSendBufW, edgeSendBufE, edgeRecvBufW, edgeRecvBufE);
     }
@@ -364,16 +421,23 @@ public:
       Kokkos::fence();
 
       //Pre-post the receives
-      ierr = MPI_Irecv( edgeRecvBufS.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
-      ierr = MPI_Irecv( edgeRecvBufN.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
+      ierr = MPI_Irecv( edgeRecvBufS_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
+      ierr = MPI_Irecv( edgeRecvBufN_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
+
+      edgeSendBufS.copyToArray(edgeSendBufS_cpu);
+      edgeSendBufN.copyToArray(edgeSendBufN_cpu);
 
       //Send the data
-      ierr = MPI_Isend( edgeSendBufS.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
-      ierr = MPI_Isend( edgeSendBufN.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &sReq[1] );
+      ierr = MPI_Isend( edgeSendBufS_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
+      ierr = MPI_Isend( edgeSendBufN_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 0 , MPI_COMM_WORLD , &sReq[1] );
 
       //Wait for the sends and receives to finish
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
+
+      edgeRecvBufS_cpu.copyToArray(edgeRecvBufS);
+      edgeRecvBufN_cpu.copyToArray(edgeRecvBufN);
+
     } else {
       edgeExchangeLocY(dom, nPack, edgeSendBufS, edgeSendBufN, edgeRecvBufS, edgeRecvBufN);
     }
