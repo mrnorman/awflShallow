@@ -6,7 +6,6 @@
 #include "Domain.h"
 #include "Parallel.h"
 #include "Parser.h"
-#include "State.h"
 #include "Initializer.h"
 #include "TimeIntegrator.h"
 #include "FileIO.h"
@@ -18,7 +17,6 @@ int main(int argc, char** argv) {
   {
 
     // Create the model objects
-    State          state;
     Domain         dom;
     Parallel       par;
     Parser         parser;
@@ -26,6 +24,9 @@ int main(int argc, char** argv) {
     FileIO         io;
     Exchange       exch;
     TimeIntegrator tint;
+
+    real3d state;
+    real2d sfc;
 
     // Initialize MPI and read the input file
     init.initialize_mpi( &argc , &argv , par );
@@ -36,15 +37,15 @@ int main(int argc, char** argv) {
     parser.readParamsFile(inFile, dom, par, io);
 
     // Initialize the model
-    init.initialize(state, dom, par, exch, tint);
+    init.initialize(state, sfc, dom, par, exch, tint);
 
     // Output the initial model state
-    io.outputInit(state, dom, par);
+    io.outputInit(state, sfc, dom, par);
 
     while (dom.etime < dom.simLength) {
-      computeTimeStep(state.state, dom);
+      computeTimeStep(state, dom);
       if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
-      tint.stepForward(state, dom, exch, par);
+      tint.stepForward(state, sfc, dom, exch, par);
       dom.etime += dom.dt;
       if (par.masterproc) {std::cout << dom.etime << "\n";}
       io.output(state, dom, par);

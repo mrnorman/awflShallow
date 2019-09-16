@@ -19,8 +19,6 @@ public:
 
   void readParamsFile(std::string fNameIn, Domain &dom, Parallel &par, FileIO &io) {
 
-    std::string strTimeMethod;
-
     // Initialize all read-in values to -999
     dom.nx_glob   = 0;
     dom.ny_glob   = 0;
@@ -30,9 +28,7 @@ public:
     dom.simLength = -999;
     par.nproc_x   = -999;
     par.nproc_y   = -999;
-    outFreq       = -999;
-    dom.doWeno    = -999;
-    timeMethod    = -999;
+    dom.outFreq   = -999;
 
     // Read in colon-separated key: value file line by line
     std::ifstream fInStream(fNameIn);
@@ -62,9 +58,7 @@ public:
         else if ( !strcmp( "simLength" , key.c_str() ) ) { ssVal >> dom.simLength; }
         else if ( !strcmp( "parNx"     , key.c_str() ) ) { ssVal >> par.nproc_x  ; }
         else if ( !strcmp( "parNy"     , key.c_str() ) ) { ssVal >> par.nproc_y  ; }
-        else if ( !strcmp( "outFreq"   , key.c_str() ) ) { ssVal >> outFreq      ; }
-        else if ( !strcmp( "doWeno"    , key.c_str() ) ) { ssVal >> dom.doWeno   ; }
-        else if ( !strcmp( "timeMethod", key.c_str() ) ) { ssVal >> strTimeMethod; handleTimeMethod(strTimeMethod,fNameIn); }
+        else if ( !strcmp( "outFreq"   , key.c_str() ) ) { ssVal >> dom.outFreq  ; }
         else {
           std::cout << "Error: key " << key << " not understood in file " << fNameIn << "\n";
           exit(-1);
@@ -81,8 +75,7 @@ public:
     if (dom.simLength == -999) { std::cout << "Error: key " << "simLength" << " not set."; exit(-1); }
     if (par.nproc_x   == -999) { std::cout << "Error: key " << "parNx"     << " not set."; exit(-1); }
     if (par.nproc_y   == -999) { std::cout << "Error: key " << "parNy"     << " not set."; exit(-1); }
-    if (outFreq       == -999) { std::cout << "Error: key " << "outFreq"   << " not set."; exit(-1); }
-    if (dom.doWeno    == -999) { std::cout << "Error: key " << "doWeno"    << " not set."; exit(-1); }
+    if (dom.outFreq   == -999) { std::cout << "Error: key " << "outFreq"   << " not set."; exit(-1); }
 
     // Print out the values
     if (par.masterproc) {
@@ -94,27 +87,9 @@ public:
       std::cout << "simLength: "  << dom.simLength << "\n";
       std::cout << "parNx: "      << par.nproc_x   << "\n";
       std::cout << "parNy: "      << par.nproc_y   << "\n";
-      std::cout << "outFreq: "    << outFreq       << "\n";
-      std::cout << "doWeno: "     << dom.doWeno    << "\n";
-      std::cout << "timeMethod: " << timeMethod    << "\n";
+      std::cout << "outFreq: "    << dom.outFreq   << "\n";
     }
 
-  }
-
-  void handleTimeMethod(std::string &str, std::string &fNameIn) {
-    size_t splitloc = str.find("//",0);
-    std::string strloc;
-    if (splitloc != std::string::npos){
-      strloc = str.substr(0,splitloc);
-    } else {
-      strloc = str;
-    }
-    if      ( !strcmp(strloc.c_str(),"SSPRK3") ) { timeMethod = TIME_SSPRK3; }
-    else if ( !strcmp(strloc.c_str(),"ADER"  ) ) { timeMethod = TIME_ADER  ; }
-    else  {
-      std::cout << "Error: unrecognized timeMethod " << str << " in file " << fNameIn << "\n";
-      exit(-1);
-    }
   }
 
 };

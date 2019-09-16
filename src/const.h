@@ -31,15 +31,11 @@ typedef unsigned int  uint;
 #define _HOSTDEV 
 #endif
 
-#include "params.h"
-
 inline _HOSTDEV real operator"" _fp( long double x ) {
   return static_cast<real>(x);
 }
 
-#define ord  5
-#define tord 3
-#define hs (ord-1)/2
+#define hs 1
 
 #define numState 3
 

@@ -25,9 +25,9 @@ public:
 
   real etime;
 
-  int doWeno;
-
   real dt;
+
+  real outFreq;
 };
 
 #endif

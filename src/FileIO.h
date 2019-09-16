@@ -3,9 +3,7 @@
 #define _FILEIO_H_
 
 #include "const.h"
-#include "State.h"
 #include "pnetcdf.h"
-#include "TransformMatrices.h"
 #include "mpi.h"
 #include "Indexing.h"
 
@@ -20,7 +18,7 @@ protected:
 
 public:
 
-  void outputInit(State &state, Domain const &dom, Parallel const &par) {
+  void outputInit(real3d &state, real2d &sfc, Domain const &dom, Parallel const &par) {
     int dimids[3];
     MPI_Offset st[3], ct[3];
     real1d xCoord = real1d("xCoord",dom.nx);
@@ -77,9 +75,6 @@ public:
     ct[0] = dom.ny;
     ncwrap( ncmpi_put_vara_float_all( ncid , yVar , st , ct , yCoord.data() ) , __LINE__ );
 
-    SArray<real,tord> gllWts;
-    TransformMatrices<real> trans;
-    trans.get_gll_weights(gllWts);
     st[0] = par.j_beg; st[1] = par.i_beg;
     ct[0] = dom.ny   ; ct[1] = dom.nx   ;
 
@@ -88,36 +83,10 @@ public:
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
       int i, j;
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = state.sfc(hs+j,hs+i);
+      data(j,i) = sfc(hs+j,hs+i);
     });
     Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.data() ) , __LINE__ );
-
-    // for (int j=0; j<dom.ny; j++) {
-    //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = 0.;
-      for (int ii=0; ii<tord; ii++) {
-        data(j,i) += state.sfc_x(j,i,ii)*gllWts(ii);
-      }
-    });
-    Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , sfcxVar , st , ct , data.data() ) , __LINE__ );
-
-    // for (int j=0; j<dom.ny; j++) {
-    //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = 0.;
-      for (int ii=0; ii<tord; ii++) {
-        data(j,i) += state.sfc_y(j,i,ii)*gllWts(ii);
-      }
-    });
-    Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , sfcyVar , st , ct , data.data() ) , __LINE__ );
 
     writeState(state, dom, par);
 
@@ -127,12 +96,12 @@ public:
   }
 
 
-  void output(State &state, Domain const &dom, Parallel const &par) {
+  void output(real3d &state, Domain const &dom, Parallel const &par) {
     outTimer += dom.dt;
-    if (outTimer < outFreq) {
+    if (outTimer < dom.outFreq) {
       return;
     } else {
-      outTimer -= outFreq;
+      outTimer -= dom.outFreq;
     }
 
     // Create the file
@@ -149,7 +118,7 @@ public:
   }
 
 
-  void writeState(State &state, Domain const &dom, Parallel const &par) {
+  void writeState(real3d &state, Domain const &dom, Parallel const &par) {
     real2d data = real2d("data",dom.ny,dom.nx);
     MPI_Offset st[3], ct[3];
 
@@ -162,7 +131,7 @@ public:
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
       int i, j;
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = state.state(idH,hs+j,hs+i);
+      data(j,i) = state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , hVar , st , ct , data.data() ) , __LINE__ );
@@ -173,7 +142,7 @@ public:
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
       int i, j;
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = state.state(idHU,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
+      data(j,i) = state(idHU,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.data() ) , __LINE__ );
@@ -184,7 +153,7 @@ public:
     Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
       int i, j;
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      data(j,i) = state.state(idHV,hs+j,hs+i) / state.state(idH,hs+j,hs+i);
+      data(j,i) = state(idHV,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.data() ) , __LINE__ );

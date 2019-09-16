@@ -4,7 +4,6 @@
 
 #include "const.h"
 #include "Exchange.h"
-#include "TransformMatrices.h"
 #include "TimeIntegrator.h"
 #include "mpi.h"
 #include "Indexing.h"
@@ -28,19 +27,9 @@ public:
     }
   }
 
-  void initialize(State &state, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint) {
+  void initialize(real3d &state, real2d &sfc, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint) {
     int ierr;
-    SArray<real,ord> gllOrdPoints;
-    SArray<real,ord> gllOrdWeights;
-    SArray<real,tord> gllTordPoints;
-    SArray<real,tord> gllTordWeights;
 
-    //Get GLL points and weights
-    TransformMatrices<real> trans;
-    trans.get_gll_points(gllOrdPoints);
-    trans.get_gll_weights(gllOrdWeights);
-    trans.get_gll_points(gllTordPoints);
-    trans.get_gll_weights(gllTordWeights);
     if (par.nranks != par.nproc_x*par.nproc_y) {
       std::cerr << "ERROR: nproc_x*nproc_y != nranks\n";
       std::cerr << par.nproc_x << " " << par.nproc_y << " " << par.nranks << "\n";
@@ -107,12 +96,8 @@ public:
     exch.allocate(dom);
 
     // Allocate the fluid state variable
-    state.state   = real3d( "state"   , numState , dom.ny+2*hs , dom.nx+2*hs );
-    state.sfc     = real2d( "sfc"     , dom.ny+2*hs , dom.nx+2*hs );
-    state.sfcGllX = real3d( "sfcGllX" , dom.ny , dom.nx , tord );
-    state.sfcGllY = real3d( "sfcGllY" , dom.ny , dom.nx , tord );
-    state.sfc_x   = real3d( "sfc_x"   , dom.ny , dom.nx , tord );
-    state.sfc_y   = real3d( "sfc_y"   , dom.ny , dom.nx , tord );
+    state   = real3d( "state"   , numState , dom.ny+2*hs , dom.nx+2*hs );
+    sfc     = real2d( "sfc"     , dom.ny+2*hs , dom.nx+2*hs );
 
     // Initialize the state
     // for (int j=0; j<dom.ny; j++) {
@@ -122,91 +107,39 @@ public:
       unpackIndices(iGlob,dom.ny,dom.nx,j,i);
       // Initialize the state to zero
       for (int l=0; l<numState; l++) {
-        state.state(l,hs+j,hs+i) = 0;
-        state.sfc(hs+j,hs+i) = 0;
-        for (int ii=0; ii<tord; ii++) {
-          state.sfcGllX(j,i,ii) = 0;
-          state.sfcGllY(j,i,ii) = 0;
-        }
+        state(l,hs+j,hs+i) = 0;
+        sfc  (  hs+j,hs+i) = 0;
       }
-      // Perform ord-point GLL quadrature for the cell averages
-      for (int jj=0; jj<tord; jj++) {
-        for (int ii=0; ii<tord; ii++) {
-          real xloc = (par.i_beg + i + 0.5_fp)*dom.dx + gllTordPoints(ii)*dom.dx;
-          real yloc = (par.j_beg + j + 0.5_fp)*dom.dy + gllTordPoints(jj)*dom.dy;
-          real h = 0;
-          real h0 = 0;
 
-          // real sfc = ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
-          // real sfc = ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
-          // real sfc = ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
-          real sfc = 0;
+      real xloc = (par.i_beg + i + 0.5_fp)*dom.dx;
+      real yloc = (par.j_beg + j + 0.5_fp)*dom.dy;
+      real h  = 0;
 
-          if (xloc < dom.xlen/2) {
-            h = 1;
-          } else {
-            h = 3;
-          }
+      // real h += ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
+      // real h += ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+      // real h += ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
 
-          h += sfc;
-
-          real wt = gllTordWeights(ii)*gllTordWeights(jj);
-          state.state(idH,hs+j,hs+i) += wt * (h0+h);
-          state.sfc(hs+j,hs+i) += wt*sfc;
-          state.sfcGllX(j,i,ii) += gllTordWeights(jj)*sfc;
-          state.sfcGllY(j,i,jj) += gllTordWeights(ii)*sfc;
-        }
+      if (xloc < dom.xlen/2) {
+        h = 1;
+      } else {
+        h = 3;
       }
+
+      state(idH,hs+j,hs+i) = h;
+      sfc  (    hs+j,hs+i) = 0;
     });
 
-    // Exchange surface elevation in x-direction
     exch.haloInit      ();
-    exch.haloPack1_x   (dom, state.sfc);
+    exch.haloPack1_x   (dom, sfc);
     exch.haloExchange_x(dom, par);
-    exch.haloUnpack1_x (dom, state.sfc);
+    exch.haloUnpack1_x (dom, sfc);
 
-    // Exchange surface elevation in y-direction
     exch.haloInit      ();
-    exch.haloPack1_y   (dom, state.sfc);
+    exch.haloPack1_y   (dom, sfc);
     exch.haloExchange_y(dom, par);
-    exch.haloUnpack1_y (dom, state.sfc);
+    exch.haloUnpack1_y (dom, sfc);
 
-    // Compute derivatives of the surface elevation in the x- and y- directions
-    SArray<real,tord,tord> derivX;
-    SArray<real,tord,tord> derivY;
-    SArray<real,ord,ord> s2c;
-    SArray<real,ord,ord> c2d;
-    SArray<real,ord,ord,ord> to_gll_tmp;
-    SArray<real,ord,tord> to_gll;
-    SArray<real,ord,tord> s2d2g_x;
-    SArray<real,ord,tord> s2d2g_y;
-    trans.sten_to_coefs (s2c);
-    trans.coefs_to_deriv(c2d);
-    trans.coefs_to_gll_lower(to_gll_tmp);
-    for (int j=0; j<ord; j++) {
-      for (int i=0; i<tord; i++) {
-        to_gll(j,i) = to_gll_tmp(tord-1,j,i);
-      }
-    }
-    s2d2g_x = ( to_gll * c2d * s2c ) / dom.dx;
-    s2d2g_y = ( to_gll * c2d * s2c ) / dom.dy;
-
-    // for (int j=0; j<dom.ny; j++) {
-    //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-      for (int ii=0; ii<tord; ii++) {
-        state.sfc_x(j,i,ii) = 0;
-        state.sfc_y(j,i,ii) = 0;
-        for (int s=0; s<ord; s++) {
-          state.sfc_x(j,i,ii) += s2d2g_x(s,ii) * state.sfc(hs+j,i+s );
-          state.sfc_y(j,i,ii) += s2d2g_y(s,ii) * state.sfc(j+s ,hs+i);
-        }
-      }
-    });
-
-    computeTimeStep(state.state, dom);
+    computeTimeStep(state, dom);
 
     if (par.masterproc) {
       std::cout << "dx: " << dom.dx << "\n";
