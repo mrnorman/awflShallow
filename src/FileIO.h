@@ -68,10 +68,10 @@ public:
     // Write out x, y coordinates
     st[0] = par.i_beg;
     ct[0] = dom.nx;
-    ncwrap( ncmpi_put_vara_float_all( ncid , xVar , st , ct , xCoord.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , xVar , st , ct , xCoord.createHostCopy().data() ) , __LINE__ );
     st[0] = par.j_beg;
     ct[0] = dom.ny;
-    ncwrap( ncmpi_put_vara_float_all( ncid , yVar , st , ct , yCoord.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , yVar , st , ct , yCoord.createHostCopy().data() ) , __LINE__ );
 
     st[0] = par.j_beg; st[1] = par.i_beg;
     ct[0] = dom.ny   ; ct[1] = dom.nx   ;
@@ -84,7 +84,7 @@ public:
       data(j,i) = sfc(hs+j,hs+i);
     });
     Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     writeState(state, dom, par);
 
@@ -132,7 +132,7 @@ public:
       data(j,i) = state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , hVar , st , ct , data.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , hVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     // Write out u wind
     // for (int j=0; j<dom.ny; j++) {
@@ -143,7 +143,7 @@ public:
       data(j,i) = state(idHU,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     // Write out v wind
     // for (int j=0; j<dom.ny; j++) {
@@ -154,7 +154,7 @@ public:
       data(j,i) = state(idHV,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
     Kokkos::fence();
-    ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.data() ) , __LINE__ );
+    ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
   }
 
 
