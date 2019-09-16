@@ -113,20 +113,16 @@ public:
 
       real xloc = (par.i_beg + i + 0.5_fp)*dom.dx;
       real yloc = (par.j_beg + j + 0.5_fp)*dom.dy;
-      real h  = 0;
+      real h = 10;
 
-      // real h += ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
-      // real h += ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
-      // real h += ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+      // h += ellipse_cosine(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100, 2);
+      // h += ellipse_linear(xloc, yloc, dom.xlen/2, dom.ylen/2, 2000, 2000, 100);
+      real sfcloc = ellipse_cylinder(xloc, yloc, dom.xlen/2, dom.ylen/2, dom.xlen/10, dom.xlen/10, 2);
 
-      if (xloc < dom.xlen/2) {
-        h = 1;
-      } else {
-        h = 3;
-      }
+      h -= sfcloc;
 
       state(idH,hs+j,hs+i) = h;
-      sfc  (    hs+j,hs+i) = 0;
+      sfc  (    hs+j,hs+i) = sfcloc;
     });
 
     exch.haloInit      ();

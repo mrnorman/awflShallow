@@ -52,7 +52,7 @@ public :
         real df3 = ( h2*u2*v2                     ) - ( h1*u1*v1                     );
 
         // Include the source term in the flux difference
-        df2 += -GRAV*h*(b2-b1);
+        df2 += GRAV*h*(b2-b1);
 
         /////////////////////////////////////////////////////
         // Split the flux difference into fwaves
@@ -141,7 +141,7 @@ public :
         real df3 = ( h2*v2*v2 + 0.5_fp*GRAV*h2*h2 ) - ( h1*v1*v1 + 0.5_fp*GRAV*h1*h1 );
 
         // Include the source term in the flux difference
-        df3 += -GRAV*h*(b2-b1);
+        df3 += GRAV*h*(b2-b1);
 
         /////////////////////////////////////////////////////
         // Split the flux difference into fwaves
