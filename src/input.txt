@@ -3,12 +3,12 @@
 // Legal syntax is key : value
 // You can end input key:value lines with comments
 
-nx         : 200      // Number of cells in the x-direction
-ny         : 200      // Number of cells in the y-direction
+nx         : 1000      // Number of cells in the x-direction
+ny         : 1000      // Number of cells in the y-direction
 xlen       : 20000.   // Domain length in the x-direction (m)
 ylen       : 20000.   // Domain length in the y-direction (m)
 cfl        : 0.45     // CFL value to use
-simLength  : 2000.    // How long to simulation (s)
-parNx      : 2        // Number of parallel tasks in the x-direction
-parNy      : 2        // Number of parallel tasks in the y-direction
+simLength  : 10.      // How long to simulation (s)
+parNx      : 1        // Number of parallel tasks in the x-direction
+parNy      : 1        // Number of parallel tasks in the y-direction
 outFreq    : 10.      // Frequency for output in seconds
