@@ -13,7 +13,7 @@
 #include "cfl.h"
 
 int main(int argc, char** argv) {
-  Kokkos::initialize();
+  yakl::init();
   {
 
     // Create the model objects
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   }
 
-  Kokkos::finalize();
+  yakl::finalize();
 
   int ierr = MPI_Finalize();
 

@@ -3,12 +3,15 @@
 #define _CONST_H_
 
 #include "math.h"
-#include <Kokkos_Core.hpp>
+#include "YAKL.h"
 #include "Array.h"
+#include "SArray.h"
 
 typedef float         real;
 typedef unsigned long ulong;
 typedef unsigned int  uint;
+
+using yakl::SArray;
 
 #if defined(__USE_CUDA__) || defined(__USE_HIP__)
 typedef yakl::Array<real,yakl::memDevice> realArr;

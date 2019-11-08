@@ -31,9 +31,7 @@ public :
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( numState*dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int l, j, i;
-      unpackIndices(iGlob,numState,dom.ny,dom.nx,l,j,i);
+    yakl::parallel_for( numState,dom.ny,dom.nx , YAKL_LAMBDA (int l, int j, int i) {
       state(l,hs+j,hs+i) += -dom.dt * ( (fwavesX(l,1,j,i) + fwavesX(l,0,j,i+1)) / dom.dx + 
                                         (fwavesY(l,1,j,i) + fwavesY(l,0,j+1,i)) / dom.dy );
     });

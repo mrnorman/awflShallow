@@ -102,9 +102,7 @@ public:
     // Initialize the state
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+    yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA (int j, int i) {
       // Initialize the state to zero
       for (int l=0; l<numState; l++) {
         state(l,hs+j,hs+i) = 0;

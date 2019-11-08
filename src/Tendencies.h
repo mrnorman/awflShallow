@@ -36,10 +36,7 @@ public :
     // Compute the first-order fwaves at each x- and y-interface
     // for (int j=0; j<dom.ny+1; j++) {
     //   for (int i=0; i<dom.nx+1; i++) {
-    Kokkos::parallel_for( (dom.ny+1)*(dom.nx+1) , KOKKOS_LAMBDA (int iGlob) {
-      int j, i;
-      unpackIndices(iGlob,dom.ny+1,dom.nx+1,j,i);
-
+    yakl::parallel_for( dom.ny+1,dom.nx+1 , YAKL_LAMBDA (int j, int i) {
       /////////////////////////////////////////////////////
       // COMPUTE X-DIRECTION FWAVES
       /////////////////////////////////////////////////////

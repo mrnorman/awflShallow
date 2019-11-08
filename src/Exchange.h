@@ -112,9 +112,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
-      int v, j, ii;
-      unpackIndices(iGlob,n,dom.ny,hs,v,j,ii);
+    yakl::parallel_for( n,dom.ny,hs , YAKL_LAMBDA (int v, int j, int ii) {
       haloSendBufW(nPack+v,j,ii) = a(v,hs+j,hs    +ii);
       haloSendBufE(nPack+v,j,ii) = a(v,hs+j,dom.nx+ii);
     });
@@ -129,9 +127,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, ii, i;
-      unpackIndices(iGlob,n,hs,dom.nx,v,ii,i);
+    yakl::parallel_for( n,hs,dom.nx , YAKL_LAMBDA (int v, int ii, int i) {
       haloSendBufS(nPack+v,ii,i) = a(v,hs    +ii,hs+i);
       haloSendBufN(nPack+v,ii,i) = a(v,dom.ny+ii,hs+i);
     });
@@ -145,9 +141,7 @@ public:
   inline void haloPack1_x_ext(Domain &dom, realArr &a, realArr &haloSendBufW, realArr &haloSendBufE, int const nPack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
-      int j, ii;
-      unpackIndices(iGlob,dom.ny,hs,j,ii);
+    yakl::parallel_for( dom.ny,hs , YAKL_LAMBDA (int j, int ii) {
       haloSendBufW(nPack,j,ii) = a(hs+j,hs    +ii);
       haloSendBufE(nPack,j,ii) = a(hs+j,dom.nx+ii);
     });
@@ -161,9 +155,7 @@ public:
   inline void haloPack1_y_ext(Domain &dom, realArr &a, realArr &haloSendBufS, realArr &haloSendBufN, int const nPack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int ii, i;
-      unpackIndices(iGlob,hs,dom.nx,ii,i);
+    yakl::parallel_for( hs,dom.nx , YAKL_LAMBDA (int ii, int i) {
       haloSendBufS(nPack,ii,i) = a(hs    +ii,hs+i);
       haloSendBufN(nPack,ii,i) = a(dom.ny+ii,hs+i);
     });
@@ -178,9 +170,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( n*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
-      int v, j, ii;
-      unpackIndices(iGlob,n,dom.ny,hs,v,j,ii);
+    yakl::parallel_for( n,dom.ny,hs , YAKL_LAMBDA (int v, int j, int ii) {
       a(v,hs+j,          ii) = haloRecvBufW(nUnpack+v,j,ii);
       a(v,hs+j,dom.nx+hs+ii) = haloRecvBufE(nUnpack+v,j,ii);
     });
@@ -195,9 +185,7 @@ public:
     // for (int v=0; v<n; v++) {
     //   for (int ii=0; ii<hs; ii++) {
     //     for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, ii, i;
-      unpackIndices(iGlob,n,hs,dom.nx,v,ii,i);
+    yakl::parallel_for( n,hs,dom.nx , YAKL_LAMBDA (int v, int ii, int i) {
       a(v,          ii,hs+i) = haloRecvBufS(nUnpack+v,ii,i);
       a(v,dom.ny+hs+ii,hs+i) = haloRecvBufN(nUnpack+v,ii,i);
     });
@@ -211,9 +199,7 @@ public:
   inline void haloUnpack1_x_ext(Domain &dom, realArr &a, realArr &haloRecvBufW, realArr &haloRecvBufE, int const nUnpack) {
     // for (int j=0; j<dom.ny; j++) {
     //   for (int ii=0; ii<hs; ii++) {
-    Kokkos::parallel_for( dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
-      int j, ii;
-      unpackIndices(iGlob,dom.ny,hs,j,ii);
+    yakl::parallel_for( dom.ny,hs , YAKL_LAMBDA (int j, int ii) {
       a(hs+j,          ii) = haloRecvBufW(nUnpack,j,ii);
       a(hs+j,dom.nx+hs+ii) = haloRecvBufE(nUnpack,j,ii);
     });
@@ -227,9 +213,7 @@ public:
   inline void haloUnpack1_y_ext(Domain &dom, realArr &a, realArr &haloRecvBufS, realArr &haloRecvBufN, int const nUnpack) {
     // for (int ii=0; ii<hs; ii++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int ii, i;
-      unpackIndices(iGlob,hs,dom.nx,ii,i);
+    yakl::parallel_for( hs,dom.nx , YAKL_LAMBDA (int ii, int i) {
       a(          ii,hs+i) = haloRecvBufS(nUnpack,ii,i);
       a(dom.ny+hs+ii,hs+i) = haloRecvBufN(nUnpack,ii,i);
     });
@@ -240,14 +224,15 @@ public:
     int ierr;
 
     if (par.nproc_x > 1) {
-      Kokkos::fence();
+      yakl::fence();
 
       //Pre-post the receives
       ierr = MPI_Irecv( haloRecvBufW_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( haloRecvBufE_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
 
-      haloSendBufW.copyToArray(haloSendBufW_cpu);
-      haloSendBufE.copyToArray(haloSendBufE_cpu);
+      haloSendBufW.deep_copy_to(haloSendBufW_cpu);
+      haloSendBufE.deep_copy_to(haloSendBufE_cpu);
+      yakl::fence();
 
       //Send the data
       ierr = MPI_Isend( haloSendBufW_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
@@ -257,15 +242,15 @@ public:
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
 
-      haloRecvBufW_cpu.copyToArray(haloRecvBufW);
-      haloRecvBufE_cpu.copyToArray(haloRecvBufE);
+      haloRecvBufW_cpu.deep_copy_to(haloRecvBufW);
+      haloRecvBufE_cpu.deep_copy_to(haloRecvBufE);
 
     } else {
       haloExchangeLocX(dom, nPack, haloSendBufW, haloSendBufE, haloRecvBufW, haloRecvBufE);
     }
   }
   inline void haloExchangeLocX(Domain const &dom, int nPack, realArr const &haloSendBufW, realArr const &haloSendBufE, realArr &haloRecvBufW, realArr &haloRecvBufE) {
-    Kokkos::parallel_for( nPack*dom.ny*hs , KOKKOS_LAMBDA (int iGlob) {
+    yakl::parallel_for( nPack*dom.ny*hs , YAKL_LAMBDA (int iGlob) {
       int v, j, ii;
       unpackIndices(iGlob,nPack,dom.ny,hs,v,j,ii);
       haloRecvBufW(v,j,ii) = haloSendBufE(v,j,ii);
@@ -278,14 +263,15 @@ public:
     int ierr;
 
     if (par.nproc_y > 1) {
-      Kokkos::fence();
+      yakl::fence();
 
       //Pre-post the receives
       ierr = MPI_Irecv( haloRecvBufS_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( haloRecvBufN_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
 
-      haloSendBufS.copyToArray(haloSendBufS_cpu);
-      haloSendBufN.copyToArray(haloSendBufN_cpu);
+      haloSendBufS.deep_copy_to(haloSendBufS_cpu);
+      haloSendBufN.deep_copy_to(haloSendBufN_cpu);
+      yakl::fence();
 
       //Send the data
       ierr = MPI_Isend( haloSendBufS_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
@@ -295,17 +281,15 @@ public:
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
 
-      haloRecvBufS_cpu.copyToArray(haloRecvBufS);
-      haloRecvBufN_cpu.copyToArray(haloRecvBufN);
+      haloRecvBufS_cpu.deep_copy_to(haloRecvBufS);
+      haloRecvBufN_cpu.deep_copy_to(haloRecvBufN);
 
     } else {
       haloExchangeLocY(dom, nPack, haloSendBufS, haloSendBufN, haloRecvBufS, haloRecvBufN);
     }
   }
   inline void haloExchangeLocY(Domain const &dom, int nPack, realArr const &haloSendBufS, realArr const &haloSendBufN, realArr &haloRecvBufS, realArr &haloRecvBufN) {
-    Kokkos::parallel_for( nPack*hs*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, ii, i;
-      unpackIndices(iGlob,nPack,hs,dom.nx,v,ii,i);
+    yakl::parallel_for( nPack,hs,dom.nx , YAKL_LAMBDA (int v, int ii, int i) {
       haloRecvBufS(v,ii,i) = haloSendBufN(v,ii,i);
       haloRecvBufN(v,ii,i) = haloSendBufS(v,ii,i);
     });
@@ -319,9 +303,7 @@ public:
   inline void edgePackN_x_ext(Domain &dom, realArr &a, int n, realArr &edgeSendBufW, realArr &edgeSendBufE, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
-    Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
-      int v, j;
-      unpackIndices(iGlob,n,dom.ny,v,j);
+    yakl::parallel_for( n,dom.ny , YAKL_LAMBDA (int v, int j) {
       edgeSendBufW(nPack+v,j) = a(v,1,j,0     );
       edgeSendBufE(nPack+v,j) = a(v,0,j,dom.nx);
     });
@@ -335,9 +317,7 @@ public:
   inline void edgePackN_y(Domain &dom, realArr &a, int n, realArr &edgeSendBufS, realArr &edgeSendBufN, int const nPack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, i;
-      unpackIndices(iGlob,n,dom.nx,v,i);
+    yakl::parallel_for( n,dom.nx , YAKL_LAMBDA (int v, int i) {
       edgeSendBufS(nPack+v,i) = a(v,1,0     ,i);
       edgeSendBufN(nPack+v,i) = a(v,0,dom.ny,i);
     });
@@ -351,9 +331,7 @@ public:
   inline void edgeUnpackN_x_ext(Domain &dom, realArr &a, int n, realArr &edgeRecvBufW, realArr &edgeRecvBufE, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int j=0; j<dom.ny; j++) {
-    Kokkos::parallel_for( n*dom.ny , KOKKOS_LAMBDA (int iGlob) {
-      int v, j;
-      unpackIndices(iGlob,n,dom.ny,v,j);
+    yakl::parallel_for( n,dom.ny , YAKL_LAMBDA (int v, int j) {
       a(v,0,j,0     ) = edgeRecvBufW(nUnpack+v,j);
       a(v,1,j,dom.nx) = edgeRecvBufE(nUnpack+v,j);
     });
@@ -367,9 +345,7 @@ public:
   inline void edgeUnpackN_y_ext(Domain &dom, realArr &a, int n, realArr &edgeRecvBufS, realArr &edgeRecvBufN, int const nUnpack) {
     // for (int v=0; v<n; v++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( n*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, i;
-      unpackIndices(iGlob,n,dom.nx,v,i);
+    yakl::parallel_for( n,dom.nx , YAKL_LAMBDA (int v, int i) {
       a(v,0,0     ,i) = edgeRecvBufS(nUnpack+v,i);
       a(v,1,dom.ny,i) = edgeRecvBufN(nUnpack+v,i);
     });
@@ -380,14 +356,15 @@ public:
     int ierr;
 
     if (par.nproc_x > 1) {
-      Kokkos::fence();
+      yakl::fence();
 
       //Pre-post the receives
       ierr = MPI_Irecv( edgeRecvBufW_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( edgeRecvBufE_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
 
-      edgeSendBufW.copyToArray(edgeSendBufW_cpu);
-      edgeSendBufE.copyToArray(edgeSendBufE_cpu);
+      edgeSendBufW.deep_copy_to(edgeSendBufW_cpu);
+      edgeSendBufE.deep_copy_to(edgeSendBufE_cpu);
+      yakl::fence();
 
       //Send the data
       ierr = MPI_Isend( edgeSendBufW_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] );
@@ -397,17 +374,15 @@ public:
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
 
-      edgeRecvBufW_cpu.copyToArray(edgeRecvBufW);
-      edgeRecvBufE_cpu.copyToArray(edgeRecvBufE);
+      edgeRecvBufW_cpu.deep_copy_to(edgeRecvBufW);
+      edgeRecvBufE_cpu.deep_copy_to(edgeRecvBufE);
 
     } else {
       edgeExchangeLocX(dom, nPack, edgeSendBufW, edgeSendBufE, edgeRecvBufW, edgeRecvBufE);
     }
   }
   inline void edgeExchangeLocX(Domain const &dom, int nPack, realArr const &edgeSendBufW, realArr const &edgeSendBufE, realArr &edgeRecvBufW, realArr &edgeRecvBufE) {
-    Kokkos::parallel_for( nPack*dom.ny , KOKKOS_LAMBDA (int iGlob) {
-      int v, j;
-      unpackIndices(iGlob,nPack,dom.ny,v,j);
+    yakl::parallel_for( nPack,dom.ny , YAKL_LAMBDA (int v, int j) {
       edgeRecvBufW(v,j) = edgeSendBufE(v,j);
       edgeRecvBufE(v,j) = edgeSendBufW(v,j);
     });
@@ -418,14 +393,15 @@ public:
     int ierr;
 
     if (par.nproc_y > 1) {
-      Kokkos::fence();
+      yakl::fence();
 
       //Pre-post the receives
       ierr = MPI_Irecv( edgeRecvBufS_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( edgeRecvBufN_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
 
-      edgeSendBufS.copyToArray(edgeSendBufS_cpu);
-      edgeSendBufN.copyToArray(edgeSendBufN_cpu);
+      edgeSendBufS.deep_copy_to(edgeSendBufS_cpu);
+      edgeSendBufN.deep_copy_to(edgeSendBufN_cpu);
+      yakl::fence();
 
       //Send the data
       ierr = MPI_Isend( edgeSendBufS_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] );
@@ -435,17 +411,15 @@ public:
       ierr = MPI_Waitall(2, sReq, sStat);
       ierr = MPI_Waitall(2, rReq, rStat);
 
-      edgeRecvBufS_cpu.copyToArray(edgeRecvBufS);
-      edgeRecvBufN_cpu.copyToArray(edgeRecvBufN);
+      edgeRecvBufS_cpu.deep_copy_to(edgeRecvBufS);
+      edgeRecvBufN_cpu.deep_copy_to(edgeRecvBufN);
 
     } else {
       edgeExchangeLocY(dom, nPack, edgeSendBufS, edgeSendBufN, edgeRecvBufS, edgeRecvBufN);
     }
   }
   inline void edgeExchangeLocY(Domain const &dom, int nPack, realArr const &edgeSendBufS, realArr const &edgeSendBufN, realArr &edgeRecvBufS, realArr &edgeRecvBufN) {
-    Kokkos::parallel_for( nPack*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-      int v, i;
-      unpackIndices(iGlob,nPack,dom.nx,v,i);
+    yakl::parallel_for( nPack,dom.nx , YAKL_LAMBDA (int v, int i) {
       edgeRecvBufS(v,i) = edgeSendBufN(v,i);
       edgeRecvBufN(v,i) = edgeSendBufS(v,i);
     });

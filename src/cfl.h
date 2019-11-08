@@ -15,9 +15,7 @@ inline void computeTimeStep(realArr &state, Domain &dom) {
   // Compute the time step based on the CFL value
   // for (int j=0; j<dom.ny; j++) {
   //   for (int i=0; i<dom.nx; i++) {
-  Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA (int iGlob) {
-    int i, j;
-    unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+  yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA (int j, int i) {
     // Grab state variables
     real h = state(idH ,hs+j,hs+i);
     real u = state(idHU,hs+j,hs+i) / h;
@@ -32,14 +30,8 @@ inline void computeTimeStep(realArr &state, Domain &dom) {
     dt3d(j,i) = dom.cfl * dxmin / maxWave;
   });
 
-  dom.dt = 1.e12_fp;
-  Kokkos::parallel_reduce( dom.ny*dom.nx , KOKKOS_LAMBDA (int const iGlob, real &dt) {
-    int j, i;
-    unpackIndices(iGlob,dom.ny,dom.nx,j,i);
-    dt = min(dt,dt3d(j,i));
-  } , Kokkos::Min<real>(dom.dt) );
-
-  Kokkos::fence();
+  yakl::ParallelMin<real,yakl::memDevice> pmin( dom.nx*dom.ny );
+  dom.dt = pmin( dt3d.data() );
 
   real dtloc = dom.dt;
   int ierr = MPI_Allreduce(&dtloc, &dom.dt, 1, MPI_REAL , MPI_MIN, MPI_COMM_WORLD);

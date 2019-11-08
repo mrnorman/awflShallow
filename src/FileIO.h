@@ -56,14 +56,14 @@ public:
 
     // Compute x, y coordinates
     // for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.nx , KOKKOS_LAMBDA(int i) {
+    yakl::parallel_for( dom.nx , YAKL_LAMBDA(int i) {
       xCoord(i) = ( par.i_beg + i + 0.5_fp ) * dom.dx;
     });
     // for (int j=0; j<dom.ny; j++) {
-    Kokkos::parallel_for( dom.ny , KOKKOS_LAMBDA(int j) {
+    yakl::parallel_for( dom.ny , YAKL_LAMBDA(int j) {
       yCoord(j) = ( par.j_beg + j + 0.5_fp ) * dom.dy;
     });
-    Kokkos::fence();
+    yakl::fence();
 
     // Write out x, y coordinates
     st[0] = par.i_beg;
@@ -78,12 +78,10 @@ public:
 
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+    yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA(int j, int i) {
       data(j,i) = sfc(hs+j,hs+i);
     });
-    Kokkos::fence();
+    yakl::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , sfcVar  , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     writeState(state, dom, par);
@@ -126,34 +124,28 @@ public:
     // Write out density perturbation
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+    yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA(int j, int i) {
       data(j,i) = state(idH,hs+j,hs+i);
     });
-    Kokkos::fence();
+    yakl::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , hVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     // Write out u wind
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+    yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA(int j, int i) {
       data(j,i) = state(idHU,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
-    Kokkos::fence();
+    yakl::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , uVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
 
     // Write out v wind
     // for (int j=0; j<dom.ny; j++) {
     //   for (int i=0; i<dom.nx; i++) {
-    Kokkos::parallel_for( dom.ny*dom.nx , KOKKOS_LAMBDA(int iGlob) {
-      int i, j;
-      unpackIndices(iGlob,dom.ny,dom.nx,j,i);
+    yakl::parallel_for( dom.ny,dom.nx , YAKL_LAMBDA(int j, int i) {
       data(j,i) = state(idHV,hs+j,hs+i) / state(idH,hs+j,hs+i);
     });
-    Kokkos::fence();
+    yakl::fence();
     ncwrap( ncmpi_put_vara_float_all( ncid , vVar , st , ct , data.createHostCopy().data() ) , __LINE__ );
   }
 
