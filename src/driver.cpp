@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     FileIO         io;
     Exchange       exch;
     TimeIntegrator tint;
+    CFL            cfl;
 
     realArr state;
     realArr sfc;
@@ -37,13 +38,13 @@ int main(int argc, char** argv) {
     parser.readParamsFile(inFile, dom, par, io);
 
     // Initialize the model
-    init.initialize(state, sfc, dom, par, exch, tint);
+    init.initialize(state, sfc, dom, par, exch, tint, cfl);
 
     // Output the initial model state
     io.outputInit(state, sfc, dom, par);
 
     while (dom.etime < dom.simLength) {
-      computeTimeStep(state, dom);
+      cfl.computeTimeStep(state, dom);
       if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
       tint.stepForward(state, sfc, dom, exch, par);
       dom.etime += dom.dt;

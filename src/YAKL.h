@@ -541,23 +541,28 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelMin(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelMin() { tmp = NULL; }
+      ParallelMin(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelMin() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         hipMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         hipcub::DeviceReduce::Min(tmp, nTmp, rsltP , rsltP , nItems );
         hipMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelMin() {
-        hipFree(rsltP);
-        hipFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          hipFree(rsltP);
+          hipFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
         hipcub::DeviceReduce::Min(tmp, nTmp, data , rsltP , nItems , 0 ); // Compute the reduction
-        hipMemcpyAsync(&rslt,rsltP,sizeof(T),hipMemcpyDeviceToHost,0);    // Copy result to host
+        hipMemcpyAsync(&rslt,rsltP,sizeof(T),hipMemcpyDeviceToHost,0);       // Copy result to host
         fence();
         return rslt;
       }
@@ -571,18 +576,23 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelMax(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelMax() { tmp = NULL; }
+      ParallelMax(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelMax() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         hipMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         hipcub::DeviceReduce::Max(tmp, nTmp, rsltP , rsltP , nItems );
         hipMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelMax() {
-        hipFree(rsltP);
-        hipFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          hipFree(rsltP);
+          hipFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
@@ -601,18 +611,23 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelSum(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelSum() { tmp = NULL; }
+      ParallelSum(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelSum() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         hipMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         hipcub::DeviceReduce::Sum(tmp, nTmp, rsltP , rsltP , nItems );
         hipMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelSum() {
-        hipFree(rsltP);
-        hipFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          hipFree(rsltP);
+          hipFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
@@ -632,18 +647,23 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelMin(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelMin() { tmp = NULL; }
+      ParallelMin(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelMin() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         cudaMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         cub::DeviceReduce::Min(tmp, nTmp, rsltP , rsltP , nItems );
         cudaMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelMin() {
-        cudaFree(rsltP);
-        cudaFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          cudaFree(rsltP);
+          cudaFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
@@ -662,18 +682,23 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelMax(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelMax() { tmp = NULL; }
+      ParallelMax(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelMax() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         cudaMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         cub::DeviceReduce::Max(tmp, nTmp, rsltP , rsltP , nItems );
         cudaMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelMax() {
-        cudaFree(rsltP);
-        cudaFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          cudaFree(rsltP);
+          cudaFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
@@ -692,18 +717,23 @@ namespace yakl {
       int    nItems; // Number of items in the array that will be reduced
       T      *rsltP; // Device pointer for reduction result
       public:
-      ParallelSum(int const nItems) {
-        tmp  = NULL;
-        nTmp = 0;
+      ParallelSum() { tmp = NULL; }
+      ParallelSum(int const nItems) { tmp = NULL; setup(nItems); }
+      ~ParallelSum() { finalize(); }
+      void setup(int const nItems) {
+        finalize();
         cudaMalloc(&rsltP,sizeof(T)); // Allocate device pointer for result
         // Get the amount of temporary storage needed (call with NULL storage pointer)
         cub::DeviceReduce::Sum(tmp, nTmp, rsltP , rsltP , nItems );
         cudaMalloc(&tmp, nTmp);       // Allocate temporary storage
         this->nItems = nItems;
       }
-      ~ParallelSum() {
-        cudaFree(rsltP);
-        cudaFree(tmp);
+      void finalize() {
+        if (tmp != NULL) {
+          cudaFree(rsltP);
+          cudaFree(tmp);
+        }
+        tmp = NULL;
       }
       T operator() (T *data) {
         T rslt;
@@ -720,11 +750,13 @@ namespace yakl {
     template <class T> class ParallelMin<T,memDevice> {
       int    nItems; // Number of items in the array that will be reduced
       public:
+      ParallelMin() {}
       ParallelMin(int const nItems) {
         this->nItems = nItems;
       }
       ~ParallelMin() {
       }
+      void setup(int nItems) { this->nItems = nItems; }
       T operator() (T *data) {
         T rslt = data[0];
         for (int i=1; i<nItems; i++) {
@@ -742,11 +774,13 @@ namespace yakl {
     template <class T> class ParallelMax<T,memDevice> {
       int    nItems; // Number of items in the array that will be reduced
       public:
+      ParallelMax() {}
       ParallelMax(int const nItems) {
         this->nItems = nItems;
       }
       ~ParallelMax() {
       }
+      void setup(int nItems) { this->nItems = nItems; }
       T operator() (T *data) {
         T rslt = data[0];
         for (int i=1; i<nItems; i++) {
@@ -764,11 +798,13 @@ namespace yakl {
     template <class T> class ParallelSum<T,memDevice> {
       int    nItems; // Number of items in the array that will be reduced
       public:
+      ParallelSum() {}
       ParallelSum(int const nItems) {
         this->nItems = nItems;
       }
       ~ParallelSum() {
       }
+      void setup(int nItems) { this->nItems = nItems; }
       T operator() (T *data) {
         T rslt = data[0];
         for (int i=1; i<nItems; i++) {
@@ -787,11 +823,13 @@ namespace yakl {
   template <class T> class ParallelMin<T,memHost> {
     int    nItems; // Number of items in the array that will be reduced
     public:
+    ParallelMin() {}
     ParallelMin(int const nItems) {
       this->nItems = nItems;
     }
     ~ParallelMin() {
     }
+    void setup(int nItems) { this->nItems = nItems; }
     T operator() (T *data) {
       T rslt = data[0];
       for (int i=1; i<nItems; i++) {
@@ -809,11 +847,13 @@ namespace yakl {
   template <class T> class ParallelMax<T,memHost> {
     int    nItems; // Number of items in the array that will be reduced
     public:
+    ParallelMax() {}
     ParallelMax(int const nItems) {
       this->nItems = nItems;
     }
     ~ParallelMax() {
     }
+    void setup(int nItems) { this->nItems = nItems; }
     T operator() (T *data) {
       T rslt = data[0];
       for (int i=1; i<nItems; i++) {
@@ -831,11 +871,13 @@ namespace yakl {
   template <class T> class ParallelSum<T,memHost> {
     int    nItems; // Number of items in the array that will be reduced
     public:
+    ParallelSum() {}
     ParallelSum(int const nItems) {
       this->nItems = nItems;
     }
     ~ParallelSum() {
     }
+    void setup(int nItems) { this->nItems = nItems; }
     T operator() (T *data) {
       T rslt = data[0];
       for (int i=1; i<nItems; i++) {

@@ -27,7 +27,7 @@ public:
     }
   }
 
-  void initialize(realArr &state, realArr &sfc, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint) {
+  void initialize(realArr &state, realArr &sfc, Domain &dom, Parallel &par, Exchange &exch, TimeIntegrator &tint , CFL &cfl ) {
     int ierr;
 
     if (par.nranks != par.nproc_x*par.nproc_y) {
@@ -134,7 +134,9 @@ public:
     exch.haloExchange_y(dom, par);
     exch.haloUnpack1_y (dom, sfc);
 
-    computeTimeStep(state, dom);
+    cfl.init(dom);
+
+    cfl.computeTimeStep(state, dom);
 
     if (par.masterproc) {
       std::cout << "dx: " << dom.dx << "\n";
