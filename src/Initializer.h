@@ -150,7 +150,7 @@ public:
                                       real const xrad, real const yrad, real const amp) {
     real xn = (x-x0)/xrad;
     real yn = (y-y0)/yrad;
-    real dist = mysqrt( xn*xn + yn*yn );
+    real dist = sqrt( xn*xn + yn*yn );
     return amp * max( 1._fp - dist , 0._fp );
   }
 
@@ -160,10 +160,10 @@ public:
                                       real const xrad, real const yrad, real const amp, real const pwr) {
     real xn = (x-x0)/xrad;
     real yn = (y-y0)/yrad;
-    real dist = mysqrt( xn*xn + yn*yn );
+    real dist = sqrt( xn*xn + yn*yn );
     real ret = 0;
     if (dist < 1) {
-      ret = amp * mypow((cos(PI*dist)+1)/2,pwr);
+      ret = amp * pow((cos(PI*dist)+1)/2,pwr);
     }
     return ret;
   }
@@ -174,7 +174,7 @@ public:
                                        real const xrad, real const yrad, real const amp) {
     real xn = (x-x0)/xrad;
     real yn = (y-y0)/yrad;
-    real dist = mysqrt( xn*xn + yn*yn );
+    real dist = sqrt( xn*xn + yn*yn );
     real ret = 0;
     if (dist < 1) {
       ret = 1;

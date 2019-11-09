@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
       if (dom.etime + dom.dt > dom.simLength) { dom.dt = dom.simLength - dom.etime; }
       tint.stepForward(state, sfc, dom, exch, par);
       dom.etime += dom.dt;
-      if (par.masterproc) {std::cout << dom.etime << " " << dom.dt << "\n";}
+      if (par.masterproc) {std::cout << "Elapsed Time: " << std::setw(10) << dom.etime << ".  Time Step: " << std::setw(10) << dom.dt << "\n";}
       io.output(state, dom, par);
     }
 

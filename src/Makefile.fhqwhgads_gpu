@@ -6,7 +6,7 @@ default: main
 
 CXX = nvcc -ccbin mpic++
 LINK = ${CXX}
-CXXFLAGS = -I./cub --expt-extended-lambda -arch sm_50 -O3 -I${PNETCDF_PATH}/include -std=c++11 -D__USE_CUDA__
+CXXFLAGS = -g -I./cub --expt-extended-lambda -arch sm_50 -O2 -I${PNETCDF_PATH}/include -std=c++11 -D__USE_CUDA__
 CUDAFLAGS = -x cu
 LDFLAGS = -L${PNETCDF_PATH}/lib -lpnetcdf
 

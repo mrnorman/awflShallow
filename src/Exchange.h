@@ -224,8 +224,6 @@ public:
     int ierr;
 
     if (par.nproc_x > 1) {
-      yakl::fence();
-
       //Pre-post the receives
       ierr = MPI_Irecv( haloRecvBufW_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( haloRecvBufE_cpu.data() , nPack*dom.ny*hs , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
@@ -250,9 +248,7 @@ public:
     }
   }
   inline void haloExchangeLocX(Domain const &dom, int nPack, realArr const &haloSendBufW, realArr const &haloSendBufE, realArr &haloRecvBufW, realArr &haloRecvBufE) {
-    yakl::parallel_for( nPack*dom.ny*hs , YAKL_LAMBDA (int iGlob) {
-      int v, j, ii;
-      unpackIndices(iGlob,nPack,dom.ny,hs,v,j,ii);
+    yakl::parallel_for( nPack,dom.ny,hs , YAKL_LAMBDA (int v, int j, int ii) {
       haloRecvBufW(v,j,ii) = haloSendBufE(v,j,ii);
       haloRecvBufE(v,j,ii) = haloSendBufW(v,j,ii);
     });
@@ -263,8 +259,6 @@ public:
     int ierr;
 
     if (par.nproc_y > 1) {
-      yakl::fence();
-
       //Pre-post the receives
       ierr = MPI_Irecv( haloRecvBufS_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( haloRecvBufN_cpu.data() , nPack*hs*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );
@@ -356,8 +350,6 @@ public:
     int ierr;
 
     if (par.nproc_x > 1) {
-      yakl::fence();
-
       //Pre-post the receives
       ierr = MPI_Irecv( edgeRecvBufW_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( edgeRecvBufE_cpu.data() , nPack*dom.ny , MPI_FLOAT , par.neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] );
@@ -393,8 +385,6 @@ public:
     int ierr;
 
     if (par.nproc_y > 1) {
-      yakl::fence();
-
       //Pre-post the receives
       ierr = MPI_Irecv( edgeRecvBufS_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] );
       ierr = MPI_Irecv( edgeRecvBufN_cpu.data() , nPack*dom.nx , MPI_FLOAT , par.neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] );

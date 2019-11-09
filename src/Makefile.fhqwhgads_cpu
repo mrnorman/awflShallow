@@ -6,8 +6,8 @@ default: main
 
 CXX = mpic++
 LINK = ${CXX}
-# CXXFLAGS = -O0 -I${PNETCDF_PATH}/include -std=c++11 -DARRAY_DEBUG -g
-CXXFLAGS = -O3 -I${PNETCDF_PATH}/include -std=c++11
+CXXFLAGS = -O0 -I${PNETCDF_PATH}/include -std=c++11 -DARRAY_DEBUG -g
+# CXXFLAGS = -O3 -I${PNETCDF_PATH}/include -std=c++11
 LDFLAGS = -L${PNETCDF_PATH}/lib -lpnetcdf
 
 OBJ = $(notdir $(SRC:.cpp=.o))

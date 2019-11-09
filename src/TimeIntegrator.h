@@ -28,12 +28,14 @@ public :
 
     tend.compSWTend(state, sfc, dom, exch, par, fwavesX, fwavesY);
 
+    auto &fwavesX = this->fwavesX;
+    auto &fwavesY = this->fwavesY;
     // for (int l=0; l<numState; l++) {
     //   for (int j=0; j<dom.ny; j++) {
     //     for (int i=0; i<dom.nx; i++) {
     yakl::parallel_for( numState,dom.ny,dom.nx , YAKL_LAMBDA (int l, int j, int i) {
-      state(l,hs+j,hs+i) += -dom.dt * ( (fwavesX(l,1,j,i) + fwavesX(l,0,j,i+1)) / dom.dx + 
-                                        (fwavesY(l,1,j,i) + fwavesY(l,0,j+1,i)) / dom.dy );
+      state(l,hs+j,hs+i) = state(l,hs+j,hs+i) - dom.dt * ( (fwavesX(l,1,j,i) + fwavesX(l,0,j,i+1)) / dom.dx + 
+                                                           (fwavesY(l,1,j,i) + fwavesY(l,0,j+1,i)) / dom.dy );
     });
 
   }

@@ -20,16 +20,17 @@ inline void computeTimeStep(realArr &state, Domain &dom) {
     real h = state(idH ,hs+j,hs+i);
     real u = state(idHU,hs+j,hs+i) / h;
     real v = state(idHV,hs+j,hs+i) / h;
-    real cg = mysqrt(GRAV*h);
+    real cg = sqrt(GRAV*h);
 
     // Compute the max wave
-    real maxWave = max( myfabs(u) , myfabs(v)) + cg;
+    real maxWave = max( fabs(u) , fabs(v)) + cg;
 
     // Compute the time step
     real dxmin = min(dom.dx,dom.dy);
     dt3d(j,i) = dom.cfl * dxmin / maxWave;
   });
 
+  dom.dt = 1.e12_fp;
   yakl::ParallelMin<real,yakl::memDevice> pmin( dom.nx*dom.ny );
   dom.dt = pmin( dt3d.data() );
 
