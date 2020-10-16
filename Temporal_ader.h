@@ -10,6 +10,8 @@ template <class Spatial>
 class Temporal_ader {
 public:
 
+  real static constexpr height_tol = 1.e-5;
+
   real3d tend;
   Spatial space_op;
 
@@ -53,14 +55,20 @@ public:
       auto &tend = this->tend;
       int constexpr hs = Spatial::hs;
       int constexpr num_state = Spatial::num_state;
+      int constexpr idH = Spatial::idH;
+      int constexpr idU = Spatial::idU;
+      int constexpr idV = Spatial::idV;
       parallel_for( Bounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
         state(l,hs+j,hs+i) += dt * tend(l,j,i);
+        if (state(idH,hs+j,hs+i) < height_tol) {
+          state(idH,hs+j,hs+i) = 0;
+          state(idU,hs+j,hs+i) = 0;
+          state(idV,hs+j,hs+i) = 0;
+        }
       });
     }
   }
 
-
-  const char * get_temporal_name() const { return "ADER-DT"; }
 
 };
 

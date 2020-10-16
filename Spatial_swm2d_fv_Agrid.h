@@ -15,6 +15,8 @@ public:
   int static constexpr hs = (ord-1)/2;
   int static constexpr num_state = 3;
 
+  real static constexpr eps = 1.e-10;
+
   // Stores a single index location
   struct Location {
     int l;
@@ -112,8 +114,8 @@ public:
       real u = state(idU,hs+j,hs+i);
       real v = state(idV,hs+j,hs+i);
       real gw = sqrt(grav*h);
-      real dtx = cfl*dx/max( abs(u+gw) , abs(u-gw) );
-      real dty = cfl*dy/max( abs(v+gw) , abs(v-gw) );
+      real dtx = cfl*dx/max( abs(u+gw) , abs(u-gw) + eps );
+      real dty = cfl*dy/max( abs(v+gw) , abs(v-gw) + eps );
       dt2d(j,i) = min(dtx,dty);
     });
     return yakl::intrinsics::minval(dt2d);
@@ -256,12 +258,10 @@ public:
       if        (data_spec == DATA_SPEC_DAM) {
         if (i > nx/4 && i < 3*nx/4 && j > ny/4 && j < 3*ny/4) {
           state(idH,hs+j,hs+i) = 3;
-          state(idU,hs+j,hs+i) = 0;
+          bath(hs+j,hs+i) = 0.25;
         } else {
-          state(idH,hs+j,hs+i) = 1;
-          state(idU,hs+j,hs+i) = 0;
+          state(idH,hs+j,hs+i) = 2;
         }
-        bath(hs+j,hs+i) = 0;
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_1D) {
         for (int ii=0; ii < ord; ii++) {
           real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
@@ -440,6 +440,16 @@ public:
       for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idH,hs+j,i+ii) + bath(hs+j,i+ii); }
       reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , sigma , weno_recon );
 
+      // Positivity
+      for (int ii=0; ii<ngll; ii++) {
+        if (h_DTs(0,ii) < 0) {
+          h_DTs(0,ii) = 0;
+        }
+        if (surf_DTs(0,ii) < 0) {
+          surf_DTs(0,ii) = 0;
+        }
+      }
+
       SArray<real,2,nAder,ngll> h_u_DTs;
       SArray<real,2,nAder,ngll> u_u_DTs;
       SArray<real,2,nAder,ngll> u_dv_DTs;
@@ -525,6 +535,16 @@ public:
         }
       }
 
+      // Positivity
+      for (int ii=0; ii<ngll; ii++) {
+        if (h_DTs(0,ii) < 0) {
+          h_DTs(0,ii) = 0;
+        }
+        if (surf_DTs(0,ii) < 0) {
+          surf_DTs(0,ii) = 0;
+        }
+      }
+
       // Store edge estimates of h and u into the fwaves object
       fwaves (idH,1,j,i  ) = h_DTs   (0,0     );
       fwaves (idH,0,j,i+1) = h_DTs   (0,ngll-1);
@@ -537,10 +557,11 @@ public:
 
       // Compute the "centered" contribution to the high-order tendency
       if (! sim1d) {
-        tend(idV,j,i) = 0;
+        real tmp = 0;
         for (int ii=0; ii<ngll; ii++) {
-          tend(idV,j,i) += -u_dv_DTs(0,ii) * gllWts_ngll(ii);
+          tmp += -u_dv_DTs(0,ii) * gllWts_ngll(ii);
         }
+        tend(idV,j,i) = tmp;
       }
 
     }); // Loop over cells
@@ -586,60 +607,50 @@ public:
       real u = 0.5_fp * (u_L + u_R);
       real v = 0.5_fp * (v_L + v_R);
       real gw = sqrt(grav*h);
-      // Jump in the state
-      real dh = h_R  - h_L ;
-      real du = u_R  - u_L ;
-      real dv = v_R  - v_L ;
-      real dhs = hs_R - hs_L;
-      // Jump in the flux: df = (df/dq)*dq
-      real df1 = h_R*u_R - h_L*u_L;
-      real df2 = u*du + grav*dhs;
-      real df3 = u*dv;
-      // l \dot df
-      real w1 = 0.5_fp*df1 - h*df2/(2*gw);
-      real w2 = 0.5_fp*df1 + h*df2/(2*gw);
-      real w3 = df3;
-      // set fwaves to zero for this interface
-      for (int l=0; l < num_state; l++) {
-        fwaves(l,0,j,i) = 0;
-        fwaves(l,1,j,i) = 0;
-      }
-      // Wave 1
-      if (u-gw < 0) {
-        fwaves(idH,0,j,i) += w1;
-        fwaves(idU,0,j,i) += -gw*w1/h;
-      } else {
-        fwaves(idH,1,j,i) += w1;
-        fwaves(idU,1,j,i) += -gw*w1/h;
-      }
-      // Wave 2
-      if (u+gw < 0) {
-        fwaves(idH,0,j,i) += w2;
-        fwaves(idU,0,j,i) += gw*w2/h;
-      } else {
-        fwaves(idH,1,j,i) += w2;
-        fwaves(idU,1,j,i) += gw*w2/h;
-      }
-      if (! sim1d) {
-        if (u < 0) {
-          fwaves(idV,0,j,i) += w3;
-        } else {
-          fwaves(idV,1,j,i) += w3;
+      if (gw > 0) {
+        // Compute flux difference splitting for v
+        fwaves(idV,0,j,i) = 0;
+        fwaves(idV,1,j,i) = 0;
+        if (! sim1d) {
+          if (u < 0) {
+            fwaves(idV,0,j,i) += u*(v_R - v_L);
+          } else {
+            fwaves(idV,1,j,i) += u*(v_R - v_L);
+          }
         }
+
+        // Compute left and right flux for h and u
+        real f1_L = h_L*u_L;
+        real f1_R = h_R*u_R;
+        real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
+        real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
+        // Compute left and right flux-based characteristic variables
+        real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
+        real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);
+        real w2_L = 0.5_fp * f1_L + h*f2_L/(2*gw);
+        real w2_R = 0.5_fp * f1_R + h*f2_R/(2*gw);
+        // Compute upwind flux-based characteristic variables
+        real w1_U, w2_U;
+        // Wave 1 (u-gw)
+        if (u-gw > 0) {
+          w1_U = w1_L;
+        } else {
+          w1_U = w1_R;
+        }
+        // Wave 2 (u+gw)
+        if (u+gw > 0) {
+          w2_U = w2_L;
+        } else {
+          w2_U = w2_R;
+        }
+        fwaves(idH,0,j,i) = w1_U + w2_U;
+        fwaves(idU,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+      } else {
+        fwaves(idV,0,j,i) = 0;
+        fwaves(idV,1,j,i) = 0;
+        fwaves(idH,0,j,i) = 0;
+        fwaves(idU,0,j,i) = 0;
       }
-
-      // We're going to replace fwaves for mass with a flux vector for easy mass conservation
-      // Store in fwaves(idH,0,j,i)
-      real fwh_m = fwaves(idH,0,j,i); // negative (minus) direction f-wave for h
-      real fwh_p = fwaves(idH,1,j,i); // positive (plus ) direction f-wave for h
-      fwaves(idH,0,j,i) = 0.5_fp * ( (h_L*u_L+fwh_m)  +  (h_R*u_R-fwh_p) );
-
-      // We're going to replace fwaves for mass with a flux vector for easy mass conservation
-      // Store in fwaves(idU,0,j,i)
-      fwh_m = fwaves(idU,0,j,i); // negative (minus) direction f-wave for h
-      fwh_p = fwaves(idU,1,j,i); // positive (plus ) direction f-wave for h
-      fwaves(idU,0,j,i) = 0.5_fp * ( (u_L*u_L*0.5_fp + grav*hs_L + fwh_m)  + 
-                                     (u_R*u_R*0.5_fp + grav*hs_R - fwh_p) );
     });
 
     // Apply the tendencies
@@ -715,6 +726,16 @@ public:
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idH,j+jj,hs+i) + bath(j+jj,hs+i); }
       reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , sigma , weno_recon );
+
+      // Positivity
+      for (int ii=0; ii<ngll; ii++) {
+        if (h_DTs(0,ii) < 0) {
+          h_DTs(0,ii) = 0;
+        }
+        if (surf_DTs(0,ii) < 0) {
+          surf_DTs(0,ii) = 0;
+        }
+      }
 
       SArray<real,2,nAder,ngll> h_v_DTs;
       SArray<real,2,nAder,ngll> v_du_DTs;
@@ -801,6 +822,16 @@ public:
         }
       }
 
+      // Positivity
+      for (int ii=0; ii<ngll; ii++) {
+        if (h_DTs(0,ii) < 0) {
+          h_DTs(0,ii) = 0;
+        }
+        if (surf_DTs(0,ii) < 0) {
+          surf_DTs(0,ii) = 0;
+        }
+      }
+
       // Store edge estimates of h and u into the fwaves object
       fwaves (idH,1,j  ,i) = h_DTs   (0,0     );
       fwaves (idH,0,j+1,i) = h_DTs   (0,ngll-1);
@@ -812,10 +843,11 @@ public:
       surf_limits(0,j+1,i) = surf_DTs(0,ngll-1);
 
       // Compute the "centered" contribution to the high-order tendency
-      tend(idU,j,i) = 0;
+      real tmp = 0;
       for (int ii=0; ii<ngll; ii++) {
-        tend(idU,j,i) += -v_du_DTs(0,ii) * gllWts_ngll(ii);
+        tmp += -v_du_DTs(0,ii) * gllWts_ngll(ii);
       }
+      tend(idU,j,i) = tmp;
 
     }); // Loop over cells
 
@@ -860,58 +892,49 @@ public:
       real u = 0.5_fp * (u_L + u_R);
       real v = 0.5_fp * (v_L + v_R);
       real gw = sqrt(grav*h);
-      // Jump in the state
-      real dh = h_R  - h_L ;
-      real du = u_R  - u_L ;
-      real dv = v_R  - v_L ;
-      real dhs = hs_R - hs_L;
-      // Jump in the flux: df = (df/dq)*dq
-      real df1 = h_R*v_R - h_L*v_L;
-      real df2 = v*du;
-      real df3 = v*dv + grav*dhs;
-      // l \dot df
-      real w1 = 0.5_fp*df1 - h*df3/(2*gw);
-      real w2 = 0.5_fp*df1 + h*df3/(2*gw);
-      real w3 = df2;
-      // set fwaves to zero for this interface
-      for (int l=0; l < num_state; l++) {
-        fwaves(l,0,j,i) = 0;
-        fwaves(l,1,j,i) = 0;
-      }
-      // Wave 1
-      if (v-gw < 0) {
-        fwaves(idH,0,j,i) += w1;
-        fwaves(idV,0,j,i) += -gw*w1/h;
-      } else {
-        fwaves(idH,1,j,i) += w1;
-        fwaves(idV,1,j,i) += -gw*w1/h;
-      }
-      // Wave 2
-      if (v+gw < 0) {
-        fwaves(idH,0,j,i) += w2;
-        fwaves(idV,0,j,i) += gw*w2/h;
-      } else {
-        fwaves(idH,1,j,i) += w2;
-        fwaves(idV,1,j,i) += gw*w2/h;
-      }
-      if (v < 0) {
-        fwaves(idU,0,j,i) += w3;
-      } else {
-        fwaves(idU,1,j,i) += w3;
-      }
 
-      // We're going to replace fwaves for mass with a flux vector for easy mass conservation
-      // Store in fwaves(idH,0,j,i)
-      real fwh_m = fwaves(idH,0,j,i); // negative (minus) direction f-wave for h
-      real fwh_p = fwaves(idH,1,j,i); // positive (plus ) direction f-wave for h
-      fwaves(idH,0,j,i) = 0.5_fp * ( (h_L*v_L+fwh_m)  +  (h_R*v_R-fwh_p) );
+      if (gw > 0) {
+        // Compute flux difference splitting for u update
+        fwaves(idU,0,j,i) = 0;
+        fwaves(idU,1,j,i) = 0;
+        if (v < 0) {
+          fwaves(idU,0,j,i) += v*(u_R  - u_L);
+        } else {
+          fwaves(idU,1,j,i) += v*(u_R  - u_L);
+        }
 
-      // We're going to replace fwaves for mass with a flux vector for easy mass conservation
-      // Store in fwaves(idH,0,j,i)
-      fwh_m = fwaves(idV,0,j,i); // negative (minus) direction f-wave for h
-      fwh_p = fwaves(idV,1,j,i); // positive (plus ) direction f-wave for h
-      fwaves(idV,0,j,i) = 0.5_fp * ( (v_L*v_L*0.5_fp + grav*hs_L + fwh_m)  + 
-                                        (v_R*v_R*0.5_fp + grav*hs_R - fwh_p) );
+        // Compute left and right flux for h and v
+        real f1_L = h_L*v_L;
+        real f1_R = h_R*v_R;
+        real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
+        real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
+        // Compute left and right flux-based characteristic variables
+        real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
+        real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
+        real w2_L = 0.5_fp * f1_L + h*f3_L/(2*gw);
+        real w2_R = 0.5_fp * f1_R + h*f3_R/(2*gw);
+        // Compute upwind flux-based characteristic variables
+        real w1_U, w2_U;
+        // Wave 1 (v-gw)
+        if (v-gw > 0) {
+          w1_U = w1_L;
+        } else {
+          w1_U = w1_R;
+        }
+        // Wave 2 (v+gw)
+        if (v+gw > 0) {
+          w2_U = w2_L;
+        } else {
+          w2_U = w2_R;
+        }
+        fwaves(idH,0,j,i) = w1_U + w2_U;
+        fwaves(idV,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+      } else {
+        fwaves(idU,0,j,i) = 0;
+        fwaves(idU,1,j,i) = 0;
+        fwaves(idH,0,j,i) = 0;
+        fwaves(idV,0,j,i) = 0;
+      }
     });
 
     // Apply the tendencies
@@ -924,10 +947,6 @@ public:
     });
 
   }
-
-
-
-  const char * get_spatial_name() { return "1-D Uniform Transport with upwind FV on A-grid"; }
 
 
 

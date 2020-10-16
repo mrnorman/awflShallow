@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Elapsed Time: " << etime << "\n";
+    model.output( state , etime );
 
     model.finalize(state);
 
