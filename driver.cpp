@@ -39,14 +39,13 @@ int main(int argc, char** argv) {
       std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
       model.time_step( state , dt );
       etime += dt;
-      if (etime / out_freq >= num_out+1) {
+      if (etime / out_freq + 1.e-13 >= num_out+1) {
         model.output( state , etime );
         num_out++;
       }
     }
 
     std::cout << "Elapsed Time: " << etime << "\n";
-    model.output( state , etime );
 
     model.finalize(state);
 

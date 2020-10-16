@@ -27,7 +27,7 @@ using yakl::memset;
   #define OVERSHOOT_THRESH .01
 #endif
 
-typedef double real;
+typedef float real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);

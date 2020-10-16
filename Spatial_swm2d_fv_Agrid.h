@@ -1012,8 +1012,7 @@ public:
       real h = state(idH,hs+j,hs+i);
       mass(j,i) = h;
     });
-    yakl::ParallelSum<real,memDevice> psum(ny*nx);
-    real mass_tot = psum(mass.data());
+    real mass_tot = yakl::intrinsics::sum( mass );
 
     std::cout << "Relative mass change: " << (mass_tot-mass_init) / mass_init << "\n";
   }
