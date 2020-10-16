@@ -1,0 +1,25 @@
+---
+# Simulation time in seconds
+simTime  : 1.0
+
+# Number of cells to use
+nx       : 100
+ny       : 100
+
+# Domain length in x- and y-dimensions
+xlen     : 1
+ylen     : 1
+
+# Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d
+initData : dam
+
+# Data to initialize: periodic, wall, or open
+bc_x : periodic
+bc_y : periodic
+
+# Output filename
+outFile  : test.nc
+
+# Output frequency in seconds
+outFreq  : 0
+
