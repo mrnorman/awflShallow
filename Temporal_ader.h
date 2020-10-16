@@ -3,60 +3,64 @@
 
 #include "const.h"
 
-/* REQUIRED:
-int  static constexpr nTimeDerivs = [# tendency time derivatives needed by the time stepping scheme];
-bool static constexpr timeAvg     = [whether the spatial operator should return a time-averaged tendency];
+bool constexpr time_avg    = true;
+int  constexpr nAder       = ngll;
 
-static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
-
-void init(std::string inFile):
-    - Process input file with filename "inFile"
-    - Allocate and initialize internal stuff
-
-void timeStep( StateArr &state , real dt ): 
-    - Perform a single time step
-
-const char * getTemporalName():
-    - Return the name and info about this temporal operator
-*/
-class Temporal : public Spatial {
+template <class Spatial>
+class Temporal_ader {
 public:
 
-  #ifndef TIME_ADER
-    static_assert(false,"ERROR: You included the wrong Temporal_*_defines.h file")
-  #endif
-  static_assert(nTimeDerivs <= ngll , "ERROR: nTimeDerivs must be <= ngll.");
-
-  TendArr tendArr;
+  real3d tend;
+  Spatial space_op;
 
   
-  void init(std::string inFile) {
-    Spatial::init(inFile);
-    tendArr = createTendArr();
+  void init(std::string in_file) {
+    space_op.init(in_file);
+    tend = space_op.create_tend_arr();
   }
 
 
-  void timeStep( StateArr &stateArr , real dt ) {
-    // TODO: pass an MPI communicator to computeTendencies
+  inline real3d create_state_arr() const {
+    return space_op.create_state_arr();
+  }
 
+
+  inline void init_state(real3d &state) {
+    space_op.init_state(state);
+  }
+
+
+  inline void output(real3d &state , real etime) {
+    space_op.output(state,etime);
+  }
+
+
+  inline real compute_time_step(real cfl, real3d &state) {
+    return space_op.compute_time_step(cfl,state);
+  }
+
+
+  inline void finalize(real3d &state) {
+    space_op.finalize(state);
+  }
+
+
+  inline void time_step( real3d &state , real dt ) {
     // Loop over different items in the spatial splitting
-    for (int spl = 0 ; spl < numSplit() ; spl++) {
-      real dtloc = dt;
-      computeTendencies( stateArr , tendArr , dtloc , spl );
+    for (int spl = 0 ; spl < space_op.num_split() ; spl++) {
+      space_op.compute_tendencies( state , tend , dt , spl );
 
-      auto &tendArr = this->tendArr;
-      auto applySingleTendency = YAKL_LAMBDA (Location const &loc) {
-        real &state = get(stateArr,loc  ,spl);
-        real &tend  = get(tendArr ,loc,0,spl);
-        state += dtloc * tend;
-      };
-
-      applyTendencies( applySingleTendency , spl );
+      auto &tend = this->tend;
+      int constexpr hs = Spatial::hs;
+      int constexpr num_state = Spatial::num_state;
+      parallel_for( Bounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+        state(l,hs+j,hs+i) += dt * tend(l,j,i);
+      });
     }
   }
 
 
-  const char * getTemporalName() { return "ADER-DT"; }
+  const char * get_temporal_name() const { return "ADER-DT"; }
 
 };
 

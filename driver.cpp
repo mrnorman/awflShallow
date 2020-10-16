@@ -1,44 +1,47 @@
 
 #include "const.h"
-#include "Temporal_ader_defines.h"
-#include "Spatial_swm2d_fv_Agrid.h"
 #include "Temporal_ader.h"
+#include "Spatial_swm2d_fv_Agrid.h"
+
+typedef Spatial_swm2d_fv_Agrid<time_avg,nAder> Spatial;
+
+typedef Temporal_ader<Spatial> Model;
 
 int main(int argc, char** argv) {
   yakl::init();
   {
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
-    std::string inFile(argv[1]);
-    YAML::Node config = YAML::LoadFile(inFile);
+    std::string in_file(argv[1]);
+    YAML::Node config = YAML::LoadFile(in_file);
     if ( !config            ) { endrun("ERROR: Invalid YAML input file"); }
-    if ( !config["simTime"] ) { endrun("ERROR: no simTime entry"); }
-    if ( !config["outFreq"] ) { endrun("ERROR: no outFreq entry"); }
-    real simTime = config["simTime"].as<real>();
-    real outFreq = config["outFreq"].as<real>();
-    int numOut = 0;
+    if ( !config["sim_time"] ) { endrun("ERROR: no sim_time entry"); }
+    if ( !config["out_freq"] ) { endrun("ERROR: no out_freq entry"); }
+    real sim_time = config["sim_time"].as<real>();
+    real out_freq = config["out_freq"].as<real>();
+    int num_out = 0;
 
-    Temporal model;
+    Model model;
 
-    model.init(inFile);
+    model.init(in_file);
 
-    Temporal::StateArr state = model.createStateArr();
+    real3d state = model.create_state_arr();
 
-    model.initState(state);
+    model.init_state(state);
 
     real etime = 0;
 
     model.output( state , etime );
     
-    while (etime < simTime) {
-      real dt = model.computeTimeStep(0.8,state);
-      if (etime + dt > simTime) { dt = simTime - etime; }
+    while (etime < sim_time) {
+      real dt = model.compute_time_step(0.8,state);
+      if (etime + dt > sim_time) { dt = sim_time - etime; }
       std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
-      model.timeStep( state , dt );
+      model.time_step( state , dt );
       etime += dt;
-      if (etime / outFreq >= numOut+1) {
+      if (etime / out_freq >= num_out+1) {
         model.output( state , etime );
-        numOut++;
+        num_out++;
       }
     }
 
