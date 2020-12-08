@@ -110,17 +110,19 @@ public:
     auto &grav = this->grav;
     auto &dx   = this->dx;
     auto &dy   = this->dy;
+
     real2d dt2d("dt2d",ny,nx);
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       real h = state(idH,hs+j,hs+i);
       real u = state(idU,hs+j,hs+i);
       real v = state(idV,hs+j,hs+i);
       real gw = sqrt(grav*h);
-      real dtx = cfl*dx/max( abs(u+gw) , abs(u-gw) + eps );
-      real dty = cfl*dy/max( abs(v+gw) , abs(v-gw) + eps );
+      real dtx = cfl*dx/max( abs(u+gw) + eps , abs(u-gw) + eps );
+      real dty = cfl*dy/max( abs(v+gw) + eps , abs(v-gw) + eps );
       dt2d(j,i) = min(dtx,dty);
     });
     return yakl::intrinsics::minval(dt2d);
+
   }
 
 

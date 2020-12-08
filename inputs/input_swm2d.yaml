@@ -1,21 +1,21 @@
 ---
 # Simulation time in seconds
-sim_time  : 1
+sim_time  : 0.48
 
 # Number of cells to use
-nx       : 100
-ny       : 100
+nx       : 1000
+ny       : 500
 
 # Domain length in x- and y-dimensions
-xlen     : 1
+xlen     : 2
 ylen     : 1
 
 # Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d, lake_at_rest_disc_2d
-init_data : lake_at_rest_disc_2d
+init_data : lake_at_rest_pert_2d
 
 # Data to initialize: periodic, wall, or open
-bc_x : periodic
-bc_y : periodic
+bc_x : open
+bc_y : open
 
 # Output filename
 out_file  : test.nc

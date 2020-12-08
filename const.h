@@ -5,6 +5,7 @@
 #include "yaml-cpp/yaml.h"
 #include "YAKL_netcdf.h"
 #include <iostream>
+#include <assert.h>
 
 using yakl::c::parallel_for;
 using yakl::c::Bounds;
@@ -17,11 +18,11 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 9
+  #define ORD 3
 #endif
 
 #ifndef NGLL
-  #define NGLL 9
+  #define NGLL 3
 #endif
 
 #ifndef OVERSHOOT_THRESH
