@@ -10,8 +10,8 @@ ny       : 100
 xlen     : 1
 ylen     : 1
 
-# Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d
-init_data : dam
+# Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d, lake_at_rest_disc_2d
+init_data : lake_at_rest_disc_2d
 
 # Data to initialize: periodic, wall, or open
 bc_x : periodic
@@ -21,5 +21,5 @@ bc_y : periodic
 out_file  : test.nc
 
 # Output frequency in seconds
-out_freq  : 0.1
+out_freq  : 0.
 

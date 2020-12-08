@@ -56,6 +56,8 @@ public:
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_1D = 2;
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 4;
+  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 5;
+  int static constexpr DATA_SPEC_LAKE_AT_REST_DISC_2D = 6;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -162,6 +164,12 @@ public:
     } else if (data_str == "lake_at_rest_pert_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_PERT_2D;
       grav = 9.81;
+    } else if (data_str == "bath_higher_smooth") {
+      data_spec = DATA_SPEC_BATH_HIGHER_SMOOTH;
+      grav = 9.81;
+    } else if (data_str == "lake_at_rest_disc_2d") {
+      data_spec = DATA_SPEC_LAKE_AT_REST_DISC_2D;
+      grav = 9.81;
     } else {
       endrun("ERROR: Invalid data_spec");
     }
@@ -253,6 +261,7 @@ public:
     auto &dx         = this->dx        ;
     auto &dy         = this->dy        ;
     auto &xlen       = this->xlen      ;
+    auto &ylen       = this->ylen      ;
 
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       if        (data_spec == DATA_SPEC_DAM) {
@@ -306,6 +315,27 @@ public:
             bath (    hs+j,hs+i) += b          * gllWts_ord(ii) * gllWts_ord(jj);
           }
         }
+      } else if (data_spec == DATA_SPEC_BATH_HIGHER_SMOOTH) {
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+            real yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            real xn = (xloc - xlen / 2) / (sqrt(2*xlen*xlen) / 2);
+            real yn = (yloc - ylen / 2) / (sqrt(2*ylen*ylen) / 2);
+            real rad = sqrt(xn*xn + yn*yn);
+            real b = 3*pow( (-cos(M_PI*rad)+1)/2 , 2._fp );
+            real s = max(0._fp,1-b);
+            state(idH,hs+j,hs+i) += s * gllWts_ord(ii) * gllWts_ord(jj);
+            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
+          }
+        }
+      } else if (data_spec == DATA_SPEC_LAKE_AT_REST_DISC_2D) {
+        if (i > nx/4 && i < 3*nx/4 && j > ny/4 && j < 3*ny/4) {
+          bath(hs+j,hs+i) = 1;
+        } else {
+          bath(hs+j,hs+i) = 0;
+        }
+        state(idH,hs+j,hs+i) = 3-bath(hs+j,hs+i);
       }
     });
     // x-direction boundaries for bathymetry

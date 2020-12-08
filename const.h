@@ -4,6 +4,7 @@
 #include "YAKL.h"
 #include "yaml-cpp/yaml.h"
 #include "YAKL_netcdf.h"
+#include <iostream>
 
 using yakl::c::parallel_for;
 using yakl::c::Bounds;
@@ -16,18 +17,18 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 5
+  #define ORD 9
 #endif
 
 #ifndef NGLL
-  #define NGLL 3
+  #define NGLL 9
 #endif
 
 #ifndef OVERSHOOT_THRESH
   #define OVERSHOOT_THRESH .01
 #endif
 
-typedef float real;
+typedef double real;
 
 YAKL_INLINE real constexpr operator"" _fp( long double x ) {
   return static_cast<real>(x);
