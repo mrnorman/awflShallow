@@ -52,7 +52,8 @@ public:
     for (int spl = 0 ; spl < space_op.num_split() ; spl++) {
       space_op.compute_tendencies( state , tend , dt , spl );
 
-      auto &tend = this->tend;
+      YAKL_SCOPE( tend , this->tend );
+
       int constexpr hs = Spatial::hs;
       int constexpr num_state = Spatial::num_state;
       int constexpr idH = Spatial::idH;

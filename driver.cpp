@@ -10,6 +10,9 @@ typedef Temporal_ader<Spatial> Model;
 int main(int argc, char** argv) {
   yakl::init();
   {
+    #if __ENABLE_MPI__
+      int ierr = MPI_Init( &argc , &argv );
+    #endif
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
     std::string in_file(argv[1]);

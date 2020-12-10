@@ -3,9 +3,14 @@
 
 #include "YAKL.h"
 #include "yaml-cpp/yaml.h"
-#include "YAKL_netcdf.h"
 #include <iostream>
 #include <assert.h>
+#if __ENABLE_MPI__
+  #include "mpi.h"
+  #include "YAKL_pnetcdf.h"
+#else
+  #include "YAKL_netcdf.h"
+#endif
 
 using yakl::c::parallel_for;
 using yakl::c::Bounds;
@@ -43,6 +48,15 @@ typedef yakl::Array<real,5,yakl::memDevice,yakl::styleC> real5d;
 typedef yakl::Array<real,6,yakl::memDevice,yakl::styleC> real6d;
 typedef yakl::Array<real,7,yakl::memDevice,yakl::styleC> real7d;
 typedef yakl::Array<real,8,yakl::memDevice,yakl::styleC> real8d;
+
+typedef yakl::Array<real,1,yakl::memHost,yakl::styleC> realHost1d;
+typedef yakl::Array<real,2,yakl::memHost,yakl::styleC> realHost2d;
+typedef yakl::Array<real,3,yakl::memHost,yakl::styleC> realHost3d;
+typedef yakl::Array<real,4,yakl::memHost,yakl::styleC> realHost4d;
+typedef yakl::Array<real,5,yakl::memHost,yakl::styleC> realHost5d;
+typedef yakl::Array<real,6,yakl::memHost,yakl::styleC> realHost6d;
+typedef yakl::Array<real,7,yakl::memHost,yakl::styleC> realHost7d;
+typedef yakl::Array<real,8,yakl::memHost,yakl::styleC> realHost8d;
 
 int constexpr ord  = ORD;
 int constexpr ngll = NGLL;

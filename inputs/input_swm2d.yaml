@@ -3,8 +3,12 @@
 sim_time  : 0.48
 
 # Number of cells to use
-nx       : 1000
-ny       : 500
+nx_glob : 1000
+ny_glob : 500
+
+# Number of tasks to use in the x- and y-directions
+nproc_x : 1
+nproc_y : 1
 
 # Domain length in x- and y-dimensions
 xlen     : 2

@@ -4,6 +4,9 @@
 #include "const.h"
 #include "TransformMatrices.h"
 #include "WenoLimiter.h"
+#ifdef __ENABLE_MPI__
+  #include "Exchange.h"
+#endif
 
 
 
@@ -72,11 +75,32 @@ public:
   int  bc_y;
   bool dim_switch;
 
+  // Parallel information
+  int nranks;
+  int myrank;
+  int px;
+  int py;
+  ulong i_beg;
+  ulong j_beg;
+  ulong i_end;
+  ulong j_end;
+  int masterproc;
+  SArray<int,2,3,3> neigh;
+  int nx;
+  int ny;
+  bool use_mpi;
+  #ifdef __ENABLE_MPI__
+    Exchange exch;
+    MPI_Datatype mpi_dtype;
+  #endif
+
   real mass_init;
 
   // Values read from input file
-  int         nx;
-  int         ny;
+  int nx_glob;
+  int ny_glob;
+  int nproc_x;
+  int nproc_y;
   bool        doweno;
   std::string out_file;
   int         data_spec;
@@ -107,9 +131,9 @@ public:
 
 
   real compute_time_step(real cfl, StateArr const &state) const {
-    auto &grav = this->grav;
-    auto &dx   = this->dx;
-    auto &dy   = this->dy;
+    YAKL_SCOPE( grav , this->grav );
+    YAKL_SCOPE( dx   , this->dx   );
+    YAKL_SCOPE( dy   , this->dy   );
 
     real2d dt2d("dt2d",ny,nx);
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
@@ -121,8 +145,14 @@ public:
       real dty = cfl*dy/max( abs(v+gw) + eps , abs(v-gw) + eps );
       dt2d(j,i) = min(dtx,dty);
     });
-    return yakl::intrinsics::minval(dt2d);
-
+    real dtloc = yakl::intrinsics::minval(dt2d);
+    real dtglob;
+    #ifdef __ENABLE_MPI__
+      int ierr = MPI_Allreduce(&dtloc, &dtglob, 1, mpi_dtype , MPI_MIN, MPI_COMM_WORLD);
+    #else
+      dtglob = dtloc;
+    #endif
+    return dtglob;
   }
 
 
@@ -130,26 +160,117 @@ public:
   // Initialize crap needed by recon()
   void init(std::string inFile) {
     dim_switch = true;
+    use_mpi = false;
+
+    #ifdef __ENABLE_MPI__
+      mpi_dtype = MPI_DOUBLE;
+      if (std::is_same<real,float>::value) mpi_dtype = MPI_FLOAT;
+    #endif
 
     // Read the input file
     YAML::Node config = YAML::LoadFile(inFile);
     if ( !config             ) { endrun("ERROR: Invalid YAML input file"); }
-    if ( !config["nx"]       ) { endrun("ERROR: No nx in input file"); }
-    if ( !config["ny"]       ) { endrun("ERROR: No ny in input file"); }
-    if ( !config["xlen"]     ) { endrun("ERROR: No xlen in input file"); }
-    if ( !config["ylen"]     ) { endrun("ERROR: No ylen in input file"); }
-    if ( !config["bc_x"]     ) { endrun("ERROR: No bc_x in input file"); }
-    if ( !config["bc_y"]     ) { endrun("ERROR: No bc_y in input file"); }
-    if ( !config["init_data"]) { endrun("ERROR: No init_data in input file"); }
-    if ( !config["out_file"] ) { endrun("ERROR: No out_file in input file"); }
 
-    nx = config["nx"].as<int>();
-    ny = config["ny"].as<int>();
+    nx_glob = config["nx_glob"].as<int>();
+    ny_glob = config["ny_glob"].as<int>();
 
-    sim1d = ny == 1;
+    sim1d = ny_glob == 1;
+
+    nproc_x = config["nproc_x"].as<int>();
+    nproc_y = config["nproc_y"].as<int>();
 
     xlen = config["xlen"].as<real>();
     ylen = config["ylen"].as<real>();
+
+    std::string bc_x_str = config["bc_x"].as<std::string>();
+    if        (bc_x_str == "periodic") {
+      bc_x = BC_PERIODIC;
+    } else if (bc_x_str == "wall") {
+      bc_x = BC_WALL;
+    } else if (bc_x_str == "open") {
+      bc_x = BC_OPEN;
+    } else {
+      endrun("ERROR: Invalid bc_x");
+    }
+
+    std::string bc_y_str = config["bc_y"].as<std::string>();
+    if        (bc_y_str == "periodic") {
+      bc_y = BC_PERIODIC;
+    } else if (bc_y_str == "wall") {
+      bc_y = BC_WALL;
+    } else if (bc_y_str == "open") {
+      bc_y = BC_OPEN;
+    } else {
+      endrun("ERROR: Invalid bc_y");
+    }
+
+    #ifdef __ENABLE_MPI__
+      int ierr;
+      ierr = MPI_Comm_size(MPI_COMM_WORLD,&nranks);
+      ierr = MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
+
+      //Determine if I'm the master process
+      if (myrank == 0) {
+        masterproc = 1;
+      } else {
+        masterproc = 0;
+      }
+
+      if (nranks != nproc_x*nproc_y) {
+        std::cerr << "ERROR: nproc_x*nproc_y != nranks\n";
+        exit(-1);
+      }
+
+      //Get my x and y process grid ID
+      px = myrank % nproc_x;
+      py = myrank / nproc_x;
+
+      //Get my beginning and ending global indices
+      double nper;
+      nper = ((double) nx_glob)/nproc_x;
+      i_beg = (long) round( nper* px    );
+      i_end = (long) round( nper*(px+1) )-1;
+      nper = ((double) ny_glob)/nproc_y;
+      j_beg = (long) round( nper* py    );
+      j_end = (long) round( nper*(py+1) )-1;
+      //Determine my number of grid cells
+      nx = i_end - i_beg + 1;
+      ny = j_end - j_beg + 1;
+      for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 3; i++) {
+          int pxloc = px+i-1;
+          if (pxloc < 0            ) pxloc = pxloc + nproc_x;
+          if (pxloc > nproc_x-1) pxloc = pxloc - nproc_x;
+          int pyloc = py+j-1;
+          if (pyloc < 0            ) pyloc = pyloc + nproc_y;
+          if (pyloc > nproc_y-1) pyloc = pyloc - nproc_y;
+          neigh(j,i) = pyloc * nproc_x + pxloc;
+        }
+      }
+
+      if (nranks > 0) use_mpi = true;
+      bool periodic_x = bc_x == BC_PERIODIC;
+      bool periodic_y = bc_y == BC_PERIODIC;
+      exch.allocate(num_state+1, nx, ny, px, py, nproc_x, nproc_y, periodic_x, periodic_y, neigh, hs);
+    #else
+      nranks = 1;
+      myrank = 0;
+      masterproc = 1;
+      px = 0;
+      py = 0;
+      i_beg = 0;
+      i_end = nx_glob-1;
+      j_beg = 0;
+      j_end = ny_glob-1;
+      nx = nx_glob;
+      ny = ny_glob;
+      for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 3; i++) {
+          neigh(j,i) = 0;
+        }
+      }
+    #endif
+
 
     std::string data_str = config["init_data"].as<std::string>();
     if        (data_str == "dam") {
@@ -174,28 +295,6 @@ public:
       grav = 9.81;
     } else {
       endrun("ERROR: Invalid data_spec");
-    }
-
-    std::string bc_x_str = config["bc_x"].as<std::string>();
-    if        (bc_x_str == "periodic") {
-      bc_x = BC_PERIODIC;
-    } else if (bc_x_str == "wall") {
-      bc_x = BC_WALL;
-    } else if (bc_x_str == "open") {
-      bc_x = BC_OPEN;
-    } else {
-      endrun("ERROR: Invalid bc_x");
-    }
-
-    std::string bc_y_str = config["bc_y"].as<std::string>();
-    if        (bc_y_str == "periodic") {
-      bc_y = BC_PERIODIC;
-    } else if (bc_y_str == "wall") {
-      bc_y = BC_WALL;
-    } else if (bc_y_str == "open") {
-      bc_y = BC_OPEN;
-    } else {
-      endrun("ERROR: Invalid bc_y");
     }
 
     out_file = config["out_file"].as<std::string>();
@@ -252,22 +351,26 @@ public:
     memset( state , 0._fp );
     memset( bath  , 0._fp );
 
-    auto &bath       = this->bath      ;
-    auto &nx         = this->nx        ;
-    auto &ny         = this->ny        ;
-    auto &data_spec  = this->data_spec ;
-    auto &bc_x       = this->bc_x      ;
-    auto &bc_y       = this->bc_y      ;
-    auto &gllPts_ord = this->gllPts_ord;
-    auto &gllWts_ord = this->gllWts_ord;
-    auto &dx         = this->dx        ;
-    auto &dy         = this->dy        ;
-    auto &xlen       = this->xlen      ;
-    auto &ylen       = this->ylen      ;
+    YAKL_SCOPE( bath       , this->bath       );
+    YAKL_SCOPE( nx         , this->nx         );
+    YAKL_SCOPE( ny         , this->ny         );
+    YAKL_SCOPE( data_spec  , this->data_spec  );
+    YAKL_SCOPE( bc_x       , this->bc_x       );
+    YAKL_SCOPE( bc_y       , this->bc_y       );
+    YAKL_SCOPE( gllPts_ord , this->gllPts_ord );
+    YAKL_SCOPE( gllWts_ord , this->gllWts_ord );
+    YAKL_SCOPE( dx         , this->dx         );
+    YAKL_SCOPE( dy         , this->dy         );
+    YAKL_SCOPE( xlen       , this->xlen       );
+    YAKL_SCOPE( ylen       , this->ylen       );
+    YAKL_SCOPE( i_beg      , this->i_beg      );
+    YAKL_SCOPE( j_beg      , this->j_beg      );
 
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+      int i_glob = i_beg + i;
+      int j_glob = j_beg + j;
       if        (data_spec == DATA_SPEC_DAM) {
-        if (i > nx/4 && i < 3*nx/4 && j > ny/4 && j < 3*ny/4) {
+        if (i_glob > nx/4 && i_glob < 3*nx/4 && j_glob > ny/4 && j_glob < 3*ny/4) {
           state(idH,hs+j,hs+i) = 3;
           bath(hs+j,hs+i) = 0.25;
         } else {
@@ -275,7 +378,7 @@ public:
         }
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_1D) {
         for (int ii=0; ii < ord; ii++) {
-          real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
           real b  = 0;
           real surf = 1;
           if (xloc >= 1.4_fp && xloc <= 1.6_fp) {
@@ -289,7 +392,7 @@ public:
         }
       } else if (data_spec == DATA_SPEC_DAM_RECT_1D) {
         for (int ii=0; ii < ord; ii++) {
-          real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
+          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
           real b  = 0;
           real surf = 15;
           if (abs(xloc-xlen/2) <= xlen/8) {
@@ -304,8 +407,8 @@ public:
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
         for (int jj=0; jj < ord; jj++) {
           for (int ii=0; ii < ord; ii++) {
-            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
             real b = 0.8_fp*exp( -5*(xloc-0.9_fp)*(xloc-0.9_fp) - 50*(yloc-0.5_fp)*(yloc-0.5_fp) );
             real surf = 1;
             if (xloc >= 0.05_fp && xloc <= 0.15_fp) {
@@ -320,8 +423,8 @@ public:
       } else if (data_spec == DATA_SPEC_BATH_HIGHER_SMOOTH) {
         for (int jj=0; jj < ord; jj++) {
           for (int ii=0; ii < ord; ii++) {
-            real xloc = (i+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
             real xn = (xloc - xlen / 2) / (sqrt(2*xlen*xlen) / 2);
             real yn = (yloc - ylen / 2) / (sqrt(2*ylen*ylen) / 2);
             real rad = sqrt(xn*xn + yn*yn);
@@ -332,7 +435,7 @@ public:
           }
         }
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_DISC_2D) {
-        if (i > nx/4 && i < 3*nx/4 && j > ny/4 && j < 3*ny/4) {
+        if (i_glob > nx/4 && i_glob < 3*nx/4 && j_glob > ny/4 && j_glob < 3*ny/4) {
           bath(hs+j,hs+i) = 1;
         } else {
           bath(hs+j,hs+i) = 0;
@@ -340,26 +443,77 @@ public:
         state(idH,hs+j,hs+i) = 3-bath(hs+j,hs+i);
       }
     });
-    // x-direction boundaries for bathymetry
-    parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
-      if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
-        bath(j,      ii) = bath(j,hs     );
-        bath(j,nx+hs+ii) = bath(j,hs+nx-1);
-      } else if (bc_x == BC_PERIODIC) {
-        bath(j,      ii) = bath(j,nx+ii);
-        bath(j,nx+hs+ii) = bath(j,hs+ii);
-      }
-    });
-    // y-direction boundaries for bathymetry
-    parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
-      if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
-        bath(      ii,i) = bath(hs     ,i);
-        bath(ny+hs+ii,i) = bath(hs+ny-1,i);
-      } else if (bc_y == BC_PERIODIC) {
-        bath(      ii,i) = bath(ny+ii,i);
-        bath(ny+hs+ii,i) = bath(hs+ii,i);
-      }
-    });
+
+    if (use_mpi) {
+
+      #ifdef __ENABLE_MPI__
+        ////////////////
+        // x-direction
+        ////////////////
+        exch.halo_init();
+        exch.halo_pack_x(bath);
+        exch.halo_exchange_x();
+        exch.halo_unpack_x(bath);
+        exch.halo_finalize();
+        if (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          if (px == 0) {
+            parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+              bath(j,      ii) = bath(j,hs     );
+            });
+          }
+          if (px == nproc_x-1) {
+            parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+              bath(j,nx+hs+ii) = bath(j,hs+nx-1);
+            });
+          }
+        }
+
+        ////////////////
+        // y-direction
+        ////////////////
+        exch.halo_init();
+        exch.halo_pack_y(bath);
+        exch.halo_exchange_y();
+        exch.halo_unpack_y(bath);
+        exch.halo_finalize();
+        if (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          if (py == 0) {
+            parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+              bath(      ii,i) = bath(hs     ,i);
+            });
+          }
+          if (py == nproc_y-1) {
+            parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+              bath(ny+hs+ii,i) = bath(hs+ny-1,i);
+            });
+          }
+        }
+      #endif
+
+    } else {  // if (use_mpi)
+
+      // x-direction boundaries for bathymetry
+      parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+        if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          bath(j,      ii) = bath(j,hs     );
+          bath(j,nx+hs+ii) = bath(j,hs+nx-1);
+        } else if (bc_x == BC_PERIODIC) {
+          bath(j,      ii) = bath(j,nx+ii);
+          bath(j,nx+hs+ii) = bath(j,hs+ii);
+        }
+      });
+      // y-direction boundaries for bathymetry
+      parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          bath(      ii,i) = bath(hs     ,i);
+          bath(ny+hs+ii,i) = bath(hs+ny-1,i);
+        } else if (bc_y == BC_PERIODIC) {
+          bath(      ii,i) = bath(ny+ii,i);
+          bath(ny+hs+ii,i) = bath(hs+ii,i);
+        }
+      });
+
+    } // if (use_mpi)
 
     real2d mass("mass",ny,nx);
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
@@ -412,38 +566,71 @@ public:
 
   // Compute state and tendency time derivatives from the state
   void compute_tendenciesX( StateArr &state , TendArr &tend , real dt ) {
-    auto &bc_x               = this->bc_x              ;
-    auto &nx                 = this->nx                ;
-    auto &dx                 = this->dx                ;
-    auto &bath               = this->bath              ;
-    auto &s2g                = this->sten_to_gll       ;
-    auto &s2d2g              = this->sten_to_deriv_gll ;
-    auto &c2g                = this->coefs_to_gll      ;
-    auto &c2d2g              = this->coefs_to_deriv_gll;
-    auto &deriv_matrix       = this->deriv_matrix      ;
-    auto &fwaves             = this->fwaves            ;
-    auto &surf_limits        = this->surf_limits       ;
-    auto &grav               = this->grav              ;
-    auto &gllWts_ngll        = this->gllWts_ngll       ;
-    auto &idl                = this->idl               ;
-    auto &sigma              = this->sigma             ;
-    auto &weno_recon         = this->weno_recon        ;
-    auto &sim1d              = this->sim1d             ;
+    YAKL_SCOPE( bc_x         , this->bc_x               );
+    YAKL_SCOPE( nx           , this->nx                 );
+    YAKL_SCOPE( dx           , this->dx                 );
+    YAKL_SCOPE( bath         , this->bath               );
+    YAKL_SCOPE( s2g          , this->sten_to_gll        );
+    YAKL_SCOPE( s2d2g        , this->sten_to_deriv_gll  );
+    YAKL_SCOPE( c2g          , this->coefs_to_gll       );
+    YAKL_SCOPE( c2d2g        , this->coefs_to_deriv_gll );
+    YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
+    YAKL_SCOPE( fwaves       , this->fwaves             );
+    YAKL_SCOPE( surf_limits  , this->surf_limits        );
+    YAKL_SCOPE( grav         , this->grav               );
+    YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
+    YAKL_SCOPE( idl          , this->idl                );
+    YAKL_SCOPE( sigma        , this->sigma              );
+    YAKL_SCOPE( weno_recon   , this->weno_recon         );
+    YAKL_SCOPE( sim1d        , this->sim1d              );
+    YAKL_SCOPE( use_mpi      , this->use_mpi            );
 
     // x-direction boundaries
-    parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
-      if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
-        state(l,hs+j,      ii) = state(l,hs+j,hs     );
-        state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
-        if (bc_x == BC_WALL && l == idU) {
-          state(l,hs+j,      ii) = 0;
-          state(l,hs+j,nx+hs+ii) = 0;
+    if (use_mpi) {
+
+      #ifdef __ENABLE_MPI__
+        exch.halo_init();
+        exch.halo_pack_x(state);
+        exch.halo_exchange_x();
+        exch.halo_unpack_x(state);
+        exch.halo_finalize();
+        if (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          if (px == 0) {
+            parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+              state(l,hs+j,      ii) = state(l,hs+j,hs     );
+              if (bc_x == BC_WALL && l == idU) {
+                state(l,hs+j,      ii) = 0;
+              }
+            });
+          }
+          if (px == nproc_x-1) {
+            parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+              state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
+              if (bc_x == BC_WALL && l == idU) {
+                state(l,hs+j,nx+hs+ii) = 0;
+              }
+            });
+          }
         }
-      } else if (bc_x == BC_PERIODIC) {
-        state(l,hs+j,      ii) = state(l,hs+j,nx+ii);
-        state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+ii);
-      }
-    });
+      #endif
+
+    } else {
+
+      parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+        if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          state(l,hs+j,      ii) = state(l,hs+j,hs     );
+          state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
+          if (bc_x == BC_WALL && l == idU) {
+            state(l,hs+j,      ii) = 0;
+            state(l,hs+j,nx+hs+ii) = 0;
+          }
+        } else if (bc_x == BC_PERIODIC) {
+          state(l,hs+j,      ii) = state(l,hs+j,nx+ii);
+          state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+ii);
+        }
+      });
+
+    }
 
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
@@ -598,30 +785,69 @@ public:
 
     }); // Loop over cells
 
-    // Periodic BCs for fwaves and surf_limits
-    parallel_for( ny , YAKL_LAMBDA (int j) {
-      if (bc_x == BC_WALL || bc_x == BC_OPEN) {
-        for (int l=0; l < num_state; l++) {
-          fwaves(l,0,j,0 ) = fwaves(l,1,j,0 );
-          fwaves(l,1,j,nx) = fwaves(l,0,j,nx);
-          if (bc_x == BC_WALL && l == idU) {
-            fwaves(l,0,j,0 ) = 0;
-            fwaves(l,1,j,0 ) = 0;
-            fwaves(l,0,j,nx) = 0;
-            fwaves(l,1,j,nx) = 0;
+    // BCs for fwaves and surf_limits
+    if (use_mpi) {
+      
+      #ifdef __ENABLE_MPI__
+        exch.edge_init();
+        exch.edge_pack_x( fwaves , surf_limits );
+        exch.edge_exchange_x();
+        exch.edge_unpack_x( fwaves , surf_limits );
+        exch.edge_finalize();
+        if (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          if (px == 0) {
+            parallel_for( ny , YAKL_LAMBDA (int j) {
+              for (int l=0; l < num_state; l++) {
+                fwaves(l,0,j,0 ) = fwaves(l,1,j,0 );
+                if (bc_x == BC_WALL && l == idU) {
+                  fwaves(l,0,j,0 ) = 0;
+                  fwaves(l,1,j,0 ) = 0;
+                }
+              }
+              surf_limits(0,j,0 ) = surf_limits(1,j,0 );
+            });
           }
-          surf_limits(0,j,0 ) = surf_limits(1,j,0 );
-          surf_limits(1,j,nx) = surf_limits(0,j,nx);
+          if (px == nproc_x-1) {
+            parallel_for( ny , YAKL_LAMBDA (int j) {
+              for (int l=0; l < num_state; l++) {
+                fwaves(l,1,j,nx) = fwaves(l,0,j,nx);
+                if (bc_x == BC_WALL && l == idU) {
+                  fwaves(l,0,j,nx) = 0;
+                  fwaves(l,1,j,nx) = 0;
+                }
+              }
+              surf_limits(1,j,nx) = surf_limits(0,j,nx);
+            });
+          }
         }
-      } else if (bc_x == BC_PERIODIC) {
-        for (int l=0; l < num_state; l++) {
-          fwaves(l,0,j,0 ) = fwaves(l,0,j,nx);
-          fwaves(l,1,j,nx) = fwaves(l,1,j,0 );
+      #endif
+
+    } else { 
+
+      parallel_for( ny , YAKL_LAMBDA (int j) {
+        if (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          for (int l=0; l < num_state; l++) {
+            fwaves(l,0,j,0 ) = fwaves(l,1,j,0 );
+            fwaves(l,1,j,nx) = fwaves(l,0,j,nx);
+            if (bc_x == BC_WALL && l == idU) {
+              fwaves(l,0,j,0 ) = 0;
+              fwaves(l,1,j,0 ) = 0;
+              fwaves(l,0,j,nx) = 0;
+              fwaves(l,1,j,nx) = 0;
+            }
+            surf_limits(0,j,0 ) = surf_limits(1,j,0 );
+            surf_limits(1,j,nx) = surf_limits(0,j,nx);
+          }
+        } else if (bc_x == BC_PERIODIC) {
+          for (int l=0; l < num_state; l++) {
+            fwaves(l,0,j,0 ) = fwaves(l,0,j,nx);
+            fwaves(l,1,j,nx) = fwaves(l,1,j,0 );
+          }
+          surf_limits(0,j,0 ) = surf_limits(0,j,nx);
+          surf_limits(1,j,nx) = surf_limits(1,j,0 );
         }
-        surf_limits(0,j,0 ) = surf_limits(0,j,nx);
-        surf_limits(1,j,nx) = surf_limits(1,j,0 );
-      }
-    });
+      });
+    }
 
     // Split the flux difference into characteristic waves
     parallel_for( Bounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
@@ -700,37 +926,69 @@ public:
 
   // Compute state and tendency time derivatives from the state
   void compute_tendenciesY( StateArr &state , TendArr &tend , real dt ) {
-    auto &bc_y               = this->bc_y              ;
-    auto &ny                 = this->ny                ;
-    auto &dy                 = this->dy                ;
-    auto &bath               = this->bath              ;
-    auto &s2g                = this->sten_to_gll       ;
-    auto &s2d2g              = this->sten_to_deriv_gll ;
-    auto &c2g                = this->coefs_to_gll      ;
-    auto &c2d2g              = this->coefs_to_deriv_gll;
-    auto &deriv_matrix       = this->deriv_matrix      ;
-    auto &fwaves             = this->fwaves            ;
-    auto &surf_limits        = this->surf_limits       ;
-    auto &grav               = this->grav              ;
-    auto &gllWts_ngll        = this->gllWts_ngll       ;
-    auto &idl                = this->idl               ;
-    auto &sigma              = this->sigma             ;
-    auto &weno_recon         = this->weno_recon        ;
+    YAKL_SCOPE( bc_y         , this->bc_y               );
+    YAKL_SCOPE( ny           , this->ny                 );
+    YAKL_SCOPE( dy           , this->dy                 );
+    YAKL_SCOPE( bath         , this->bath               );
+    YAKL_SCOPE( s2g          , this->sten_to_gll        );
+    YAKL_SCOPE( s2d2g        , this->sten_to_deriv_gll  );
+    YAKL_SCOPE( c2g          , this->coefs_to_gll       );
+    YAKL_SCOPE( c2d2g        , this->coefs_to_deriv_gll );
+    YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
+    YAKL_SCOPE( fwaves       , this->fwaves             );
+    YAKL_SCOPE( surf_limits  , this->surf_limits        );
+    YAKL_SCOPE( grav         , this->grav               );
+    YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
+    YAKL_SCOPE( idl          , this->idl                );
+    YAKL_SCOPE( sigma        , this->sigma              );
+    YAKL_SCOPE( weno_recon   , this->weno_recon         );
 
-    // x-direction boundaries
-    parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
-      if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
-        state(l,      jj,hs+i) = state(l,hs     ,hs+i);
-        state(l,ny+hs+jj,hs+i) = state(l,hs+ny-1,hs+i);
-        if (bc_y == BC_WALL && l == idV) {
-          state(l,      jj,hs+i) = 0;
-          state(l,ny+hs+jj,hs+i) = 0;
+    // y-direction boundaries
+    if (use_mpi) {
+      
+      #ifdef __ENABLE_MPI__
+        exch.halo_init();
+        exch.halo_pack_y(state);
+        exch.halo_exchange_y();
+        exch.halo_unpack_y(state);
+        exch.halo_finalize();
+        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          if (py == 0) {
+            parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+              state(l,      jj,hs+i) = state(l,hs     ,hs+i);
+              if (bc_y == BC_WALL && l == idV) {
+                state(l,      jj,hs+i) = 0;
+              }
+            });
+          }
+          if (py == nproc_y-1) {
+            parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+              state(l,ny+hs+jj,hs+i) = state(l,hs+ny-1,hs+i);
+              if (bc_y == BC_WALL && l == idV) {
+                state(l,ny+hs+jj,hs+i) = 0;
+              }
+            });
+          }
         }
-      } else if (bc_y == BC_PERIODIC) {
-        state(l,      jj,hs+i) = state(l,ny+jj,hs+i);
-        state(l,ny+hs+jj,hs+i) = state(l,hs+jj,hs+i);
-      }
-    });
+      #endif
+
+    } else {
+
+      parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          state(l,      jj,hs+i) = state(l,hs     ,hs+i);
+          state(l,ny+hs+jj,hs+i) = state(l,hs+ny-1,hs+i);
+          if (bc_y == BC_WALL && l == idV) {
+            state(l,      jj,hs+i) = 0;
+            state(l,ny+hs+jj,hs+i) = 0;
+          }
+        } else if (bc_y == BC_PERIODIC) {
+          state(l,      jj,hs+i) = state(l,ny+jj,hs+i);
+          state(l,ny+hs+jj,hs+i) = state(l,hs+jj,hs+i);
+        }
+      });
+
+    }
 
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
@@ -884,29 +1142,69 @@ public:
     }); // Loop over cells
 
     // Periodic BCs for fwaves and surf_limits
-    parallel_for( nx , YAKL_LAMBDA (int i) {
-      if (bc_y == BC_WALL || bc_y == BC_OPEN) {
-        for (int l=0; l < num_state; l++) {
-          fwaves(l,0,0 ,i) = fwaves(l,1,0 ,i);
-          fwaves(l,1,ny,i) = fwaves(l,0,ny,i);
-          if (bc_y == BC_WALL && l == idV) {
-            fwaves(l,0,0 ,i) = 0;
-            fwaves(l,1,0 ,i) = 0;
-            fwaves(l,0,ny,i) = 0;
-            fwaves(l,1,ny,i) = 0;
+    if (use_mpi) {
+      
+      #ifdef __ENABLE_MPI__
+        exch.edge_init();
+        exch.edge_pack_y( fwaves , surf_limits );
+        exch.edge_exchange_y();
+        exch.edge_unpack_y( fwaves , surf_limits );
+        exch.edge_finalize();
+        if (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          if (py == 0) {
+            parallel_for( nx , YAKL_LAMBDA (int i) {
+              for (int l=0; l < num_state; l++) {
+                fwaves(l,0,0 ,i) = fwaves(l,1,0 ,i);
+                if (bc_y == BC_WALL && l == idV) {
+                  fwaves(l,0,0 ,i) = 0;
+                  fwaves(l,1,0 ,i) = 0;
+                }
+              }
+              surf_limits(0,0 ,i) = surf_limits(1,0 ,i);
+            });
           }
-          surf_limits(0,0 ,i) = surf_limits(1,0 ,i);
-          surf_limits(1,ny,i) = surf_limits(0,ny,i);
+          if (py == nproc_y-1) {
+            parallel_for( nx , YAKL_LAMBDA (int i) {
+              for (int l=0; l < num_state; l++) {
+                fwaves(l,1,ny,i) = fwaves(l,0,ny,i);
+                if (bc_y == BC_WALL && l == idV) {
+                  fwaves(l,0,ny,i) = 0;
+                  fwaves(l,1,ny,i) = 0;
+                }
+              }
+              surf_limits(1,ny,i) = surf_limits(0,ny,i);
+            });
+          }
         }
-      } else if (bc_y == BC_PERIODIC) {
-        for (int l=0; l < num_state; l++) {
-          fwaves(l,0,0 ,i) = fwaves(l,0,ny,i);
-          fwaves(l,1,ny,i) = fwaves(l,1,0 ,i);
+      #endif
+
+    } else {
+
+      parallel_for( nx , YAKL_LAMBDA (int i) {
+        if (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          for (int l=0; l < num_state; l++) {
+            fwaves(l,0,0 ,i) = fwaves(l,1,0 ,i);
+            fwaves(l,1,ny,i) = fwaves(l,0,ny,i);
+            if (bc_y == BC_WALL && l == idV) {
+              fwaves(l,0,0 ,i) = 0;
+              fwaves(l,1,0 ,i) = 0;
+              fwaves(l,0,ny,i) = 0;
+              fwaves(l,1,ny,i) = 0;
+            }
+            surf_limits(0,0 ,i) = surf_limits(1,0 ,i);
+            surf_limits(1,ny,i) = surf_limits(0,ny,i);
+          }
+        } else if (bc_y == BC_PERIODIC) {
+          for (int l=0; l < num_state; l++) {
+            fwaves(l,0,0 ,i) = fwaves(l,0,ny,i);
+            fwaves(l,1,ny,i) = fwaves(l,1,0 ,i);
+          }
+          surf_limits(0,0 ,i) = surf_limits(0,ny,i);
+          surf_limits(1,ny,i) = surf_limits(1,0 ,i);
         }
-        surf_limits(0,0 ,i) = surf_limits(0,ny,i);
-        surf_limits(1,ny,i) = surf_limits(1,0 ,i);
-      }
-    });
+      });
+
+    }
 
     // Split the flux difference into characteristic waves
     parallel_for( Bounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
@@ -983,57 +1281,141 @@ public:
 
 
   void output(StateArr const &state, real etime) {
-    auto &bath = this->bath;
+    YAKL_SCOPE( bath , this->bath );
 
-    yakl::SimpleNetCDF nc;
-    int ulIndex = 0; // Unlimited dimension index to place this data at
+    #ifdef __ENABLE_MPI__
 
-    // Create or open the file
-    if (etime == 0.) {
-      auto &dx   = this->dx;
-      auto &dy   = this->dy;
+      std::vector<MPI_Offset> start(2);
+      start[0] = j_beg;
+      start[1] = i_beg;
 
-      nc.create(out_file);
+      yakl::SimplePNetCDF nc;
+      int ulIndex = 0; // Unlimited dimension index to place this data at
 
-      // Create spatial variables
-      real1d xloc("xloc",nx);
-      parallel_for( nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
-      nc.write(xloc.createHostCopy(),"x",{"x"});
+      // Create or open the file
+      if (etime == 0.) {
+        YAKL_SCOPE( dx , this->dx );
+        YAKL_SCOPE( dy , this->dy );
 
-      real1d yloc("yloc",ny);
-      parallel_for( ny , YAKL_LAMBDA (int j) { yloc(j) = (j+0.5)*dy; });
-      nc.write(yloc.createHostCopy(),"y",{"y"});
+        nc.create(out_file);
 
-      // Write bathymetry data
+        nc.createDim("x",nx_glob);
+        nc.createDim("y",ny_glob);
+        nc.createDim("t");
+
+        nc.createVar<real>("x",{"x"});
+        nc.createVar<real>("y",{"y"});
+        nc.createVar<real>("t",{"t"});
+        nc.createVar<real>("bath",{"y","x"});
+        nc.createVar<real>("thickness",{"t","y","x"});
+        nc.createVar<real>("u"        ,{"t","y","x"});
+        nc.createVar<real>("v"        ,{"t","y","x"});
+        nc.createVar<real>("surface"  ,{"t","y","x"});
+
+        nc.enddef();
+
+        // Create spatial variables
+        real1d xloc("xloc",nx);
+        parallel_for( nx , YAKL_LAMBDA (int i) { xloc(i) = (i_beg+i+0.5)*dx; });
+        nc.write_all(xloc.createHostCopy(),"x",{i_beg});
+
+        real1d yloc("yloc",ny);
+        parallel_for( ny , YAKL_LAMBDA (int j) { yloc(j) = (j_beg+j+0.5)*dy; });
+        nc.write_all(yloc.createHostCopy(),"y",{j_beg});
+
+        // Write bathymetry data
+        real2d data("data",ny,nx);
+        parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
+        nc.write_all(data.createHostCopy(),"bath",start);
+
+        // Elapsed time
+        nc.begin_indep_data();
+        if (masterproc) {
+          nc.write1(0._fp,"t",0,"t");
+        }
+        nc.end_indep_data();
+      } else {
+        nc.open(out_file,yakl::PNETCDF_MODE_WRITE);
+
+        // Write the elapsed time
+        ulIndex = nc.getDimSize("t");
+
+        nc.begin_indep_data();
+        if (masterproc) {
+          nc.write1(etime,"t",ulIndex,"t");
+        }
+        nc.end_indep_data();
+      }
+      // Write the data
       real2d data("data",ny,nx);
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
-      nc.write(data.createHostCopy(),"bath",{"y","x"});
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
+      nc.write1_all(data.createHostCopy(),"thickness",ulIndex,start,"t");
 
-      // Elapsed time
-      nc.write1(0._fp,"t",0,"t");
-    } else {
-      nc.open(out_file,yakl::NETCDF_MODE_WRITE);
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
+      nc.write1_all(data.createHostCopy(),"u",ulIndex,start,"t");
 
-      // Write the elapsed time
-      ulIndex = nc.getDimSize("t");
-      nc.write1(etime,"t",ulIndex,"t");
-    }
-    // Write the data
-    real2d data("data",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
-    nc.write1(data.createHostCopy(),"thickness",{"y","x"},ulIndex,"t");
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
+      nc.write1_all(data.createHostCopy(),"v",ulIndex,start,"t");
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
-    nc.write1(data.createHostCopy(),"u",{"y","x"},ulIndex,"t");
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      nc.write1_all(data.createHostCopy(),"surface",ulIndex,start,"t");
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
-    nc.write1(data.createHostCopy(),"v",{"y","x"},ulIndex,"t");
+      // Close the file
+      nc.close();
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
-    nc.write1(data.createHostCopy(),"surface"  ,{"y","x"},ulIndex,"t");
+    #else
 
-    // Close the file
-    nc.close();
+      yakl::SimpleNetCDF nc;
+      int ulIndex = 0; // Unlimited dimension index to place this data at
+
+      // Create or open the file
+      if (etime == 0.) {
+        YAKL_SCOPE( dx , this->dx );
+        YAKL_SCOPE( dy , this->dy );
+
+        nc.create(out_file);
+
+        // Create spatial variables
+        real1d xloc("xloc",nx);
+        parallel_for( nx , YAKL_LAMBDA (int i) { xloc(i) = (i+0.5)*dx; });
+        nc.write(xloc.createHostCopy(),"x",{"x"});
+
+        real1d yloc("yloc",ny);
+        parallel_for( ny , YAKL_LAMBDA (int j) { yloc(j) = (j+0.5)*dy; });
+        nc.write(yloc.createHostCopy(),"y",{"y"});
+
+        // Write bathymetry data
+        real2d data("data",ny,nx);
+        parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
+        nc.write(data.createHostCopy(),"bath",{"y","x"});
+
+        // Elapsed time
+        nc.write1(0._fp,"t",0,"t");
+      } else {
+        nc.open(out_file,yakl::NETCDF_MODE_WRITE);
+
+        // Write the elapsed time
+        ulIndex = nc.getDimSize("t");
+        nc.write1(etime,"t",ulIndex,"t");
+      }
+      // Write the data
+      real2d data("data",ny,nx);
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
+      nc.write1(data.createHostCopy(),"thickness",{"y","x"},ulIndex,"t");
+
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
+      nc.write1(data.createHostCopy(),"u",{"y","x"},ulIndex,"t");
+
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
+      nc.write1(data.createHostCopy(),"v",{"y","x"},ulIndex,"t");
+
+      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      nc.write1(data.createHostCopy(),"surface"  ,{"y","x"},ulIndex,"t");
+
+      // Close the file
+      nc.close();
+
+    #endif
   }
 
 
