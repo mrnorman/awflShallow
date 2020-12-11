@@ -42,10 +42,11 @@ int main(int argc, char** argv) {
 
     std::chrono::duration<double,std::milli> timer;
     
+    int nstep = 0;
     while (etime < sim_time) {
       real dt = model.compute_time_step(0.8,state);
       if (etime + dt > sim_time) { dt = sim_time - etime; }
-      if (masterproc) std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+      if (nstep%100 == 0) std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
       yakl::fence();
       auto t1 = std::chrono::high_resolution_clock::now();
       model.time_step( state , dt );
@@ -56,7 +57,10 @@ int main(int argc, char** argv) {
         model.output( state , etime );
         num_out++;
       }
+      nstep++;
     }
+
+    model.output( state , etime );
 
     if (masterproc) std::cout << "Elapsed Time: " << etime << "\n";
     if (masterproc) std::cout << "Walltime: " << timer.count()/1000 << "\n";
