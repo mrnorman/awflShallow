@@ -5,6 +5,7 @@
 #include "yaml-cpp/yaml.h"
 #include <iostream>
 #include <assert.h>
+#include <chrono>
 #if __ENABLE_MPI__
   #include "mpi.h"
   #include "YAKL_pnetcdf.h"

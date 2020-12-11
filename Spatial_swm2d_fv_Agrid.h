@@ -239,10 +239,10 @@ public:
       for (int j = 0; j < 3; j++) {
         for (int i = 0; i < 3; i++) {
           int pxloc = px+i-1;
-          if (pxloc < 0            ) pxloc = pxloc + nproc_x;
+          if (pxloc < 0        ) pxloc = pxloc + nproc_x;
           if (pxloc > nproc_x-1) pxloc = pxloc - nproc_x;
           int pyloc = py+j-1;
-          if (pyloc < 0            ) pyloc = pyloc + nproc_y;
+          if (pyloc < 0        ) pyloc = pyloc + nproc_y;
           if (pyloc > nproc_y-1) pyloc = pyloc - nproc_y;
           neigh(j,i) = pyloc * nproc_x + pxloc;
         }
@@ -252,6 +252,28 @@ public:
       bool periodic_x = bc_x == BC_PERIODIC;
       bool periodic_y = bc_y == BC_PERIODIC;
       exch.allocate(num_state+1, nx, ny, px, py, nproc_x, nproc_y, periodic_x, periodic_y, neigh, hs);
+
+      // Debug output for the parallel decomposition
+      if (0) {
+        for (int rr=0; rr < nranks; rr++) {
+          if (rr == myrank) {
+            std::cout << "Hello! My Rank is what, my rank is who, my rank is: " << myrank << "\n";
+            std::cout << "My proc grid ID is: " << px << " , " << py << "\n";
+            std::cout << "I have: " << nx << " x " << ny << " columns." << "\n";
+            std::cout << "I start at index: " << i_beg << " x " << j_beg << "\n";
+            std::cout << "My neighbor matrix is:\n";
+            for (int j = 2; j >= 0; j--) {
+              for (int i = 0; i < 3; i++) {
+                std::cout << std::setw(6) << neigh(j,i) << " ";
+              }
+              printf("\n");
+            }
+            printf("\n");
+          }
+          ierr = MPI_Barrier(MPI_COMM_WORLD);
+        }
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+      }
     #else
       nranks = 1;
       myrank = 0;
@@ -299,8 +321,8 @@ public:
 
     out_file = config["out_file"].as<std::string>();
 
-    dx = xlen/nx;
-    dy = ylen/ny;
+    dx = xlen/nx_glob;
+    dy = ylen/ny_glob;
 
     // Store to_gll and weno_recon
     TransformMatrices::weno_sten_to_coefs(this->weno_recon);
@@ -370,7 +392,7 @@ public:
       int i_glob = i_beg + i;
       int j_glob = j_beg + j;
       if        (data_spec == DATA_SPEC_DAM) {
-        if (i_glob > nx/4 && i_glob < 3*nx/4 && j_glob > ny/4 && j_glob < 3*ny/4) {
+        if (i_glob > nx_glob/4 && i_glob < 3*nx_glob/4 && j_glob > ny_glob/4 && j_glob < 3*ny_glob/4) {
           state(idH,hs+j,hs+i) = 3;
           bath(hs+j,hs+i) = 0.25;
         } else {
@@ -435,7 +457,7 @@ public:
           }
         }
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_DISC_2D) {
-        if (i_glob > nx/4 && i_glob < 3*nx/4 && j_glob > ny/4 && j_glob < 3*ny/4) {
+        if (i_glob > nx_glob/4 && i_glob < 3*nx_glob/4 && j_glob > ny_glob/4 && j_glob < 3*ny_glob/4) {
           bath(hs+j,hs+i) = 1;
         } else {
           bath(hs+j,hs+i) = 0;
@@ -540,7 +562,9 @@ public:
   // Compute state and tendency time derivatives from the state
   void compute_tendencies( StateArr &state , TendArr &tend , real dt , int splitIndex ) {
     if (dim_switch) {
-      if      (splitIndex == 0) { compute_tendenciesX( state , tend , dt ); }
+      if      (splitIndex == 0) {
+        compute_tendenciesX( state , tend , dt );
+      }
       else if (splitIndex == 1) {
         if (sim1d) {
           memset( tend , 0._fp );
@@ -555,7 +579,9 @@ public:
         } else {
           compute_tendenciesY( state , tend , dt );
         }
-      } else if (splitIndex == 1) { compute_tendenciesX( state , tend , dt ); }
+      } else if (splitIndex == 1) {
+        compute_tendenciesX( state , tend , dt );
+      }
     }
     if (splitIndex == num_split()-1) {
       dim_switch = ! dim_switch;
@@ -1299,29 +1325,29 @@ public:
 
         nc.create(out_file);
 
-        nc.createDim("x",nx_glob);
-        nc.createDim("y",ny_glob);
-        nc.createDim("t");
+        nc.create_dim("x",nx_glob);
+        nc.create_dim("y",ny_glob);
+        nc.create_unlim_dim("t");
 
-        nc.createVar<real>("x",{"x"});
-        nc.createVar<real>("y",{"y"});
-        nc.createVar<real>("t",{"t"});
-        nc.createVar<real>("bath",{"y","x"});
-        nc.createVar<real>("thickness",{"t","y","x"});
-        nc.createVar<real>("u"        ,{"t","y","x"});
-        nc.createVar<real>("v"        ,{"t","y","x"});
-        nc.createVar<real>("surface"  ,{"t","y","x"});
+        nc.create_var<real>("x",{"x"});
+        nc.create_var<real>("y",{"y"});
+        nc.create_var<real>("t",{"t"});
+        nc.create_var<real>("bath",{"y","x"});
+        nc.create_var<real>("thickness",{"t","y","x"});
+        nc.create_var<real>("u"        ,{"t","y","x"});
+        nc.create_var<real>("v"        ,{"t","y","x"});
+        nc.create_var<real>("surface"  ,{"t","y","x"});
 
         nc.enddef();
 
         // Create spatial variables
         real1d xloc("xloc",nx);
         parallel_for( nx , YAKL_LAMBDA (int i) { xloc(i) = (i_beg+i+0.5)*dx; });
-        nc.write_all(xloc.createHostCopy(),"x",{i_beg});
+        nc.write_all(xloc.createHostCopy(),"x",{(MPI_Offset) i_beg});
 
         real1d yloc("yloc",ny);
         parallel_for( ny , YAKL_LAMBDA (int j) { yloc(j) = (j_beg+j+0.5)*dy; });
-        nc.write_all(yloc.createHostCopy(),"y",{j_beg});
+        nc.write_all(yloc.createHostCopy(),"y",{(MPI_Offset) j_beg});
 
         // Write bathymetry data
         real2d data("data",ny,nx);
@@ -1334,11 +1360,13 @@ public:
           nc.write1(0._fp,"t",0,"t");
         }
         nc.end_indep_data();
+
       } else {
-        nc.open(out_file,yakl::PNETCDF_MODE_WRITE);
+
+        nc.open(out_file);
 
         // Write the elapsed time
-        ulIndex = nc.getDimSize("t");
+        ulIndex = nc.get_dim_size("t");
 
         nc.begin_indep_data();
         if (masterproc) {
@@ -1346,6 +1374,7 @@ public:
         }
         nc.end_indep_data();
       }
+
       // Write the data
       real2d data("data",ny,nx);
       parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });

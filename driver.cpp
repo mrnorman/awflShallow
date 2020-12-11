@@ -10,8 +10,12 @@ typedef Temporal_ader<Spatial> Model;
 int main(int argc, char** argv) {
   yakl::init();
   {
+    bool masterproc = true;
     #if __ENABLE_MPI__
       int ierr = MPI_Init( &argc , &argv );
+      int myrank;
+      ierr = MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
+      if (myrank != 0) masterproc = false;
     #endif
 
     if (argc <= 1) { endrun("ERROR: Must pass the input YAML filename as a parameter"); }
@@ -35,12 +39,18 @@ int main(int argc, char** argv) {
     real etime = 0;
 
     model.output( state , etime );
+
+    std::chrono::duration<double,std::milli> timer;
     
     while (etime < sim_time) {
       real dt = model.compute_time_step(0.8,state);
       if (etime + dt > sim_time) { dt = sim_time - etime; }
-      std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+      if (masterproc) std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+      yakl::fence();
+      auto t1 = std::chrono::high_resolution_clock::now();
       model.time_step( state , dt );
+      auto t2 = std::chrono::high_resolution_clock::now();
+      timer = timer + std::chrono::duration<double,std::milli>(t2-t1);
       etime += dt;
       if (etime / out_freq + 1.e-13 >= num_out+1) {
         model.output( state , etime );
@@ -48,7 +58,8 @@ int main(int argc, char** argv) {
       }
     }
 
-    std::cout << "Elapsed Time: " << etime << "\n";
+    if (masterproc) std::cout << "Elapsed Time: " << etime << "\n";
+    if (masterproc) std::cout << "Walltime: " << timer.count()/1000 << "\n";
 
     model.finalize(state);
 
