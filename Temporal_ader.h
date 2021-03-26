@@ -59,7 +59,7 @@ public:
       int constexpr idH = Spatial::idH;
       int constexpr idU = Spatial::idU;
       int constexpr idV = Spatial::idV;
-      parallel_for( Bounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+      parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
         state(l,hs+j,hs+i) += dt * tend(l,j,i);
         if (state(idH,hs+j,hs+i) < height_tol) {
           state(idH,hs+j,hs+i) = 0;
@@ -68,6 +68,7 @@ public:
         }
       });
     }
+    space_op.switch_dimensions();
   }
 
 

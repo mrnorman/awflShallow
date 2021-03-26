@@ -136,7 +136,7 @@ public:
     YAKL_SCOPE( dy   , this->dy   );
 
     real2d dt2d("dt2d",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       real h = state(idH,hs+j,hs+i);
       real u = state(idU,hs+j,hs+i);
       real v = state(idV,hs+j,hs+i);
@@ -388,7 +388,7 @@ public:
     YAKL_SCOPE( i_beg      , this->i_beg      );
     YAKL_SCOPE( j_beg      , this->j_beg      );
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       int i_glob = i_beg + i;
       int j_glob = j_beg + j;
       if        (data_spec == DATA_SPEC_DAM) {
@@ -479,12 +479,12 @@ public:
         exch.halo_finalize();
         if (bc_x == BC_WALL || bc_x == BC_OPEN) {
           if (px == 0) {
-            parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+            parallel_for( SimpleBounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
               bath(j,      ii) = bath(j,hs     );
             });
           }
           if (px == nproc_x-1) {
-            parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+            parallel_for( SimpleBounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
               bath(j,nx+hs+ii) = bath(j,hs+nx-1);
             });
           }
@@ -500,12 +500,12 @@ public:
         exch.halo_finalize();
         if (bc_y == BC_WALL || bc_y == BC_OPEN) {
           if (py == 0) {
-            parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+            parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
               bath(      ii,i) = bath(hs     ,i);
             });
           }
           if (py == nproc_y-1) {
-            parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+            parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
               bath(ny+hs+ii,i) = bath(hs+ny-1,i);
             });
           }
@@ -515,7 +515,7 @@ public:
     } else {  // if (use_mpi)
 
       // x-direction boundaries for bathymetry
-      parallel_for( Bounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+      parallel_for( SimpleBounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
         if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
           bath(j,      ii) = bath(j,hs     );
           bath(j,nx+hs+ii) = bath(j,hs+nx-1);
@@ -525,7 +525,7 @@ public:
         }
       });
       // y-direction boundaries for bathymetry
-      parallel_for( Bounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+      parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
         if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
           bath(      ii,i) = bath(hs     ,i);
           bath(ny+hs+ii,i) = bath(hs+ny-1,i);
@@ -538,7 +538,7 @@ public:
     } // if (use_mpi)
 
     real2d mass("mass",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       real h = state(idH,hs+j,hs+i);
       mass(j,i) = h;
     });
@@ -583,9 +583,12 @@ public:
         compute_tendenciesX( state , tend , dt );
       }
     }
-    if (splitIndex == num_split()-1) {
-      dim_switch = ! dim_switch;
-    }
+  }
+
+
+
+  void switch_dimensions() {
+    dim_switch = ! dim_switch;
   }
 
 
@@ -622,7 +625,7 @@ public:
         exch.halo_finalize();
         if (bc_x == BC_WALL || bc_x == BC_OPEN) {
           if (px == 0) {
-            parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+            parallel_for( SimpleBounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
               state(l,hs+j,      ii) = state(l,hs+j,hs     );
               if (bc_x == BC_WALL && l == idU) {
                 state(l,hs+j,      ii) = 0;
@@ -630,7 +633,7 @@ public:
             });
           }
           if (px == nproc_x-1) {
-            parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+            parallel_for( SimpleBounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
               state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
               if (bc_x == BC_WALL && l == idU) {
                 state(l,hs+j,nx+hs+ii) = 0;
@@ -642,7 +645,7 @@ public:
 
     } else {
 
-      parallel_for( Bounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+      parallel_for( SimpleBounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
         if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
           state(l,hs+j,      ii) = state(l,hs+j,hs     );
           state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
@@ -660,7 +663,7 @@ public:
 
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       SArray<real,1,ord> stencil;
 
       // Reconstruct h and u
@@ -876,7 +879,7 @@ public:
     }
 
     // Split the flux difference into characteristic waves
-    parallel_for( Bounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
       // State values for left and right
       real h_L  = fwaves     (idH,0,j,i);
       real u_L  = fwaves     (idU,0,j,i);
@@ -938,7 +941,7 @@ public:
     });
 
     // Apply the tendencies
-    parallel_for( Bounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
+    parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
       if (l == idH || l == idU) {
         tend(l,j,i) = -( fwaves(l,0,j,i+1) - fwaves(l,0,j,i) ) / dx;
       } else {
@@ -980,7 +983,7 @@ public:
         exch.halo_finalize();
         if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
           if (py == 0) {
-            parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+            parallel_for( SimpleBounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
               state(l,      jj,hs+i) = state(l,hs     ,hs+i);
               if (bc_y == BC_WALL && l == idV) {
                 state(l,      jj,hs+i) = 0;
@@ -988,7 +991,7 @@ public:
             });
           }
           if (py == nproc_y-1) {
-            parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+            parallel_for( SimpleBounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
               state(l,ny+hs+jj,hs+i) = state(l,hs+ny-1,hs+i);
               if (bc_y == BC_WALL && l == idV) {
                 state(l,ny+hs+jj,hs+i) = 0;
@@ -1000,7 +1003,7 @@ public:
 
     } else {
 
-      parallel_for( Bounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
+      parallel_for( SimpleBounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
         if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
           state(l,      jj,hs+i) = state(l,hs     ,hs+i);
           state(l,ny+hs+jj,hs+i) = state(l,hs+ny-1,hs+i);
@@ -1018,7 +1021,7 @@ public:
 
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       SArray<real,1,ord> stencil;
 
       // Reconstruct h and u
@@ -1233,7 +1236,7 @@ public:
     }
 
     // Split the flux difference into characteristic waves
-    parallel_for( Bounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
       // State values for left and right
       real h_L  = fwaves     (idH,0,j,i);
       real u_L  = fwaves     (idU,0,j,i);
@@ -1294,7 +1297,7 @@ public:
     });
 
     // Apply the tendencies
-    parallel_for( Bounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
+    parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
       if (l == idH || l == idV) {
         tend(l,j,i) = -( fwaves(l,0,j+1,i) - fwaves(l,0,j,i) ) / dy;
       } else {
@@ -1351,7 +1354,7 @@ public:
 
         // Write bathymetry data
         real2d data("data",ny,nx);
-        parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
+        parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
         nc.write_all(data.createHostCopy(),"bath",start);
 
         // Elapsed time
@@ -1377,16 +1380,16 @@ public:
 
       // Write the data
       real2d data("data",ny,nx);
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"thickness",ulIndex,start,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"u",ulIndex,start,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"v",ulIndex,start,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"surface",ulIndex,start,"t");
 
       // Close the file
@@ -1415,7 +1418,7 @@ public:
 
         // Write bathymetry data
         real2d data("data",ny,nx);
-        parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
+        parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = bath(hs+j,hs+i); });
         nc.write(data.createHostCopy(),"bath",{"y","x"});
 
         // Elapsed time
@@ -1429,16 +1432,16 @@ public:
       }
       // Write the data
       real2d data("data",ny,nx);
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"thickness",{"y","x"},ulIndex,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idU,hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"u",{"y","x"},ulIndex,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"v",{"y","x"},ulIndex,"t");
 
-      parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"surface"  ,{"y","x"},ulIndex,"t");
 
       // Close the file
@@ -1451,7 +1454,7 @@ public:
 
   void finalize(StateArr const &state) {
     real2d mass("mass",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       real h = state(idH,hs+j,hs+i);
       mass(j,i) = h;
     });

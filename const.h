@@ -15,6 +15,7 @@
 
 using yakl::c::parallel_for;
 using yakl::c::Bounds;
+using yakl::c::SimpleBounds;
 using yakl::fence;
 using yakl::min;
 using yakl::max;
@@ -24,11 +25,11 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 3
+  #define ORD 9
 #endif
 
 #ifndef NGLL
-  #define NGLL 3
+  #define NGLL 5
 #endif
 
 #ifndef OVERSHOOT_THRESH
