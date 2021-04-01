@@ -15,7 +15,7 @@ template <bool time_avg, int nAder>
 class Spatial_operator {
 public:
 
-  int static constexpr hs = (ord-1)/2;
+  int static constexpr hs = max(1,(ord-1)/2);
   int static constexpr num_state = 3;
 
   real static constexpr eps = 1.e-10;
@@ -325,7 +325,9 @@ public:
     dy = ylen/ny_glob;
 
     // Store to_gll and weno_recon
-    TransformMatrices::weno_sten_to_coefs(this->weno_recon);
+    #if (ORD > 1)
+      TransformMatrices::weno_sten_to_coefs(this->weno_recon);
+    #endif
     {
       SArray<real,2,ord, ord>    s2c;
       SArray<real,2,ord, ord>    c2d;
@@ -357,7 +359,7 @@ public:
     TransformMatrices::get_gll_points (this->gllPts_ngll);
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
-    #if (ORD != 1)
+    #if (ORD > 1)
       weno::wenoSetIdealSigma(this->idl,this->sigma);
     #endif
 
@@ -661,6 +663,80 @@ public:
 
     }
 
+    #if (ORD == 1)
+      // Split the flux difference into characteristic waves
+      parallel_for( SimpleBounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
+        // State values for left and right
+        real h_L  = state(idH,hs+j,hs+i-1);
+        real u_L  = state(idU,hs+j,hs+i-1);
+        real v_L  = state(idV,hs+j,hs+i-1);
+        real hs_L = bath (    hs+j,hs+i-1) + h_L;  // Surface height
+        real h_R  = state(idH,hs+j,hs+i  );
+        real u_R  = state(idU,hs+j,hs+i  );
+        real v_R  = state(idV,hs+j,hs+i  );
+        real hs_R = bath (    hs+j,hs+i  ) + h_R;  // Surface height
+        // Compute interface linearly averaged values for the state
+        real h = 0.5_fp * (h_L + h_R);
+        real u = 0.5_fp * (u_L + u_R);
+        real v = 0.5_fp * (v_L + v_R);
+        real gw = sqrt(grav*h);
+        if (gw > 0) {
+          // Compute flux difference splitting for v
+          fwaves(idV,0,j,i) = 0;
+          fwaves(idV,1,j,i) = 0;
+          if (! sim1d) {
+            if (u < 0) {
+              fwaves(idV,0,j,i) += u*(v_R - v_L);
+            } else {
+              fwaves(idV,1,j,i) += u*(v_R - v_L);
+            }
+          }
+
+          // Compute left and right flux for h and u
+          real f1_L = h_L*u_L;
+          real f1_R = h_R*u_R;
+          real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
+          real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
+          // Compute left and right flux-based characteristic variables
+          real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
+          real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);
+          real w2_L = 0.5_fp * f1_L + h*f2_L/(2*gw);
+          real w2_R = 0.5_fp * f1_R + h*f2_R/(2*gw);
+          // Compute upwind flux-based characteristic variables
+          real w1_U, w2_U;
+          // Wave 1 (u-gw)
+          if (u-gw > 0) {
+            w1_U = w1_L;
+          } else {
+            w1_U = w1_R;
+          }
+          // Wave 2 (u+gw)
+          if (u+gw > 0) {
+            w2_U = w2_L;
+          } else {
+            w2_U = w2_R;
+          }
+          fwaves(idH,0,j,i) = w1_U + w2_U;
+          fwaves(idU,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+        } else {
+          fwaves(idV,0,j,i) = 0;
+          fwaves(idV,1,j,i) = 0;
+          fwaves(idH,0,j,i) = 0;
+          fwaves(idU,0,j,i) = 0;
+        }
+      });
+
+      // Apply the tendencies
+      parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
+        if (l == idH || l == idU) {
+          tend(l,j,i) = -( fwaves(l,0,j,i+1) - fwaves(l,0,j,i) ) / dx;
+        } else {
+          tend(l,j,i) = -( fwaves(l,1,j,i) + fwaves(l,0,j,i+1) ) / dx;
+        }
+      });
+      return;
+    #endif
+
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
@@ -683,20 +759,11 @@ public:
       }
 
       for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
-      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , true , s2g , s2d2g , c2g , c2d2g , idl , sigma , weno_recon );
+      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , true , s2g , s2d2g ,
+                                         c2g , c2d2g , idl , sigma , weno_recon );
 
       for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idH,hs+j,i+ii) + bath(hs+j,i+ii); }
       reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , sigma , weno_recon );
-
-      // Positivity
-      for (int ii=0; ii<ngll; ii++) {
-        if (h_DTs(0,ii) < 0) {
-          h_DTs(0,ii) = 0;
-        }
-        if (surf_DTs(0,ii) < 0) {
-          surf_DTs(0,ii) = 0;
-        }
-      }
 
       SArray<real,2,nAder,ngll> h_u_DTs;
       SArray<real,2,nAder,ngll> u_u_DTs;
@@ -760,16 +827,12 @@ public:
           real u_tavg    = 0;
           real v_tavg    = 0;
           real surf_tavg = 0;
-          real h_u_tavg  = 0;
-          real u_u_tavg  = 0;
           real u_dv_tavg = 0;
           for (int kt=0; kt<nAder; kt++) {
             h_tavg      += h_DTs   (kt,ii) * dtmult / (kt+1);
             u_tavg      += u_DTs   (kt,ii) * dtmult / (kt+1);
             v_tavg      += v_DTs   (kt,ii) * dtmult / (kt+1);
             surf_tavg   += surf_DTs(kt,ii) * dtmult / (kt+1);
-            h_u_tavg    += h_u_DTs (kt,ii) * dtmult / (kt+1);
-            u_u_tavg    += u_u_DTs (kt,ii) * dtmult / (kt+1);
             u_dv_tavg   += u_dv_DTs(kt,ii) * dtmult / (kt+1);
             dtmult *= dt;
           }
@@ -777,19 +840,7 @@ public:
           u_DTs   (0,ii) = u_tavg;
           v_DTs   (0,ii) = v_tavg;
           surf_DTs(0,ii) = surf_tavg;
-          h_u_DTs (0,ii) = h_u_tavg;
-          u_u_DTs (0,ii) = u_u_tavg;
           u_dv_DTs(0,ii) = u_dv_tavg;
-        }
-      }
-
-      // Positivity
-      for (int ii=0; ii<ngll; ii++) {
-        if (h_DTs(0,ii) < 0) {
-          h_DTs(0,ii) = 0;
-        }
-        if (surf_DTs(0,ii) < 0) {
-          surf_DTs(0,ii) = 0;
         }
       }
 
@@ -1019,6 +1070,81 @@ public:
 
     }
 
+
+    #if (ORD == 1)
+      // Split the flux difference into characteristic waves
+      parallel_for( SimpleBounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
+        // State values for left and right
+        real h_L  = state(idH,hs+j-1,hs+i);
+        real u_L  = state(idU,hs+j-1,hs+i);
+        real v_L  = state(idV,hs+j-1,hs+i);
+        real hs_L = bath (    hs+j-1,hs+i) + h_L;  // Surface height
+        real h_R  = state(idH,hs+j  ,hs+i);
+        real u_R  = state(idU,hs+j  ,hs+i);
+        real v_R  = state(idV,hs+j  ,hs+i);
+        real hs_R = bath (    hs+j  ,hs+i) + h_R;  // Surface height
+        // Compute interface linearly averaged values for the state
+        real h = 0.5_fp * (h_L + h_R);
+        real u = 0.5_fp * (u_L + u_R);
+        real v = 0.5_fp * (v_L + v_R);
+        real gw = sqrt(grav*h);
+
+        if (gw > 0) {
+          // Compute flux difference splitting for u update
+          fwaves(idU,0,j,i) = 0;
+          fwaves(idU,1,j,i) = 0;
+          if (v < 0) {
+            fwaves(idU,0,j,i) += v*(u_R  - u_L);
+          } else {
+            fwaves(idU,1,j,i) += v*(u_R  - u_L);
+          }
+
+          // Compute left and right flux for h and v
+          real f1_L = h_L*v_L;
+          real f1_R = h_R*v_R;
+          real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
+          real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
+          // Compute left and right flux-based characteristic variables
+          real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
+          real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
+          real w2_L = 0.5_fp * f1_L + h*f3_L/(2*gw);
+          real w2_R = 0.5_fp * f1_R + h*f3_R/(2*gw);
+          // Compute upwind flux-based characteristic variables
+          real w1_U, w2_U;
+          // Wave 1 (v-gw)
+          if (v-gw > 0) {
+            w1_U = w1_L;
+          } else {
+            w1_U = w1_R;
+          }
+          // Wave 2 (v+gw)
+          if (v+gw > 0) {
+            w2_U = w2_L;
+          } else {
+            w2_U = w2_R;
+          }
+          fwaves(idH,0,j,i) = w1_U + w2_U;
+          fwaves(idV,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+        } else {
+          fwaves(idU,0,j,i) = 0;
+          fwaves(idU,1,j,i) = 0;
+          fwaves(idH,0,j,i) = 0;
+          fwaves(idV,0,j,i) = 0;
+        }
+      });
+
+      // Apply the tendencies
+      parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
+        if (l == idH || l == idV) {
+          tend(l,j,i) = -( fwaves(l,0,j+1,i) - fwaves(l,0,j,i) ) / dy;
+        } else {
+          tend(l,j,i) = -( fwaves(l,1,j,i) + fwaves(l,0,j+1,i) ) / dy;
+        }
+      });
+      return;
+    #endif
+
+
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
@@ -1034,7 +1160,8 @@ public:
       reconstruct_gll_values( stencil , h_DTs , true , s2g , c2g , idl , sigma , weno_recon );
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idU,j+jj,hs+i); }
-      reconstruct_gll_values_and_derivs( stencil , u_DTs , du_DTs, dy , true , s2g , s2d2g , c2g , c2d2g , idl , sigma , weno_recon );
+      reconstruct_gll_values_and_derivs( stencil , u_DTs , du_DTs, dy , true , s2g , s2d2g ,
+                                         c2g , c2d2g , idl , sigma , weno_recon );
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idV,j+jj,hs+i); }
       reconstruct_gll_values( stencil , v_DTs , true , s2g , c2g , idl , sigma , weno_recon );
@@ -1045,16 +1172,6 @@ public:
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idH,j+jj,hs+i) + bath(j+jj,hs+i); }
       reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , sigma , weno_recon );
-
-      // Positivity
-      for (int ii=0; ii<ngll; ii++) {
-        if (h_DTs(0,ii) < 0) {
-          h_DTs(0,ii) = 0;
-        }
-        if (surf_DTs(0,ii) < 0) {
-          surf_DTs(0,ii) = 0;
-        }
-      }
 
       SArray<real,2,nAder,ngll> h_v_DTs;
       SArray<real,2,nAder,ngll> v_du_DTs;
@@ -1138,16 +1255,6 @@ public:
           h_v_DTs (0,ii) = h_v_tavg;
           v_v_DTs (0,ii) = v_v_tavg;
           v_du_DTs(0,ii) = v_du_tavg;
-        }
-      }
-
-      // Positivity
-      for (int ii=0; ii<ngll; ii++) {
-        if (h_DTs(0,ii) < 0) {
-          h_DTs(0,ii) = 0;
-        }
-        if (surf_DTs(0,ii) < 0) {
-          surf_DTs(0,ii) = 0;
         }
       }
 
@@ -1389,7 +1496,8 @@ public:
       parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"v",ulIndex,start,"t");
 
-      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) +
+                                                                                      bath(hs+j,hs+i); });
       nc.write1_all(data.createHostCopy(),"surface",ulIndex,start,"t");
 
       // Close the file
@@ -1441,7 +1549,8 @@ public:
       parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idV,hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"v",{"y","x"},ulIndex,"t");
 
-      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) + bath(hs+j,hs+i); });
+      parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = state(idH,hs+j,hs+i) +
+                                                                                      bath(hs+j,hs+i); });
       nc.write1(data.createHostCopy(),"surface"  ,{"y","x"},ulIndex,"t");
 
       // Close the file
@@ -1476,7 +1585,9 @@ public:
 
       // Reconstruct values
       SArray<real,1,ord> wenoCoefs;
-      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      #if (ORD > 1)
+        weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      #endif
       // Transform ord weno coefficients into ngll GLL points
       for (int ii=0; ii<ngll; ii++) {
         real tmp       = 0;
@@ -1519,7 +1630,9 @@ public:
 
       // Reconstruct values
       SArray<real,1,ord> wenoCoefs;
-      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      #if (ORD > 1)
+        weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      #endif
       // Transform ord weno coefficients into ngll GLL points
       for (int ii=0; ii<ngll; ii++) {
         real tmp = 0;
@@ -1545,3 +1658,5 @@ public:
 
 
 };
+
+

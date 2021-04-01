@@ -9,8 +9,6 @@ int  constexpr nAder    = 1;
 template <class Spatial> class Temporal_operator {
 public:
 
-  real static constexpr height_tol = 1.e-5;
-
   real3d tmp;
   real3d tend;
   real3d tendAccum;
@@ -81,9 +79,6 @@ public:
     int ny                  = space_op.ny;
     int constexpr hs        = Spatial::hs;
     int constexpr num_state = Spatial::num_state;
-    int constexpr idH       = Spatial::idH;
-    int constexpr idU       = Spatial::idU;
-    int constexpr idV       = Spatial::idV;
 
     /////////////////////////////////////
     // Stage 1
@@ -94,7 +89,7 @@ public:
       tendency_accum( tendAccum , tend );
     }
     parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
-      tmp(l,hs+j,hs+i) = state(l,hs+j,hs+i) + dt * tendAccum (l,j,i);
+      tmp(l,hs+j,hs+i) = state(l,hs+j,hs+i) + dt * tendAccum(l,j,i);
     });
 
     /////////////////////////////////////

@@ -1,6 +1,6 @@
 
 #include "const.h"
-#include "Temporal_ssprk3.h"
+#include "Temporal_ader.h"
 #include "Spatial_swm2d_fv_Agrid.h"
 
 typedef Spatial_operator<time_avg,nAder> Spatial;
@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
     if ( !config["out_freq"] ) { endrun("ERROR: no out_freq entry"); }
     real sim_time = config["sim_time"].as<real>();
     real out_freq = config["out_freq"].as<real>();
+    real cfl      = config["cfl"     ].as<real>();
     int num_out = 0;
 
     Model model;
@@ -44,7 +45,7 @@ int main(int argc, char** argv) {
     
     int nstep = 0;
     while (etime < sim_time) {
-      real dt = model.compute_time_step(0.8,state);
+      real dt = model.compute_time_step(cfl,state);
       if (etime + dt > sim_time) { dt = sim_time - etime; }
       yakl::fence();
       auto t1 = std::chrono::high_resolution_clock::now();

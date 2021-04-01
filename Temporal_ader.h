@@ -10,8 +10,6 @@ template <class Spatial>
 class Temporal_operator {
 public:
 
-  real static constexpr height_tol = 1.e-5;
-
   real3d tend;
   Spatial space_op;
 
@@ -61,11 +59,6 @@ public:
       int constexpr idV = Spatial::idV;
       parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
         state(l,hs+j,hs+i) += dt * tend(l,j,i);
-        if (state(idH,hs+j,hs+i) < height_tol) {
-          state(idH,hs+j,hs+i) = 0;
-          state(idU,hs+j,hs+i) = 0;
-          state(idV,hs+j,hs+i) = 0;
-        }
       });
     }
     space_op.switch_dimensions();
