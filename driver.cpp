@@ -3,9 +3,9 @@
 #include "Temporal_ssprk3.h"
 #include "Spatial_swm2d_fv_Agrid.h"
 
-typedef Spatial_swm2d_fv_Agrid<time_avg,nAder> Spatial;
+typedef Spatial_operator<time_avg,nAder> Spatial;
 
-typedef Temporal_ader<Spatial> Model;
+typedef Temporal_operator<Spatial> Model;
 
 int main(int argc, char** argv) {
   yakl::init();
@@ -46,7 +46,6 @@ int main(int argc, char** argv) {
     while (etime < sim_time) {
       real dt = model.compute_time_step(0.8,state);
       if (etime + dt > sim_time) { dt = sim_time - etime; }
-      if (nstep%100 == 0) std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
       yakl::fence();
       auto t1 = std::chrono::high_resolution_clock::now();
       model.time_step( state , dt );
@@ -55,6 +54,7 @@ int main(int argc, char** argv) {
       etime += dt;
       if (etime / out_freq + 1.e-13 >= num_out+1) {
         model.output( state , etime );
+        std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
         num_out++;
       }
       nstep++;

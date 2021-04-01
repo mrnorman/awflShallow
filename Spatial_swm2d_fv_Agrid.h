@@ -12,7 +12,7 @@
 
 
 template <bool time_avg, int nAder>
-class Spatial_swm2d_fv_Agrid {
+class Spatial_operator {
 public:
 
   int static constexpr hs = (ord-1)/2;

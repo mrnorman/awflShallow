@@ -3,11 +3,11 @@
 
 #include "const.h"
 
-bool constexpr time_avg    = true;
-int  constexpr nAder       = ngll;
+bool constexpr time_avg = true;
+int  constexpr nAder    = ngll;
 
 template <class Spatial>
-class Temporal_ader {
+class Temporal_operator {
 public:
 
   real static constexpr height_tol = 1.e-5;
