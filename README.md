@@ -26,3 +26,9 @@
   * Gravity: 9.81
   * Boundaries: Periodic
   * Output interval: Doens't matter
+5. `DATA_SPEC_BALANCE_2D`
+  * Domain: [0,1] x [0,1]
+  * Simulation Time: 0.1
+  * Gravity: 9.81
+  * Boundaries: periodic
+  * Output interval: Doesn't matter

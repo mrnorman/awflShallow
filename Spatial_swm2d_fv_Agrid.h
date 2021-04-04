@@ -60,8 +60,9 @@ public:
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 4;
   int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 5;
-  int static constexpr DATA_SPEC_LAKE_AT_REST_DISC_2D = 6;
+  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 6;
   int static constexpr DATA_SPEC_ORDER_2D             = 7;
+  int static constexpr DATA_SPEC_BALANCE_2D           = 8;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -313,11 +314,14 @@ public:
     } else if (data_str == "bath_higher_smooth") {
       data_spec = DATA_SPEC_BATH_HIGHER_SMOOTH;
       grav = 9.81;
-    } else if (data_str == "lake_at_rest_disc_2d") {
-      data_spec = DATA_SPEC_LAKE_AT_REST_DISC_2D;
+    } else if (data_str == "balance_disc_2d") {
+      data_spec = DATA_SPEC_BALANCE_DISC_2D;
       grav = 9.81;
     } else if (data_str == "order_2d") {
       data_spec = DATA_SPEC_ORDER_2D;
+      grav = 9.81;
+    } else if (data_str == "balance_2d") {
+      data_spec = DATA_SPEC_BALANCE_2D;
       grav = 9.81;
     } else {
       endrun("ERROR: Invalid data_spec");
@@ -465,6 +469,17 @@ public:
             bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
           }
         }
+      } else if (data_spec == DATA_SPEC_BALANCE_2D) {
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            real b = 0.8 * exp( -50 * ( (xloc-0.5_fp)*(xloc-0.5_fp) + (yloc-0.5_fp)*(yloc-0.5_fp) ) );
+            real h = 1. - b;
+            state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
+            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
+          }
+        }
       } else if (data_spec == DATA_SPEC_BATH_HIGHER_SMOOTH) {
         for (int jj=0; jj < ord; jj++) {
           for (int ii=0; ii < ord; ii++) {
@@ -479,13 +494,13 @@ public:
             bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
           }
         }
-      } else if (data_spec == DATA_SPEC_LAKE_AT_REST_DISC_2D) {
+      } else if (data_spec == DATA_SPEC_BALANCE_DISC_2D) {
         if (i_glob > nx_glob/4 && i_glob < 3*nx_glob/4 && j_glob > ny_glob/4 && j_glob < 3*ny_glob/4) {
-          bath(hs+j,hs+i) = 1;
+          bath(hs+j,hs+i) = 0.8;
         } else {
           bath(hs+j,hs+i) = 0;
         }
-        state(idH,hs+j,hs+i) = 3-bath(hs+j,hs+i);
+        state(idH,hs+j,hs+i) = 1-bath(hs+j,hs+i);
       }
     });
 
@@ -1591,6 +1606,13 @@ public:
     real mass_tot = yakl::intrinsics::sum( mass );
 
     std::cout << "Relative mass change: " << (mass_tot-mass_init) / mass_init << "\n";
+    real2d data("data",ny,nx);
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idH,hs+j,hs+i)+bath(hs+j,hs+i)-1 ); });
+    std::cout << "L1 surf-1: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idU,hs+j,hs+i) ); });
+    std::cout << "L1 uvel: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idV,hs+j,hs+i) ); });
+    std::cout << "L1 vvel: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
   }
 
 
