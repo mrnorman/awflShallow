@@ -20,3 +20,9 @@
   * Gravity: 9.81
   * Boundaries: Open
   * Output interval: 0.12
+4. `DATA_SPEC_ORDER_2D`
+  * Domain: [0,1] x [0,1]
+  * Simulation Time: 0.05
+  * Gravity: 9.81
+  * Boundaries: Periodic
+  * Output interval: Doens't matter

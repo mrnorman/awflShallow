@@ -61,6 +61,7 @@ public:
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 4;
   int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 5;
   int static constexpr DATA_SPEC_LAKE_AT_REST_DISC_2D = 6;
+  int static constexpr DATA_SPEC_ORDER_2D             = 7;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -315,6 +316,9 @@ public:
     } else if (data_str == "lake_at_rest_disc_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_DISC_2D;
       grav = 9.81;
+    } else if (data_str == "order_2d") {
+      data_spec = DATA_SPEC_ORDER_2D;
+      grav = 9.81;
     } else {
       endrun("ERROR: Invalid data_spec");
     }
@@ -442,6 +446,23 @@ public:
             }
             state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii) * gllWts_ord(jj);
             bath (    hs+j,hs+i) += b          * gllWts_ord(ii) * gllWts_ord(jj);
+          }
+        }
+      } else if (data_spec == DATA_SPEC_ORDER_2D) {
+        for (int jj=0; jj < ord; jj++) {
+          for (int ii=0; ii < ord; ii++) {
+            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
+            real b = sin(2*M_PI*xloc) + cos(2*M_PI*yloc);
+            real h = 10 + exp( sin(2*M_PI*xloc) ) * cos(2*M_PI*yloc);
+            real hu = sin( cos( 2*M_PI*xloc ) ) * sin(2*M_PI*yloc);
+            real hv = cos(2*M_PI*xloc) * cos( sin( 2*M_PI*yloc ) );
+            real u = hu / h;
+            real v = hv / h;
+            state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
+            state(idU,hs+j,hs+i) += u * gllWts_ord(ii) * gllWts_ord(jj);
+            state(idV,hs+j,hs+i) += v * gllWts_ord(ii) * gllWts_ord(jj);
+            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
           }
         }
       } else if (data_spec == DATA_SPEC_BATH_HIGHER_SMOOTH) {
