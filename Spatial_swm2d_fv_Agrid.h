@@ -430,7 +430,7 @@ public:
           if (abs(xloc-xlen/2) <= xlen/8) {
             b = 8;
           }
-          if (xloc <= 750) {
+          if (xloc <= xlen/2) {
             surf = 20;
           }
           state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii);
