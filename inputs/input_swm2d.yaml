@@ -21,8 +21,8 @@ cfl     : 0.8
 init_data : order_2d
 
 # Data to initialize: periodic, wall, or open
-bc_x : open
-bc_y : open
+bc_x : periodic
+bc_y : periodic
 
 # Output filename
 out_file  : test.nc
