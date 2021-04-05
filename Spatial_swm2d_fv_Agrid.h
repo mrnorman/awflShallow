@@ -58,11 +58,12 @@ public:
   int static constexpr DATA_SPEC_DAM                  = 1;
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_1D = 2;
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
-  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 4;
-  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 5;
-  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 6;
-  int static constexpr DATA_SPEC_ORDER_2D             = 7;
-  int static constexpr DATA_SPEC_BALANCE_2D           = 8;
+  int static constexpr DATA_SPEC_ORDER_1D             = 4;
+  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 5;
+  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 6;
+  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 7;
+  int static constexpr DATA_SPEC_ORDER_2D             = 8;
+  int static constexpr DATA_SPEC_BALANCE_2D           = 9;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -308,6 +309,10 @@ public:
       assert( sim1d );
       data_spec = DATA_SPEC_DAM_RECT_1D;
       grav = 9.81;
+    } else if (data_str == "order_1d") {
+      assert( sim1d );
+      data_spec = DATA_SPEC_ORDER_1D;
+      grav = 9.81;
     } else if (data_str == "lake_at_rest_pert_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_PERT_2D;
       grav = 9.81;
@@ -435,6 +440,17 @@ public:
           }
           state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii);
           bath (    hs+j,hs+i) += b          * gllWts_ord(ii);
+        }
+      } else if (data_spec == DATA_SPEC_ORDER_1D) {
+        for (int ii=0; ii < ord; ii++) {
+          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+          real b = sin(M_PI*xloc)*sin(M_PI*xloc);
+          real h = 5 + exp( cos( 2*M_PI*xloc) );
+          real hu = sin( cos( 2*M_PI*xloc) );
+          real u = hu / h;
+          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
+          state(idU,hs+j,hs+i) += u * gllWts_ord(ii);
+          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
         }
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
         for (int jj=0; jj < ord; jj++) {

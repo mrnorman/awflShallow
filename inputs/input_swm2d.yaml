@@ -1,10 +1,10 @@
 ---
 # Simulation time in seconds
-sim_time  : 0.05
+sim_time  : 0.1
 
 # Number of cells to use
-nx_glob : 50
-ny_glob : 50
+nx_glob : 400
+ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
 nproc_x : 1
@@ -15,18 +15,18 @@ xlen    : 1
 ylen    : 1
 
 # Courant Friedrichs Lewy number to calculate time step
-cfl     : 0.8
+cfl     : 0.1
 
 # Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d, lake_at_rest_disc_2d
-init_data : order_2d
+init_data : order_1d
 
 # Data to initialize: periodic, wall, or open
 bc_x : periodic
 bc_y : periodic
 
 # Output filename
-out_file  : order_3_b.nc
+out_file  : order_3_a.nc
 
 # Output frequency in seconds
-out_freq  : 0.005
+out_freq  : 0.01
 
