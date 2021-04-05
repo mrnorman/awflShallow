@@ -429,7 +429,7 @@ public:
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
     int numState = fwaves.dimension[0];
-    parallel_for( SimpleBounds<2>(numState+1,ny) , YAKL_LAMBDA (int v, int j) {
+    parallel_for( SimpleBounds<2>(numState+3,ny) , YAKL_LAMBDA (int v, int j) {
       if (v < numState) {
         if (exchW) edgeSendBufW(v,j) = fwaves(v,1,j,0 );
         if (exchE) edgeSendBufE(v,j) = fwaves(v,0,j,nx);
@@ -444,7 +444,7 @@ public:
         if (exchE) edgeSendBufE(v,j) = u_u(0,j,nx);
       }
     });
-    num_pack += numState+1;
+    num_pack += numState+3;
   }
 
 
@@ -477,7 +477,7 @@ public:
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
     int numState = fwaves.dimension[0];
-    parallel_for( SimpleBounds<2>(numState+1,ny) , YAKL_LAMBDA (int v, int j) {
+    parallel_for( SimpleBounds<2>(numState+3,ny) , YAKL_LAMBDA (int v, int j) {
       if (v < numState) {
         if (exchW) fwaves(v,0,j,0 ) = edgeRecvBufW(v,j);
         if (exchE) fwaves(v,1,j,nx) = edgeRecvBufE(v,j);
@@ -492,7 +492,7 @@ public:
         if (exchE) u_u(1,j,nx) = edgeRecvBufE(v,j);
       }
     });
-    num_unpack += numState+1;
+    num_unpack += numState+3;
   }
 
 
