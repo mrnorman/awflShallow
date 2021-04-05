@@ -25,11 +25,11 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 9
+  #define ORD 3
 #endif
 
 #ifndef NGLL
-  #define NGLL 9
+  #define NGLL 3
 #endif
 
 #ifndef OVERSHOOT_THRESH
