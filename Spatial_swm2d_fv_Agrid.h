@@ -61,17 +61,20 @@ public:
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_1D = 2;
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
   int static constexpr DATA_SPEC_ORDER_1D             = 4;
-  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 5;
-  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 6;
-  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 7;
-  int static constexpr DATA_SPEC_ORDER_2D             = 8;
-  int static constexpr DATA_SPEC_BALANCE_2D           = 9;
+  int static constexpr DATA_SPEC_BALANCE_SMOOTH_1D    = 5;
+  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 6;
+  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 7;
+  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 8;
+  int static constexpr DATA_SPEC_ORDER_2D             = 9;
+  int static constexpr DATA_SPEC_BALANCE_2D           = 10;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
   int static constexpr BC_OPEN     = 2;
 
   bool sim1d;
+
+  real surf_level;
 
   real grav;
   real dx;
@@ -171,6 +174,8 @@ public:
       mpi_dtype = MPI_DOUBLE;
       if (std::is_same<real,float>::value) mpi_dtype = MPI_FLOAT;
     #endif
+
+    surf_level = -1;
 
     // Read the input file
     YAML::Node config = YAML::LoadFile(inFile);
@@ -315,6 +320,10 @@ public:
       assert( sim1d );
       data_spec = DATA_SPEC_ORDER_1D;
       grav = 9.81;
+    } else if (data_str == "balance_smooth_1d") {
+      assert( sim1d );
+      data_spec = DATA_SPEC_BALANCE_SMOOTH_1D;
+      grav = 9.81;
     } else if (data_str == "lake_at_rest_pert_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_PERT_2D;
       grav = 9.81;
@@ -454,6 +463,15 @@ public:
           real u = hu / h;
           state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
           state(idU,hs+j,hs+i) += u * gllWts_ord(ii);
+          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
+        }
+      } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
+        surf_level = 10;
+        for (int ii=0; ii < ord; ii++) {
+          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+          real b = 5*exp(-2./3.*(xloc-xlen/2)*(xloc-xlen/2));
+          real h = 10 - b;
+          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
           bath (    hs+j,hs+i) += b * gllWts_ord(ii);
         }
       } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
@@ -1665,9 +1683,10 @@ public:
     }
     if (masterproc) std::cout << "Relative mass change: " << (mass_final-mass_init) / mass_init << "\n";
 
+
     real2d data("data",ny,nx);
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idH,hs+j,hs+i)+
-                                                                                  bath(hs+j,hs+i)-1); });
+                                                                                  bath(hs+j,hs+i)-surf_level); });
     real data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
     real data_mean = data_mean_perproc;
     if (use_mpi) {
@@ -1677,7 +1696,21 @@ public:
         data_mean /= nranks;
       #endif
     }
-    if (masterproc) std::cout << "Avg abs(surf-1): " << data_mean << "\n";
+    if (surf_level > 0) {
+      if (masterproc) std::cout << "Avg abs(surf-surf_level): " << data_mean << "\n";
+    }
+    real data_max_perproc = yakl::intrinsics::maxval(data);
+    real data_max = data_max_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_max_perproc , &data_max , 1 , mpi_dtype ,
+                       MPI_MAX , MPI_COMM_WORLD );
+      #endif
+    }
+    if (surf_level > 0) {
+      if (masterproc) std::cout << "Max abs(surf-surf_level): " << data_max << "\n";
+    }
+
 
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idU,hs+j,hs+i)); });
     data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
@@ -1690,6 +1723,18 @@ public:
       #endif
     }
     if (masterproc) std::cout << "Avg abs(uvel): " << data_mean << "\n";
+    data_max_perproc = yakl::intrinsics::maxval(data);
+    data_max = data_max_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_max_perproc , &data_max , 1 , mpi_dtype ,
+                       MPI_MAX , MPI_COMM_WORLD );
+      #endif
+    }
+    if (surf_level > 0) {
+      if (masterproc) std::cout << "Max abs(uvel): " << data_max << "\n";
+    }
+
 
     parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idV,hs+j,hs+i)); });
     data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
@@ -1702,6 +1747,19 @@ public:
       #endif
     }
     if (masterproc) std::cout << "Avg abs(vvel): " << data_mean << "\n";
+    data_max_perproc = yakl::intrinsics::maxval(data);
+    data_max = data_max_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_max_perproc , &data_max , 1 , mpi_dtype ,
+                       MPI_MAX , MPI_COMM_WORLD );
+      #endif
+    }
+    if (surf_level > 0) {
+      if (masterproc) std::cout << "Max abs(vvel): " << data_max << "\n";
+    }
+
+
   }
 
 
