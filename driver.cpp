@@ -1,6 +1,6 @@
 
 #include "const.h"
-#include "Temporal_ssprk3.h"
+#include "Temporal_ader.h"
 #include "Spatial_swm2d_fv_Agrid.h"
 
 typedef Spatial_operator<time_avg,nAder> Spatial;
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
       etime += dt;
       if (etime / out_freq + 1.e-13 >= num_out+1) {
         model.output( state , etime );
-        std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
+        if (masterproc) std::cout << "Etime , dt: " << etime << " , " << dt << "\n";
         num_out++;
       }
       nstep++;

@@ -34,6 +34,8 @@ public:
   // Flux time derivatives
   real4d fwaves;
   real3d surf_limits;
+  real3d h_u_limits;
+  real3d u_u_limits;
   real2d bath;
   // For non-WENO interpolation
   SArray<real,2,ord,ngll> sten_to_gll;
@@ -254,7 +256,7 @@ public:
       if (nranks > 0) use_mpi = true;
       bool periodic_x = bc_x == BC_PERIODIC;
       bool periodic_y = bc_y == BC_PERIODIC;
-      exch.allocate(num_state+1, nx, ny, px, py, nproc_x, nproc_y, periodic_x, periodic_y, neigh, hs);
+      exch.allocate(num_state+3, nx, ny, px, py, nproc_x, nproc_y, periodic_x, periodic_y, neigh, hs);
 
       // Debug output for the parallel decomposition
       if (0) {
@@ -378,6 +380,8 @@ public:
 
     fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
     surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
+    h_u_limits   = real3d("h_u_limits"           ,2,ny+1,nx+1);
+    u_u_limits   = real3d("u_u_limits"           ,2,ny+1,nx+1);
     bath         = real2d("bathymetry" ,ny+2*hs,nx+2*hs);
   }
 
@@ -596,7 +600,14 @@ public:
       real h = state(idH,hs+j,hs+i);
       mass(j,i) = h;
     });
-    mass_init = yakl::intrinsics::sum(mass);
+    real mass_init_perproc = yakl::intrinsics::sum(mass);
+    mass_init = mass_init_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &mass_init_perproc , &mass_init , 1 , mpi_dtype ,
+                       MPI_SUM , MPI_COMM_WORLD );
+      #endif
+    }
   }
 
   
@@ -880,19 +891,24 @@ public:
           real v_tavg    = 0;
           real surf_tavg = 0;
           real u_dv_tavg = 0;
+          real h_u_tavg  = 0;
+          real u_u_tavg  = 0;
           for (int kt=0; kt<nAder; kt++) {
             h_tavg      += h_DTs   (kt,ii) * dtmult / (kt+1);
             u_tavg      += u_DTs   (kt,ii) * dtmult / (kt+1);
             v_tavg      += v_DTs   (kt,ii) * dtmult / (kt+1);
             surf_tavg   += surf_DTs(kt,ii) * dtmult / (kt+1);
             u_dv_tavg   += u_dv_DTs(kt,ii) * dtmult / (kt+1);
+            h_u_tavg    += h_u_DTs (kt,ii) * dtmult / (kt+1);
+            u_u_tavg    += u_u_DTs (kt,ii) * dtmult / (kt+1);
             dtmult *= dt;
           }
           h_DTs   (0,ii) = h_tavg;
           u_DTs   (0,ii) = u_tavg;
           v_DTs   (0,ii) = v_tavg;
           surf_DTs(0,ii) = surf_tavg;
-          u_dv_DTs(0,ii) = u_dv_tavg;
+          h_u_DTs (0,ii) = h_u_tavg;
+          u_u_DTs (0,ii) = u_u_tavg;
         }
       }
 
@@ -905,6 +921,10 @@ public:
       fwaves (idV,0,j,i+1) = v_DTs   (0,ngll-1);
       surf_limits(1,j,i  ) = surf_DTs(0,0     );
       surf_limits(0,j,i+1) = surf_DTs(0,ngll-1);
+      h_u_limits (1,j,i  ) = h_u_DTs (0,0     );
+      h_u_limits (0,j,i+1) = h_u_DTs (0,ngll-1);
+      u_u_limits (1,j,i  ) = u_u_DTs (0,0     );
+      u_u_limits (0,j,i+1) = u_u_DTs (0,ngll-1);
 
       // Compute the "centered" contribution to the high-order tendency
       if (! sim1d) {
@@ -922,9 +942,9 @@ public:
       
       #ifdef __ENABLE_MPI__
         exch.edge_init();
-        exch.edge_pack_x( fwaves , surf_limits );
+        exch.edge_pack_x( fwaves , surf_limits , h_u_limits , u_u_limits );
         exch.edge_exchange_x();
-        exch.edge_unpack_x( fwaves , surf_limits );
+        exch.edge_unpack_x( fwaves , surf_limits , h_u_limits , u_u_limits );
         exch.edge_finalize();
         if (bc_x == BC_WALL || bc_x == BC_OPEN) {
           if (px == 0) {
@@ -937,6 +957,8 @@ public:
                 }
               }
               surf_limits(0,j,0 ) = surf_limits(1,j,0 );
+              h_u_limits (0,j,0 ) = h_u_limits (1,j,0 );
+              u_u_limits (0,j,0 ) = u_u_limits (1,j,0 );
             });
           }
           if (px == nproc_x-1) {
@@ -949,6 +971,8 @@ public:
                 }
               }
               surf_limits(1,j,nx) = surf_limits(0,j,nx);
+              h_u_limits (1,j,nx) = h_u_limits (0,j,nx);
+              u_u_limits (1,j,nx) = u_u_limits (0,j,nx);
             });
           }
         }
@@ -969,6 +993,8 @@ public:
             }
             surf_limits(0,j,0 ) = surf_limits(1,j,0 );
             surf_limits(1,j,nx) = surf_limits(0,j,nx);
+            h_u_limits (0,j,0 ) = h_u_limits (1,j,0 );
+            u_u_limits (1,j,nx) = u_u_limits (0,j,nx);
           }
         } else if (bc_x == BC_PERIODIC) {
           for (int l=0; l < num_state; l++) {
@@ -977,6 +1003,8 @@ public:
           }
           surf_limits(0,j,0 ) = surf_limits(0,j,nx);
           surf_limits(1,j,nx) = surf_limits(1,j,0 );
+          h_u_limits (0,j,0 ) = h_u_limits (0,j,nx);
+          u_u_limits (1,j,nx) = u_u_limits (1,j,0 );
         }
       });
     }
@@ -1619,16 +1647,53 @@ public:
       real h = state(idH,hs+j,hs+i);
       mass(j,i) = h;
     });
-    real mass_tot = yakl::intrinsics::sum( mass );
+    real mass_final_perproc = yakl::intrinsics::sum( mass );
+    real mass_final = mass_final_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &mass_final_perproc , &mass_final , 1 , mpi_dtype ,
+                       MPI_SUM , MPI_COMM_WORLD );
+      #endif
+    }
+    if (masterproc) std::cout << "Relative mass change: " << (mass_final-mass_init) / mass_init << "\n";
 
-    std::cout << "Relative mass change: " << (mass_tot-mass_init) / mass_init << "\n";
     real2d data("data",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idH,hs+j,hs+i)+bath(hs+j,hs+i)-1 ); });
-    std::cout << "L1 surf-1: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idU,hs+j,hs+i) ); });
-    std::cout << "L1 uvel: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs( state(idV,hs+j,hs+i) ); });
-    std::cout << "L1 vvel: " << yakl::intrinsics::sum(data)/nx/ny << "\n";
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idH,hs+j,hs+i)+
+                                                                                  bath(hs+j,hs+i)-1); });
+    real data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
+    real data_mean = data_mean_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_mean_perproc , &data_mean , 1 , mpi_dtype ,
+                       MPI_SUM , MPI_COMM_WORLD );
+        data_mean /= nranks;
+      #endif
+    }
+    if (masterproc) std::cout << "Avg abs(surf-1): " << data_mean << "\n";
+
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idU,hs+j,hs+i)); });
+    data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
+    data_mean = data_mean_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_mean_perproc , &data_mean , 1 , mpi_dtype ,
+                       MPI_SUM , MPI_COMM_WORLD );
+        data_mean /= nranks;
+      #endif
+    }
+    if (masterproc) std::cout << "Avg abs(uvel): " << data_mean << "\n";
+
+    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idV,hs+j,hs+i)); });
+    data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
+    data_mean = data_mean_perproc;
+    if (use_mpi) {
+      #ifdef __ENABLE_MPI__
+        MPI_Allreduce( &data_mean_perproc , &data_mean , 1 , mpi_dtype ,
+                       MPI_SUM , MPI_COMM_WORLD );
+        data_mean /= nranks;
+      #endif
+    }
+    if (masterproc) std::cout << "Avg abs(vvel): " << data_mean << "\n";
   }
 
 
