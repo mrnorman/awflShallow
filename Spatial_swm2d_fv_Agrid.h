@@ -994,6 +994,8 @@ public:
             surf_limits(0,j,0 ) = surf_limits(1,j,0 );
             surf_limits(1,j,nx) = surf_limits(0,j,nx);
             h_u_limits (0,j,0 ) = h_u_limits (1,j,0 );
+            h_u_limits (1,j,nx) = h_u_limits (0,j,nx);
+            u_u_limits (0,j,0 ) = u_u_limits (1,j,0 );
             u_u_limits (1,j,nx) = u_u_limits (0,j,nx);
           }
         } else if (bc_x == BC_PERIODIC) {
@@ -1004,6 +1006,8 @@ public:
           surf_limits(0,j,0 ) = surf_limits(0,j,nx);
           surf_limits(1,j,nx) = surf_limits(1,j,0 );
           h_u_limits (0,j,0 ) = h_u_limits (0,j,nx);
+          h_u_limits (1,j,nx) = h_u_limits (1,j,0 );
+          u_u_limits (0,j,0 ) = u_u_limits (0,j,nx);
           u_u_limits (1,j,nx) = u_u_limits (1,j,0 );
         }
       });
@@ -1016,10 +1020,14 @@ public:
       real u_L  = fwaves     (idU,0,j,i);
       real v_L  = fwaves     (idV,0,j,i);
       real hs_L = surf_limits(    0,j,i);  // Surface height
+      real hu_L = h_u_limits (    0,j,i);  // h*u
+      real uu_L = u_u_limits (    0,j,i);  // u*u
       real h_R  = fwaves     (idH,1,j,i);
       real u_R  = fwaves     (idU,1,j,i);
       real v_R  = fwaves     (idV,1,j,i);
       real hs_R = surf_limits(    1,j,i);  // Surface height
+      real hu_R = h_u_limits (    1,j,i);  // h*u
+      real uu_R = u_u_limits (    1,j,i);  // u*u
       // Compute interface linearly averaged values for the state
       real h = 0.5_fp * (h_L + h_R);
       real u = 0.5_fp * (u_L + u_R);
@@ -1038,10 +1046,10 @@ public:
         }
 
         // Compute left and right flux for h and u
-        real f1_L = h_L*u_L;
-        real f1_R = h_R*u_R;
-        real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
-        real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
+        real f1_L = hu_L;
+        real f1_R = hu_R;
+        real f2_L = uu_L*0.5_fp + grav*hs_L;
+        real f2_R = uu_R*0.5_fp + grav*hs_R;
         // Compute left and right flux-based characteristic variables
         real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
         real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);

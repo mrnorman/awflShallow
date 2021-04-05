@@ -7,7 +7,7 @@ nx_glob : 400
 ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
-nproc_x : 8
+nproc_x : 1
 nproc_y : 1
 
 # Domain length in x- and y-dimensions
