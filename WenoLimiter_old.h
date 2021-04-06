@@ -19,7 +19,7 @@ namespace weno {
 
   YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
     real sum = 0._fp;
-    real const eps = 1.0e-100;
+    real const eps = 1.0e-20;
     for (int i=0; i<hs+2; i++) { sum += wts(i); }
     for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
   }
@@ -27,31 +27,31 @@ namespace weno {
 
   YAKL_INLINE void wenoSetIdealSigma(SArray<real,1,hs+2> &idl, real &sigma) {
     if        (ord == 3) {
-      sigma = 1.;
-      idl(0) = 1.;
-      idl(1) = 1.;
-      idl(2) = 2.;
-    } else if (ord == 5) {
-      sigma = 1._fp;
-      idl(0) = 1.;
-      idl(1) = 2.;
-      idl(2) = 1.;
-      idl(3) = 4.;
-    } else if (ord == 7) {
-      sigma = 1._fp;
-      idl(0) = 1.;
-      idl(1) = 2._fp;
-      idl(2) = 2._fp;
-      idl(3) = 1._fp;
-      idl(4) = 4._fp;
-    } else if (ord == 9) {
-      sigma = 1;
+      sigma = 0.0343557947899881_fp;
       idl(0) = 1._fp;
-      idl(1) = 2._fp;
-      idl(2) = 4._fp;
-      idl(3) = 2._fp;
+      idl(1) = 1._fp;
+      idl(2) = 1224.61619926508_fp;
+    } else if (ord == 5) {
+      sigma = 0.73564225445964_fp;
+      idl(0) = 1._fp;
+      idl(1) = 73.564225445964_fp;
+      idl(2) = 1._fp;
+      idl(3) = 1584.89319246111_fp;
+    } else if (ord == 7) {
+      sigma = 0.125594321575479_fp;
+      idl(0) = 1._fp;
+      idl(1) = 7.35642254459641_fp;
+      idl(2) = 7.35642254459641_fp;
+      idl(3) = 1._fp;
+      idl(4) = 794.328234724281_fp;
+    } else if (ord == 9) {
+      sigma = 0.0288539981181442_fp;
+      idl(0) = 1._fp;
+      idl(1) = 2.15766927997459_fp;
+      idl(2) = 2.40224886796286_fp;
+      idl(3) = 2.15766927997459_fp;
       idl(4) = 1._fp;
-      idl(5) = 8._fp;
+      idl(5) = 1136.12697719888_fp;
     } else if (ord == 11) {
       // These aren't tuned!!!
       sigma = 0.1_fp;
@@ -97,7 +97,7 @@ namespace weno {
     SArray<real,1,hs+1> lotmp;
     SArray<real,1,ord > hitmp;
     real lo_avg;
-    real const eps = 1.0e-100;
+    real const eps = 1.0e-20;
 
     // Init to zero
     for (int j=0; j<hs+2; j++) {
@@ -142,14 +142,17 @@ namespace weno {
     }
     tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
 
+    // Reduce the bridge polynomial TV to something closer to the other TV values
+    lo_avg = 0._fp;
+    for (int i=0; i<hs+1; i++) {
+      lo_avg += tv(i);
+    }
+    lo_avg /= hs+1;
+    tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
+
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
-    real pwr;
-    if (ord == 3) pwr = 0.7;
-    if (ord == 5) pwr = 1.2;
-    if (ord == 7) pwr = 4.0;
-    if (ord == 9) pwr = 12.0;
     for (int i=0; i<hs+2; i++) {
-      wts(i) = idl(i) / ( pow( tv(i) , pwr ) + eps );
+      wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
     }
     convexify(wts);
 

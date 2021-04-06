@@ -62,11 +62,12 @@ public:
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
   int static constexpr DATA_SPEC_ORDER_1D             = 4;
   int static constexpr DATA_SPEC_BALANCE_SMOOTH_1D    = 5;
-  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 6;
-  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 7;
-  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 8;
-  int static constexpr DATA_SPEC_ORDER_2D             = 9;
-  int static constexpr DATA_SPEC_BALANCE_2D           = 10;
+  int static constexpr DATA_SPEC_BALANCE_NONSMOOTH_1D = 6;
+  int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 7;
+  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 8;
+  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 9;
+  int static constexpr DATA_SPEC_ORDER_2D             = 10;
+  int static constexpr DATA_SPEC_BALANCE_2D           = 11;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -324,6 +325,10 @@ public:
       assert( sim1d );
       data_spec = DATA_SPEC_BALANCE_SMOOTH_1D;
       grav = 9.81;
+    } else if (data_str == "balance_nonsmooth_1d") {
+      assert( sim1d );
+      data_spec = DATA_SPEC_BALANCE_NONSMOOTH_1D;
+      grav = 9.81;
     } else if (data_str == "lake_at_rest_pert_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_PERT_2D;
       grav = 9.81;
@@ -470,6 +475,16 @@ public:
         for (int ii=0; ii < ord; ii++) {
           real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
           real b = 5*exp(-2./3.*(xloc-xlen/2)*(xloc-xlen/2));
+          real h = 10 - b;
+          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
+          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
+        }
+      } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_1D) {
+        surf_level = 10;
+        for (int ii=0; ii < ord; ii++) {
+          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
+          real b = 0;
+          if (xloc >= 0.4*xlen && xloc <= 0.8*xlen) b = 4;
           real h = 10 - b;
           state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
           bath (    hs+j,hs+i) += b * gllWts_ord(ii);
@@ -870,7 +885,11 @@ public:
             dutend_dx /= dx;
             h_DTs(kt+1,ii) = -( dh_u_dx         ) / (kt+1);
             u_DTs(kt+1,ii) = -( dutend_dx       ) / (kt+1);
-            v_DTs(kt+1,ii) = -( u_dv_DTs(kt,ii) ) / (kt+1);
+            if (sim1d) {
+              v_DTs(kt+1,ii) = 0;
+            } else {
+              v_DTs(kt+1,ii) = -( u_dv_DTs(kt,ii) ) / (kt+1);
+            }
           }
           if (bc_x == BC_WALL) {
             if (i == nx-1) u_DTs(kt+1,ngll-1) = 0;
@@ -896,6 +915,14 @@ public:
               u_u_DTs (kt+1,ii) += u_DTs(rt,ii) * u_DTs (kt+1-rt,ii);
               u_dv_DTs(kt+1,ii) += u_DTs(rt,ii) * dv_DTs(kt+1-rt,ii);
             }
+          }
+          if (bc_x == BC_WALL) {
+            if (i == nx-1) h_u_DTs (kt+1,ngll-1) = 0;
+            if (i == nx-1) u_u_DTs (kt+1,ngll-1) = 0;
+            if (i == nx-1) u_dv_DTs(kt+1,ngll-1) = 0;
+            if (i == 0   ) h_u_DTs (kt+1,0     ) = 0;
+            if (i == 0   ) u_u_DTs (kt+1,0     ) = 0;
+            if (i == 0   ) u_dv_DTs(kt+1,0     ) = 0;
           }
         }
       }
@@ -925,6 +952,7 @@ public:
           u_DTs   (0,ii) = u_tavg;
           v_DTs   (0,ii) = v_tavg;
           surf_DTs(0,ii) = surf_tavg;
+          u_dv_DTs(0,ii) = u_dv_tavg;
           h_u_DTs (0,ii) = h_u_tavg;
           u_u_DTs (0,ii) = u_u_tavg;
         }
