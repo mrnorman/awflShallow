@@ -36,6 +36,8 @@ public:
   real3d surf_limits;
   real3d h_u_limits;
   real3d u_u_limits;
+  real3d h_v_limits;
+  real3d v_v_limits;
   real2d bath;
   // For non-WENO interpolation
   SArray<real,2,ord,ngll> sten_to_gll;
@@ -391,6 +393,8 @@ public:
     surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
     h_u_limits   = real3d("h_u_limits"           ,2,ny+1,nx+1);
     u_u_limits   = real3d("u_u_limits"           ,2,ny+1,nx+1);
+    h_v_limits   = real3d("h_v_limits"           ,2,ny+1,nx+1);
+    v_v_limits   = real3d("v_v_limits"           ,2,ny+1,nx+1);
     bath         = real2d("bathymetry" ,ny+2*hs,nx+2*hs);
   }
 
@@ -699,6 +703,8 @@ public:
     YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
     YAKL_SCOPE( fwaves       , this->fwaves             );
     YAKL_SCOPE( surf_limits  , this->surf_limits        );
+    YAKL_SCOPE( h_u_limits   , this->h_u_limits         );
+    YAKL_SCOPE( u_u_limits   , this->u_u_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( idl          , this->idl                );
@@ -752,6 +758,7 @@ public:
       });
 
     }
+
 
     #if (ORD == 1)
       // Split the flux difference into characteristic waves
@@ -1145,10 +1152,14 @@ public:
     YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
     YAKL_SCOPE( fwaves       , this->fwaves             );
     YAKL_SCOPE( surf_limits  , this->surf_limits        );
+    YAKL_SCOPE( h_v_limits   , this->h_v_limits         );
+    YAKL_SCOPE( v_v_limits   , this->v_v_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( idl          , this->idl                );
     YAKL_SCOPE( s2c_ord      , this->s2c_ord            );
+    YAKL_SCOPE( sim1d        , this->sim1d              );
+    YAKL_SCOPE( use_mpi      , this->use_mpi            );
 
     // y-direction boundaries
     if (use_mpi) {
@@ -1159,7 +1170,7 @@ public:
         exch.halo_exchange_y();
         exch.halo_unpack_y(state);
         exch.halo_finalize();
-        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+        if (bc_y == BC_WALL || bc_y == BC_OPEN) {
           if (py == 0) {
             parallel_for( SimpleBounds<3>(num_state,hs,nx) , YAKL_LAMBDA (int l, int jj, int i) {
               state(l,      jj,hs+i) = state(l,hs     ,hs+i);
@@ -1215,16 +1226,17 @@ public:
         real u = 0.5_fp * (u_L + u_R);
         real v = 0.5_fp * (v_L + v_R);
         real gw = sqrt(grav*h);
-
         if (gw > 0) {
           // Compute flux difference splitting for u update
           fwaves(idU,0,j,i) = 0;
           fwaves(idU,1,j,i) = 0;
+
           if (v < 0) {
             fwaves(idU,0,j,i) += v*(u_R  - u_L);
           } else {
             fwaves(idU,1,j,i) += v*(u_R  - u_L);
           }
+
 
           // Compute left and right flux for h and v
           real f1_L = h_L*v_L;
@@ -1270,7 +1282,6 @@ public:
       });
       return;
     #endif
-
 
     // Loop over cells, reconstruct, compute time derivs, time average,
     // store state edge fluxes, compute cell-centered tendencies
@@ -1351,6 +1362,14 @@ public:
               v_du_DTs(kt+1,jj) += v_DTs(rt,jj) * du_DTs(kt+1-rt,jj);
             }
           }
+          if (bc_y == BC_WALL) {
+            if (j == ny-1) h_v_DTs (kt+1,ngll-1) = 0;
+            if (j == ny-1) v_v_DTs (kt+1,ngll-1) = 0;
+            if (j == ny-1) v_du_DTs(kt+1,ngll-1) = 0;
+            if (j == 0   ) h_v_DTs (kt+1,0     ) = 0;
+            if (j == 0   ) v_v_DTs (kt+1,0     ) = 0;
+            if (j == 0   ) v_du_DTs(kt+1,0     ) = 0;
+          }
         }
       }
 
@@ -1394,24 +1413,30 @@ public:
       fwaves (idV,0,j+1,i) = v_DTs   (0,ngll-1);
       surf_limits(1,j  ,i) = surf_DTs(0,0     );
       surf_limits(0,j+1,i) = surf_DTs(0,ngll-1);
+      h_v_limits (1,j  ,i) = h_v_DTs (0,0     );
+      h_v_limits (0,j+1,i) = h_v_DTs (0,ngll-1);
+      v_v_limits (1,j  ,i) = v_v_DTs (0,0     );
+      v_v_limits (0,j+1,i) = v_v_DTs (0,ngll-1);
 
       // Compute the "centered" contribution to the high-order tendency
+
       real tmp = 0;
       for (int ii=0; ii<ngll; ii++) {
         tmp += -v_du_DTs(0,ii) * gllWts_ngll(ii);
       }
       tend(idU,j,i) = tmp;
 
+
     }); // Loop over cells
 
-    // Periodic BCs for fwaves and surf_limits
+    // BCs for fwaves and surf_limits
     if (use_mpi) {
       
       #ifdef __ENABLE_MPI__
         exch.edge_init();
-        exch.edge_pack_y( fwaves , surf_limits );
+        exch.edge_pack_y( fwaves , surf_limits , h_v_limits , v_v_limits );
         exch.edge_exchange_y();
-        exch.edge_unpack_y( fwaves , surf_limits );
+        exch.edge_unpack_y( fwaves , surf_limits , h_v_limits , v_v_limits );
         exch.edge_finalize();
         if (bc_y == BC_WALL || bc_y == BC_OPEN) {
           if (py == 0) {
@@ -1424,6 +1449,8 @@ public:
                 }
               }
               surf_limits(0,0 ,i) = surf_limits(1,0 ,i);
+              h_v_limits (0,0 ,i) = h_v_limits (1,0 ,i);
+              v_v_limits (0,0 ,i) = v_v_limits (1,0 ,i);
             });
           }
           if (py == nproc_y-1) {
@@ -1436,6 +1463,8 @@ public:
                 }
               }
               surf_limits(1,ny,i) = surf_limits(0,ny,i);
+              h_v_limits (1,ny,i) = h_v_limits (0,ny,i);
+              v_v_limits (1,ny,i) = v_v_limits (0,ny,i);
             });
           }
         }
@@ -1456,6 +1485,10 @@ public:
             }
             surf_limits(0,0 ,i) = surf_limits(1,0 ,i);
             surf_limits(1,ny,i) = surf_limits(0,ny,i);
+            h_v_limits (0,0 ,i) = h_v_limits (1,0 ,i);
+            h_v_limits (1,ny,i) = h_v_limits (0,ny,i);
+            v_v_limits (0,0 ,i) = v_v_limits (1,0 ,i);
+            v_v_limits (1,ny,i) = v_v_limits (0,ny,i);
           }
         } else if (bc_y == BC_PERIODIC) {
           for (int l=0; l < num_state; l++) {
@@ -1464,6 +1497,10 @@ public:
           }
           surf_limits(0,0 ,i) = surf_limits(0,ny,i);
           surf_limits(1,ny,i) = surf_limits(1,0 ,i);
+          h_v_limits (0,0 ,i) = h_v_limits (0,ny,i);
+          h_v_limits (1,ny,i) = h_v_limits (1,0 ,i);
+          v_v_limits (0,0 ,i) = v_v_limits (0,ny,i);
+          v_v_limits (1,ny,i) = v_v_limits (1,0 ,i);
         }
       });
 
@@ -1476,31 +1513,36 @@ public:
       real u_L  = fwaves     (idU,0,j,i);
       real v_L  = fwaves     (idV,0,j,i);
       real hs_L = surf_limits(    0,j,i);  // Surface height
+      real hv_L = h_v_limits (    0,j,i);  // h*v
+      real vv_L = v_v_limits (    0,j,i);  // v*v
       real h_R  = fwaves     (idH,1,j,i);
       real u_R  = fwaves     (idU,1,j,i);
       real v_R  = fwaves     (idV,1,j,i);
       real hs_R = surf_limits(    1,j,i);  // Surface height
+      real hv_R = h_v_limits (    1,j,i);  // h*v
+      real vv_R = v_v_limits (    1,j,i);  // v*v
       // Compute interface linearly averaged values for the state
       real h = 0.5_fp * (h_L + h_R);
       real u = 0.5_fp * (u_L + u_R);
       real v = 0.5_fp * (v_L + v_R);
       real gw = sqrt(grav*h);
-
       if (gw > 0) {
         // Compute flux difference splitting for u update
         fwaves(idU,0,j,i) = 0;
         fwaves(idU,1,j,i) = 0;
+
         if (v < 0) {
           fwaves(idU,0,j,i) += v*(u_R  - u_L);
         } else {
           fwaves(idU,1,j,i) += v*(u_R  - u_L);
         }
 
+
         // Compute left and right flux for h and v
-        real f1_L = h_L*v_L;
-        real f1_R = h_R*v_R;
-        real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
-        real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
+        real f1_L = hv_L;
+        real f1_R = hv_R;
+        real f3_L = vv_L*0.5_fp + grav*hs_L;
+        real f3_R = vv_R*0.5_fp + grav*hs_R;
         // Compute left and right flux-based characteristic variables
         real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
         real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
@@ -1689,6 +1731,9 @@ public:
 
 
   void finalize(StateArr const &state) {
+    YAKL_SCOPE( bath       , this->bath       );
+    YAKL_SCOPE( surf_level , this->surf_level );
+    
     real2d mass("mass",ny,nx);
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       real h = state(idH,hs+j,hs+i);

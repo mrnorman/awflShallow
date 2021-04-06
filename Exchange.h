@@ -350,16 +350,20 @@ public:
       yakl::fence();
 
       //Pre-post the receives
-      if (exchW) mpiwrap( MPI_Irecv( haloRecvBufW_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,0) , 0 , MPI_COMM_WORLD , &rReq[0] ) , __LINE__ );
-      if (exchE) mpiwrap( MPI_Irecv( haloRecvBufE_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,2) , 1 , MPI_COMM_WORLD , &rReq[1] ) , __LINE__ );
+      if (exchW) mpiwrap( MPI_Irecv( haloRecvBufW_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,0) , 0 ,
+                                     MPI_COMM_WORLD , &rReq[0] ) , __LINE__ );
+      if (exchE) mpiwrap( MPI_Irecv( haloRecvBufE_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,2) , 1 ,
+                                     MPI_COMM_WORLD , &rReq[1] ) , __LINE__ );
 
       if (exchW) haloSendBufW.deep_copy_to(haloSendBufW_host);
       if (exchE) haloSendBufE.deep_copy_to(haloSendBufE_host);
       yakl::fence();
 
       //Send the data
-      if (exchW) mpiwrap( MPI_Isend( haloSendBufW_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,0) , 1 , MPI_COMM_WORLD , &sReq[0] ) , __LINE__ );
-      if (exchE) mpiwrap( MPI_Isend( haloSendBufE_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,2) , 0 , MPI_COMM_WORLD , &sReq[1] ) , __LINE__ );
+      if (exchW) mpiwrap( MPI_Isend( haloSendBufW_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,0) , 1 ,
+                                     MPI_COMM_WORLD , &sReq[0] ) , __LINE__ );
+      if (exchE) mpiwrap( MPI_Isend( haloSendBufE_host.data() , num_pack*ny*hs , mpi_dtype , neigh(1,2) , 0 ,
+                                     MPI_COMM_WORLD , &sReq[1] ) , __LINE__ );
 
       //Wait for the sends and receives to finish
       if (exchW) {
@@ -384,16 +388,20 @@ public:
       yakl::fence();
 
       //Pre-post the receives
-      if (exchS) mpiwrap( MPI_Irecv( haloRecvBufS_host.data() , num_pack*hs*nx , mpi_dtype , neigh(0,1) , 0 , MPI_COMM_WORLD , &rReq[0] ) , __LINE__ );
-      if (exchN) mpiwrap( MPI_Irecv( haloRecvBufN_host.data() , num_pack*hs*nx , mpi_dtype , neigh(2,1) , 1 , MPI_COMM_WORLD , &rReq[1] ) , __LINE__ );
+      if (exchS) mpiwrap( MPI_Irecv( haloRecvBufS_host.data() , num_pack*hs*nx , mpi_dtype , neigh(0,1) , 0 ,
+                                     MPI_COMM_WORLD , &rReq[0] ) , __LINE__ );
+      if (exchN) mpiwrap( MPI_Irecv( haloRecvBufN_host.data() , num_pack*hs*nx , mpi_dtype , neigh(2,1) , 1 ,
+                                     MPI_COMM_WORLD , &rReq[1] ) , __LINE__ );
 
       if (exchS) haloSendBufS.deep_copy_to(haloSendBufS_host);
       if (exchN) haloSendBufN.deep_copy_to(haloSendBufN_host);
       yakl::fence();
 
       //Send the data
-      if (exchS) mpiwrap( MPI_Isend( haloSendBufS_host.data() , num_pack*hs*nx , mpi_dtype , neigh(0,1) , 1 , MPI_COMM_WORLD , &sReq[0] ) , __LINE__ );
-      if (exchN) mpiwrap( MPI_Isend( haloSendBufN_host.data() , num_pack*hs*nx , mpi_dtype , neigh(2,1) , 0 , MPI_COMM_WORLD , &sReq[1] ) , __LINE__ );
+      if (exchS) mpiwrap( MPI_Isend( haloSendBufS_host.data() , num_pack*hs*nx , mpi_dtype , neigh(0,1) , 1 ,
+                                     MPI_COMM_WORLD , &sReq[0] ) , __LINE__ );
+      if (exchN) mpiwrap( MPI_Isend( haloSendBufN_host.data() , num_pack*hs*nx , mpi_dtype , neigh(2,1) , 0 ,
+                                     MPI_COMM_WORLD , &sReq[1] ) , __LINE__ );
 
       //Wait for the sends and receives to finish
       if (exchS) {
@@ -448,7 +456,7 @@ public:
   }
 
 
-  void edge_pack_y(real4d const &fwaves, real3d const &surf) {
+  void edge_pack_y(real4d const &fwaves, real3d const &surf, real3d const &h_v, real3d const &v_v) {
     YAKL_SCOPE( edgeSendBufS , this->edgeSendBufS );
     YAKL_SCOPE( edgeSendBufN , this->edgeSendBufN );
     YAKL_SCOPE( nx           , this->nx           );
@@ -456,16 +464,22 @@ public:
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
     int numState = fwaves.dimension[0];
-    parallel_for( SimpleBounds<2>(numState+1,nx) , YAKL_LAMBDA (int v, int i) {
+    parallel_for( SimpleBounds<2>(numState+3,nx) , YAKL_LAMBDA (int v, int i) {
       if (v < numState) {
         if (exchS) edgeSendBufS(v,i) = fwaves(v,1,0 ,i);
         if (exchN) edgeSendBufN(v,i) = fwaves(v,0,ny,i);
       } else if (v == numState) {
         if (exchS) edgeSendBufS(v,i) = surf(1,0 ,i);
         if (exchN) edgeSendBufN(v,i) = surf(0,ny,i);
+      } else if (v == numState+1) { 
+        if (exchS) edgeSendBufS(v,i) = h_v(1,0 ,i);
+        if (exchN) edgeSendBufN(v,i) = h_v(0,ny,i);
+      } else if (v == numState+2) { 
+        if (exchS) edgeSendBufS(v,i) = v_v(1,0 ,i);
+        if (exchN) edgeSendBufN(v,i) = v_v(0,ny,i);
       }
     });
-    num_pack += numState+1;
+    num_pack += numState+3;
   }
 
 
@@ -496,7 +510,7 @@ public:
   }
 
 
-  void edge_unpack_y(real4d &fwaves, real3d &surf) {
+  void edge_unpack_y(real4d &fwaves, real3d &surf, real3d &h_v, real3d &v_v) {
     YAKL_SCOPE( edgeRecvBufS , this->edgeRecvBufS );
     YAKL_SCOPE( edgeRecvBufN , this->edgeRecvBufN );
     YAKL_SCOPE( nx           , this->nx           );
@@ -504,16 +518,22 @@ public:
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
     int numState = fwaves.dimension[0];
-    parallel_for( SimpleBounds<2>(numState+1,nx) , YAKL_LAMBDA (int v, int i) {
+    parallel_for( SimpleBounds<2>(numState+3,nx) , YAKL_LAMBDA (int v, int i) {
       if (v < numState) {
         if (exchS) fwaves(v,0,0 ,i) = edgeRecvBufS(v,i);
         if (exchN) fwaves(v,1,ny,i) = edgeRecvBufN(v,i);
       } else if (v == numState) {
         if (exchS) surf(0,0 ,i) = edgeRecvBufS(v,i);
         if (exchN) surf(1,ny,i) = edgeRecvBufN(v,i);
+      } else if (v == numState+1) {
+        if (exchS) h_v(0,0 ,i) = edgeRecvBufS(v,i);
+        if (exchN) h_v(1,ny,i) = edgeRecvBufN(v,i);
+      } else if (v == numState+2) {
+        if (exchS) v_v(0,0 ,i) = edgeRecvBufS(v,i);
+        if (exchN) v_v(1,ny,i) = edgeRecvBufN(v,i);
       }
     });
-    num_unpack += numState+1;
+    num_unpack += numState+3;
   }
 
 
