@@ -29,7 +29,7 @@ using yakl::memset;
 #endif
 
 #ifndef NGLL
-  #define NGLL 9
+  #define NGLL 5
 #endif
 
 #ifndef OVERSHOOT_THRESH

@@ -17,11 +17,11 @@ namespace weno {
   }
 
 
-  YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
-    real sum = 0._fp;
-    real const eps = 1.0e-100;
-    for (int i=0; i<hs+2; i++) { sum += wts(i); }
-    for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
+  YAKL_INLINE void convexify( SArray<real,1,3> &wts ) {
+    real constexpr eps = 1.e-30;
+    real sum = 0;
+    for (int ii=0; ii < 3; ii++) { sum += wts(ii); }
+    for (int ii=0; ii < 3; ii++) { wts(ii) = wts(ii) / (sum + eps); }
   }
 
 
@@ -86,85 +86,82 @@ namespace weno {
       idl(7) = 1._fp;
       idl(8) = 1._fp;
     }
-    convexify( idl );
+    // convexify( idl );
   }
 
 
-  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u , SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl , real const sigma ) {
-    SArray<real,1,hs+2> tv;
-    SArray<real,1,hs+2> wts;
-    SArray<real,2,hs+2,ord> a;
-    SArray<real,1,hs+1> lotmp;
-    SArray<real,1,ord > hitmp;
-    real lo_avg;
-    real const eps = 1.0e-100;
+  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
+                                       SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl_ignore , real const sigma ) {
+    SArray<real,1,3> tv;
+    SArray<real,1,3> idl;
+    SArray<real,1,3> wts;
+    SArray<real,1,2> al;
+    SArray<real,1,ord> ac;
+    SArray<real,1,2> ar;
+    real const eps = 1.0e-30;
 
-    // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0._fp;
-      }
+    if (ord == 3) {
+      idl(0) = 1.;
+      idl(1) = 1.;
+      idl(2) = 100.;
+    } else if (ord == 5) {
+      idl(0) = 1.;
+      idl(1) = 1.;
+      idl(2) = 1000.;
+    } else if (ord == 7) {
+      idl(0) = 1.;
+      idl(1) = 1.;
+      idl(2) = 100000.;
+    } else if (ord == 9) {
+      idl(0) = 1.;
+      idl(1) = 1.;
+      idl(2) = 200000000.;
     }
+    convexify(idl);
 
-    // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
-    for(int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        for (int s=0; s<hs+1; s++) {
-          a(i,ii) += recon(i,s,ii) * u(i+s);
-        }
-      }
-    }
+    al(0) = u(hs);
+    al(1) = ( u(hs) - u(hs-1) );
+
     for (int ii=0; ii<ord; ii++) {
+      ac(ii) = 0;
       for (int s=0; s<ord; s++) {
-        a(hs+1,ii) += recon(hs+1,s,ii) * u(s);
+        ac(ii) += recon(hs+1,s,ii) * u(s);
       }
     }
+
+    ar(0) = u(hs);
+    ar(1) = ( u(hs+1) - u(hs) );
 
     // Compute "bridge" polynomial
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        a(hs+1,ii) -= idl(i)*a(i,ii);
-      }
+    for (int ii=0; ii<2; ii++) {
+      ac(ii) -= idl(0)*al(ii);
+      ac(ii) -= idl(1)*ar(ii);
     }
     for (int ii=0; ii<ord; ii++) {
-      a(hs+1,ii) /= idl(hs+1);
+      ac(ii) /= idl(2);
     }
 
     // Compute total variation of all candidate polynomials
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        lotmp(ii) = a(i,ii);
-      }
-      tv(i) = TransformMatrices::coefs_to_tv(lotmp);
-    }
-    for (int ii=0; ii<ord; ii++) {
-      hitmp(ii) = a(hs+1,ii);
-    }
-    tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
+    tv(0) = al(1)*al(1);
+    tv(1) = ar(1)*ar(1);
+    tv(2) = TransformMatrices::coefs_to_tv(ac);
 
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
-    real pwr;
-    if (ord == 3) pwr = 0.7;
-    if (ord == 5) pwr = 1.2;
-    if (ord == 7) pwr = 4.0;
-    if (ord == 9) pwr = 12.0;
-    for (int i=0; i<hs+2; i++) {
-      wts(i) = idl(i) / ( pow( tv(i) , pwr ) + eps );
+    for (int i=0; i<3; i++) {
+      wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
     }
     convexify(wts);
 
     // Map WENO weights for sharper fronts and less sensitivity to "eps"
-    map_weights(idl,wts);
-    convexify(wts);
+    // map_weights(idl,wts);
+    // convexify(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    for (int i=0; i<ord; i++) {
-      aw(i) = 0._fp;
+    for (int ii=0; ii<2; ii++) {
+      aw(ii) = wts(0) * al(ii) + wts(1) * ar(ii) + wts(2) * ac(ii);
     }
-    for (int i=0; i<hs+2; i++) {
-      for (int ii=0; ii<ord; ii++) {
-        aw(ii) += wts(i) * a(i,ii);
-      }
+    for (int ii=2; ii<ord; ii++) {
+      aw(ii) = wts(2) * ac(ii);
     }
   }
 

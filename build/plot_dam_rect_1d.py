@@ -7,33 +7,33 @@ nc = Dataset("dam_rect_hi.nc","r")
 nt = nc.variables["t"][:].shape[0]
 nx_hi = nc.variables["x"][:].shape[0]
 x_hi    = nc.variables["x"]      [:]
-surf_hi = nc.variables["surface"][nt-1,0,:]
-u_hi    = nc.variables["u"]      [nt-1,0,:]
+surf_hi = nc.variables["surface"][1,0,:]
+u_hi    = nc.variables["u"]      [1,0,:]
 
 nc = Dataset("dam_rect_3.nc","r")
 nt = nc.variables["t"][:].shape[0]
 nx_lo = nc.variables["x"][:].shape[0]
 x_3     = nc.variables["x"]      [:]
-surf_3  = nc.variables["surface"][nt-1,0,:]
-u_3     = nc.variables["u"]      [nt-1,0,:]
+surf_3  = nc.variables["surface"][1,0,:]
+u_3     = nc.variables["u"]      [1,0,:]
 
 nc = Dataset("dam_rect_5.nc","r")
 nt = nc.variables["t"][:].shape[0]
 x_5     = nc.variables["x"]      [:]
-surf_5  = nc.variables["surface"][nt-1,0,:]
-u_5     = nc.variables["u"]      [nt-1,0,:]
+surf_5  = nc.variables["surface"][1,0,:]
+u_5     = nc.variables["u"]      [1,0,:]
 
 nc = Dataset("dam_rect_7.nc","r")
 nt = nc.variables["t"][:].shape[0]
 x_7     = nc.variables["x"]      [:]
-surf_7  = nc.variables["surface"][nt-1,0,:]
-u_7     = nc.variables["u"]      [nt-1,0,:]
+surf_7  = nc.variables["surface"][1,0,:]
+u_7     = nc.variables["u"]      [1,0,:]
 
 nc = Dataset("dam_rect_9.nc","r")
 nt = nc.variables["t"][:].shape[0]
 x_9     = nc.variables["x"]      [:]
-surf_9  = nc.variables["surface"][nt-1,0,:]
-u_9     = nc.variables["u"]      [nt-1,0,:]
+surf_9  = nc.variables["surface"][1,0,:]
+u_9     = nc.variables["u"]      [1,0,:]
 
 ####################################
 # Height Full
@@ -41,8 +41,8 @@ u_9     = nc.variables["u"]      [nt-1,0,:]
 plt.plot(x_hi,surf_hi,'-',color="black",linewidth="0.6")
 plt.plot(x_9 ,surf_9 ,'-',color="cyan" ,linewidth="0.6")
 plt.plot(x_7 ,surf_7 ,'-',color="blue" ,linewidth="0.6")
-#plt.plot(x_5 ,surf_5 ,'-',color="green",linewidth="0.6")
-#plt.plot(x_3 ,surf_3 ,'-',color="red"  ,linewidth="0.6")
+plt.plot(x_5 ,surf_5 ,'-',color="green",linewidth="0.6")
+plt.plot(x_3 ,surf_3 ,'-',color="red"  ,linewidth="0.6")
 plt.tight_layout()
 #plt.legend(["Exact","Order=9","Order=7","Order=5","Order=3"])
 plt.xlabel("x-coordinate")

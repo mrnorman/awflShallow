@@ -15,7 +15,7 @@ template <bool time_avg, int nAder>
 class Spatial_operator {
 public:
 
-  int static constexpr hs = max(1,(ord-1)/2);
+  int static constexpr hs = ord >= 3 ? (ord-1)/2 : 1;
   int static constexpr num_state = 3;
 
   real static constexpr eps = 1.e-10;
