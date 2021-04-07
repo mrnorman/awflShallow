@@ -4,7 +4,7 @@
 #include "const.h"
 #include "TransformMatrices.h"
 #include "Profiles.h"
-#include "WenoLimiter_old.h"
+#include "WenoLimiter.h"
 #ifdef __ENABLE_MPI__
   #include "Exchange.h"
 #endif

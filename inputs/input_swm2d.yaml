@@ -1,10 +1,10 @@
 ---
 # Simulation time in seconds
-sim_time  : 0.6
+sim_time  : 0.2
 
 # Number of cells to use
-nx_glob : 400
-ny_glob : 200
+nx_glob : 200
+ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
 nproc_x : 1
@@ -18,15 +18,15 @@ ylen    : 1
 cfl     : 0.8
 
 # Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d, lake_at_rest_disc_2d
-init_data : lake_at_rest_pert_2d
+init_data : lake_at_rest_pert_1d
 
 # Data to initialize: periodic, wall, or open
 bc_x : open
 bc_y : open
 
 # Output filename
-out_file  : test.nc
+out_file  : test_hi.nc
 
 # Output frequency in seconds
-out_freq  : 0.12
+out_freq  : 0.01
 
