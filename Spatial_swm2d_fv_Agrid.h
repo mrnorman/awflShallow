@@ -442,8 +442,10 @@ public:
           } else if (data_spec == DATA_SPEC_ORDER_1D) {
             profiles::order_1d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
+            surf_level = 10;
             profiles::balance_smooth_1d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_1D) {
+            surf_level = 10;
             profiles::balance_nonsmooth_1d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
             profiles::lake_at_rest_pert_2d(xloc,yloc,xlen,ylen,h,u,v,b);
