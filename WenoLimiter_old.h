@@ -9,6 +9,8 @@ namespace weno {
 
   int constexpr hs = (ord-1)/2;
 
+  typedef SArray<real,1,hs+2> wt_type;
+
   YAKL_INLINE void map_weights( SArray<real,1,hs+2> const &idl , SArray<real,1,hs+2> &wts ) {
     // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
     for (int i=0; i<hs+2; i++) {
@@ -27,23 +29,25 @@ namespace weno {
 
   YAKL_INLINE void wenoSetIdealSigma(SArray<real,1,hs+2> &idl, real &sigma) {
     if        (ord == 3) {
-      sigma = 0.0343557947899881_fp;
+      sigma = 0.1_fp;
       idl(0) = 1._fp;
       idl(1) = 1._fp;
-      idl(2) = 1224.61619926508_fp;
+      idl(2) = 8._fp;
     } else if (ord == 5) {
-      sigma = 0.73564225445964_fp;
+      sigma = 0.1_fp;
+      real f = 10;
       idl(0) = 1._fp;
-      idl(1) = 73.564225445964_fp;
+      idl(1) = f;
       idl(2) = 1._fp;
-      idl(3) = 1584.89319246111_fp;
+      idl(3) = f*f;
     } else if (ord == 7) {
-      sigma = 0.125594321575479_fp;
+      sigma = 0.01_fp;
+      real f = 2;
       idl(0) = 1._fp;
-      idl(1) = 7.35642254459641_fp;
-      idl(2) = 7.35642254459641_fp;
+      idl(1) = f;
+      idl(2) = f;
       idl(3) = 1._fp;
-      idl(4) = 794.328234724281_fp;
+      idl(4) = f*f;
     } else if (ord == 9) {
       sigma = 0.0288539981181442_fp;
       idl(0) = 1._fp;

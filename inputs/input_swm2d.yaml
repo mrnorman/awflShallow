@@ -3,15 +3,15 @@
 sim_time  : 0.6
 
 # Number of cells to use
-nx_glob : 200
-ny_glob : 100
+nx_glob : 400
+ny_glob : 200
 
 # Number of tasks to use in the x- and y-directions
 nproc_x : 1
 nproc_y : 1
 
 # Domain length in x- and y-dimensions
-xlen    : 2
+xlen    : 2.
 ylen    : 1
 
 # Courant Friedrichs Lewy number to calculate time step
@@ -25,7 +25,7 @@ bc_x : open
 bc_y : open
 
 # Output filename
-out_file  : lake_at_rest_pert_2d_3.nc
+out_file  : test.nc
 
 # Output frequency in seconds
 out_freq  : 0.12

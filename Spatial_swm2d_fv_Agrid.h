@@ -3,7 +3,8 @@
 
 #include "const.h"
 #include "TransformMatrices.h"
-#include "WenoLimiter.h"
+#include "Profiles.h"
+#include "WenoLimiter_old.h"
 #ifdef __ENABLE_MPI__
   #include "Exchange.h"
 #endif
@@ -44,8 +45,9 @@ public:
   SArray<real,2,ord,ngll> sten_to_deriv_gll;
   SArray<real,2,ord,ngll> coefs_to_gll;
   SArray<real,2,ord,ngll> coefs_to_deriv_gll;
-  SArray<real,2,ord,ord> s2c_ord;
+  SArray<real,3,ord,ord,ord> weno_recon;
   weno::wt_type idl;
+  real sigma;
   // For ADER spatial derivative computation
   SArray<real,2,ngll,ngll> deriv_matrix;
   // For quadrature
@@ -58,17 +60,16 @@ public:
   int static constexpr idU = 1;  // u
   int static constexpr idV = 2;  // v
 
-  int static constexpr DATA_SPEC_DAM                  = 1;
+  int static constexpr DATA_SPEC_DAM_2D               = 1;
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_1D = 2;
   int static constexpr DATA_SPEC_DAM_RECT_1D          = 3;
   int static constexpr DATA_SPEC_ORDER_1D             = 4;
   int static constexpr DATA_SPEC_BALANCE_SMOOTH_1D    = 5;
   int static constexpr DATA_SPEC_BALANCE_NONSMOOTH_1D = 6;
   int static constexpr DATA_SPEC_LAKE_AT_REST_PERT_2D = 7;
-  int static constexpr DATA_SPEC_BATH_HIGHER_SMOOTH   = 8;
-  int static constexpr DATA_SPEC_BALANCE_DISC_2D      = 9;
-  int static constexpr DATA_SPEC_ORDER_2D             = 10;
-  int static constexpr DATA_SPEC_BALANCE_2D           = 11;
+  int static constexpr DATA_SPEC_BALANCE_NONSMOOTH_2D = 8;
+  int static constexpr DATA_SPEC_ORDER_2D             = 9;
+  int static constexpr DATA_SPEC_BALANCE_SMOOTH_2D    = 10;
 
   int static constexpr BC_WALL     = 0;
   int static constexpr BC_PERIODIC = 1;
@@ -306,8 +307,8 @@ public:
 
 
     std::string data_str = config["init_data"].as<std::string>();
-    if        (data_str == "dam") {
-      data_spec = DATA_SPEC_DAM;
+    if        (data_str == "dam_2d") {
+      data_spec = DATA_SPEC_DAM_2D;
       grav = 1;
     } else if (data_str == "lake_at_rest_pert_1d") {
       assert( sim1d );
@@ -332,17 +333,14 @@ public:
     } else if (data_str == "lake_at_rest_pert_2d") {
       data_spec = DATA_SPEC_LAKE_AT_REST_PERT_2D;
       grav = 9.81;
-    } else if (data_str == "bath_higher_smooth") {
-      data_spec = DATA_SPEC_BATH_HIGHER_SMOOTH;
-      grav = 9.81;
-    } else if (data_str == "balance_disc_2d") {
-      data_spec = DATA_SPEC_BALANCE_DISC_2D;
+    } else if (data_str == "balance_nonsmooth_2d") {
+      data_spec = DATA_SPEC_BALANCE_NONSMOOTH_2D;
       grav = 9.81;
     } else if (data_str == "order_2d") {
       data_spec = DATA_SPEC_ORDER_2D;
       grav = 9.81;
-    } else if (data_str == "balance_2d") {
-      data_spec = DATA_SPEC_BALANCE_2D;
+    } else if (data_str == "balance_smooth_2d") {
+      data_spec = DATA_SPEC_BALANCE_SMOOTH_2D;
       grav = 9.81;
     } else {
       endrun("ERROR: Invalid data_spec");
@@ -353,7 +351,9 @@ public:
     dx = xlen/nx_glob;
     dy = ylen/ny_glob;
 
-    TransformMatrices::sten_to_coefs(s2c_ord);
+    #if (ORD > 1)
+      TransformMatrices::weno_sten_to_coefs(weno_recon);
+    #endif
 
     // Store to_gll and weno_recon
     {
@@ -387,7 +387,9 @@ public:
     TransformMatrices::get_gll_points (this->gllPts_ngll);
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
-    weno::wenoSetIdeal(this->idl);
+    #if (ORD > 1)
+      weno::wenoSetIdealSigma(this->idl,this->sigma);
+    #endif
 
     fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
     surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
@@ -402,157 +404,63 @@ public:
 
   // Initialize the state
   void init_state( StateArr &state ) {
-    memset( state , 0._fp );
-    memset( bath  , 0._fp );
-
-    YAKL_SCOPE( bath       , this->bath       );
-    YAKL_SCOPE( nx         , this->nx         );
-    YAKL_SCOPE( ny         , this->ny         );
-    YAKL_SCOPE( data_spec  , this->data_spec  );
-    YAKL_SCOPE( bc_x       , this->bc_x       );
-    YAKL_SCOPE( bc_y       , this->bc_y       );
-    YAKL_SCOPE( gllPts_ord , this->gllPts_ord );
-    YAKL_SCOPE( gllWts_ord , this->gllWts_ord );
-    YAKL_SCOPE( dx         , this->dx         );
-    YAKL_SCOPE( dy         , this->dy         );
-    YAKL_SCOPE( xlen       , this->xlen       );
-    YAKL_SCOPE( ylen       , this->ylen       );
-    YAKL_SCOPE( i_beg      , this->i_beg      );
-    YAKL_SCOPE( j_beg      , this->j_beg      );
+    YAKL_SCOPE( bath        , this->bath        );
+    YAKL_SCOPE( nx          , this->nx          );
+    YAKL_SCOPE( ny          , this->ny          );
+    YAKL_SCOPE( data_spec   , this->data_spec   );
+    YAKL_SCOPE( bc_x        , this->bc_x        );
+    YAKL_SCOPE( bc_y        , this->bc_y        );
+    YAKL_SCOPE( gllPts_ord  , this->gllPts_ord  );
+    YAKL_SCOPE( gllWts_ord  , this->gllWts_ord  );
+    YAKL_SCOPE( dx          , this->dx          );
+    YAKL_SCOPE( dy          , this->dy          );
+    YAKL_SCOPE( xlen        , this->xlen        );
+    YAKL_SCOPE( ylen        , this->ylen        );
+    YAKL_SCOPE( i_beg       , this->i_beg       );
+    YAKL_SCOPE( j_beg       , this->j_beg       );
+    YAKL_SCOPE( sim1d       , this->sim1d       );
 
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+      state(idH,hs+j,hs+i) = 0;
+      state(idU,hs+j,hs+i) = 0;
+      state(idV,hs+j,hs+i) = 0;
+      bath (    hs+j,hs+i) = 0;
       int i_glob = i_beg + i;
       int j_glob = j_beg + j;
-      if        (data_spec == DATA_SPEC_DAM) {
-        if (i_glob > nx_glob/4 && i_glob < 3*nx_glob/4 && j_glob > ny_glob/4 && j_glob < 3*ny_glob/4) {
-          state(idH,hs+j,hs+i) = 3;
-          bath(hs+j,hs+i) = 0.25;
-        } else {
-          state(idH,hs+j,hs+i) = 2;
-        }
-      } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_1D) {
+      for (int jj=0; jj < ord; jj++) {
         for (int ii=0; ii < ord; ii++) {
           real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real b  = 0;
-          real surf = 1;
-          if (xloc >= 1.4_fp && xloc <= 1.6_fp) {
-            b = (1 + cos(10*M_PI*(xloc-0.5_fp))) / 4;
+          real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
+          if (sim1d) yloc = ylen/2.;
+          real h, u, v, b;
+          if        (data_spec == DATA_SPEC_DAM_2D) {
+            profiles::dam_2d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_1D) {
+            profiles::lake_at_rest_pert_1d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_DAM_RECT_1D) {
+            profiles::dam_rect_1d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_ORDER_1D) {
+            profiles::order_1d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
+            profiles::balance_smooth_1d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_1D) {
+            profiles::balance_nonsmooth_1d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
+            profiles::lake_at_rest_pert_2d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_ORDER_2D) {
+            profiles::order_2d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_2D) {
+            profiles::balance_smooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_2D) {
+            profiles::balance_smooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
+          } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_2D) {
+            profiles::balance_nonsmooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
           }
-          if (xloc >= 1.1_fp && xloc <= 1.2_fp) {
-            surf = 1.001;
-          }
-          state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii);
-          bath (    hs+j,hs+i) += b          * gllWts_ord(ii);
+          state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
+          state(idU,hs+j,hs+i) += u * gllWts_ord(ii) * gllWts_ord(jj);
+          state(idV,hs+j,hs+i) += v * gllWts_ord(ii) * gllWts_ord(jj);
+          bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
         }
-      } else if (data_spec == DATA_SPEC_DAM_RECT_1D) {
-        for (int ii=0; ii < ord; ii++) {
-          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real b  = 0;
-          real surf = 15;
-          if (abs(xloc-xlen/2) <= xlen/8) {
-            b = 8;
-          }
-          if (xloc <= xlen/2) {
-            surf = 20;
-          }
-          state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii);
-          bath (    hs+j,hs+i) += b          * gllWts_ord(ii);
-        }
-      } else if (data_spec == DATA_SPEC_ORDER_1D) {
-        for (int ii=0; ii < ord; ii++) {
-          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real b = sin(M_PI*xloc)*sin(M_PI*xloc);
-          real h = 5 + exp( cos( 2*M_PI*xloc) );
-          real hu = sin( cos( 2*M_PI*xloc) );
-          real u = hu / h;
-          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
-          state(idU,hs+j,hs+i) += u * gllWts_ord(ii);
-          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
-        }
-      } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
-        surf_level = 10;
-        for (int ii=0; ii < ord; ii++) {
-          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real b = 5*exp(-2./3.*(xloc-xlen/2)*(xloc-xlen/2));
-          real h = 10 - b;
-          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
-          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
-        }
-      } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_1D) {
-        surf_level = 10;
-        for (int ii=0; ii < ord; ii++) {
-          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real b = 0;
-          if (xloc >= 0.4*xlen && xloc <= 0.8*xlen) b = 4;
-          real h = 10 - b;
-          state(idH,hs+j,hs+i) += h * gllWts_ord(ii);
-          bath (    hs+j,hs+i) += b * gllWts_ord(ii);
-        }
-      } else if (data_spec == DATA_SPEC_LAKE_AT_REST_PERT_2D) {
-        for (int jj=0; jj < ord; jj++) {
-          for (int ii=0; ii < ord; ii++) {
-            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            real b = 0.8_fp*exp( -5*(xloc-0.9_fp)*(xloc-0.9_fp) - 50*(yloc-0.5_fp)*(yloc-0.5_fp) );
-            real surf = 1;
-            if (xloc >= 0.05_fp && xloc <= 0.15_fp) {
-              surf = 1.01;
-            } else {
-              surf = 1;
-            }
-            state(idH,hs+j,hs+i) += (surf - b) * gllWts_ord(ii) * gllWts_ord(jj);
-            bath (    hs+j,hs+i) += b          * gllWts_ord(ii) * gllWts_ord(jj);
-          }
-        }
-      } else if (data_spec == DATA_SPEC_ORDER_2D) {
-        for (int jj=0; jj < ord; jj++) {
-          for (int ii=0; ii < ord; ii++) {
-            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            real b = sin(2*M_PI*xloc) + cos(2*M_PI*yloc);
-            real h = 10 + exp( sin(2*M_PI*xloc) ) * cos(2*M_PI*yloc);
-            real hu = sin( cos( 2*M_PI*xloc ) ) * sin(2*M_PI*yloc);
-            real hv = cos(2*M_PI*xloc) * cos( sin( 2*M_PI*yloc ) );
-            real u = hu / h;
-            real v = hv / h;
-            state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
-            state(idU,hs+j,hs+i) += u * gllWts_ord(ii) * gllWts_ord(jj);
-            state(idV,hs+j,hs+i) += v * gllWts_ord(ii) * gllWts_ord(jj);
-            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
-          }
-        }
-      } else if (data_spec == DATA_SPEC_BALANCE_2D) {
-        for (int jj=0; jj < ord; jj++) {
-          for (int ii=0; ii < ord; ii++) {
-            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            real b = 0.8 * exp( -50 * ( (xloc-0.5_fp)*(xloc-0.5_fp) + (yloc-0.5_fp)*(yloc-0.5_fp) ) );
-            real h = 1. - b;
-            state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
-            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
-          }
-        }
-      } else if (data_spec == DATA_SPEC_BATH_HIGHER_SMOOTH) {
-        for (int jj=0; jj < ord; jj++) {
-          for (int ii=0; ii < ord; ii++) {
-            real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-            real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
-            real xn = (xloc - xlen / 2) / (sqrt(2*xlen*xlen) / 2);
-            real yn = (yloc - ylen / 2) / (sqrt(2*ylen*ylen) / 2);
-            real rad = sqrt(xn*xn + yn*yn);
-            real b = 3*pow( (-cos(M_PI*rad)+1)/2 , 2._fp );
-            real s = max(0._fp,1-b);
-            state(idH,hs+j,hs+i) += s * gllWts_ord(ii) * gllWts_ord(jj);
-            bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
-          }
-        }
-      } else if (data_spec == DATA_SPEC_BALANCE_DISC_2D) {
-        if (i_glob > nx_glob/4 && i_glob < 3*nx_glob/4 && j_glob > ny_glob/4 && j_glob < 3*ny_glob/4) {
-          bath(hs+j,hs+i) = 0.8;
-        } else {
-          bath(hs+j,hs+i) = 0;
-        }
-        state(idH,hs+j,hs+i) = 1-bath(hs+j,hs+i);
       }
     });
 
@@ -708,7 +616,8 @@ public:
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( idl          , this->idl                );
-    YAKL_SCOPE( s2c_ord      , this->s2c_ord            );
+    YAKL_SCOPE( sigma        , this->sigma              );
+    YAKL_SCOPE( weno_recon   , this->weno_recon         );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
 
@@ -845,22 +754,39 @@ public:
       SArray<real,2,nAder,ngll> v_DTs;
       SArray<real,2,nAder,ngll> dv_DTs;
       SArray<real,2,nAder,ngll> surf_DTs;
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idH,hs+j,i+ii); }
-      reconstruct_gll_values( stencil , h_DTs , true , s2g , c2g , idl , s2c_ord );
+      {
+        real h  = state(idH,hs+j,hs+i);
+        real gw = sqrt(grav*h);
 
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idU,hs+j,i+ii); }
-      reconstruct_gll_values( stencil , u_DTs , true , s2g , c2g , idl , s2c_ord );
+        // Reconstruct first characteristic variable stored in h
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * (state(idH,hs+j,i+ii)+bath(hs+j,i+ii)) - h/(2*gw)*state(idU,hs+j,i+ii); }
+        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+        // Reconstruct second characteristic variable stored in u
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * (state(idH,hs+j,i+ii)+bath(hs+j,i+ii)) + h/(2*gw)*state(idU,hs+j,i+ii); }
+        reconstruct_gll_values( stencil , u_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+        for (int ii=0; ii < ngll; ii++) {
+          real w1 = h_DTs(0,ii);
+          real w2 = u_DTs(0,ii);
+          surf_DTs(0,ii) =       w1 +      w2;
+          u_DTs   (0,ii) = -gw/h*w1 + gw/h*w2;
+        }
+      }
+
+      for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(hs+j,i+ii); }
+      reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+      for (int ii=0; ii<ngll; ii++) { h_DTs(0,ii) = surf_DTs(0,ii) - h_DTs(0,ii); }
+
+      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
+      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , s2g , s2d2g ,
+                                         c2g , c2d2g , idl , sigma , weno_recon );
+
       if (bc_x == BC_WALL) {
         if (i == nx-1) u_DTs(0,ngll-1) = 0;
         if (i == 0   ) u_DTs(0,0     ) = 0;
       }
-
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
-      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , true , s2g , s2d2g ,
-                                         c2g , c2d2g , idl , s2c_ord );
-
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idH,hs+j,i+ii) + bath(hs+j,i+ii); }
-      reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , s2c_ord );
 
       SArray<real,2,nAder,ngll> h_u_DTs;
       SArray<real,2,nAder,ngll> u_u_DTs;
@@ -1157,7 +1083,8 @@ public:
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( idl          , this->idl                );
-    YAKL_SCOPE( s2c_ord      , this->s2c_ord            );
+    YAKL_SCOPE( sigma        , this->sigma              );
+    YAKL_SCOPE( weno_recon   , this->weno_recon         );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
 
@@ -1294,22 +1221,39 @@ public:
       SArray<real,2,nAder,ngll> du_DTs;
       SArray<real,2,nAder,ngll> v_DTs;
       SArray<real,2,nAder,ngll> surf_DTs;
-      for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idH,j+jj,hs+i); }
-      reconstruct_gll_values( stencil , h_DTs , true , s2g , c2g , idl , s2c_ord );
+      {
+        real h  = state(idH,hs+j,hs+i);
+        real gw = sqrt(grav*h);
+
+        // Reconstruct first characteristic variable stored in h
+        for (int jj=0; jj<ord; jj++) { stencil(jj) = 0.5_fp*(state(idH,j+jj,hs+i)+bath(j+jj,hs+i)) - h/(2*gw)*state(idV,j+jj,hs+i); }
+        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+        // Reconstruct second characteristic variable stored in v
+        for (int jj=0; jj<ord; jj++) { stencil(jj) = 0.5_fp*(state(idH,j+jj,hs+i)+bath(j+jj,hs+i)) + h/(2*gw)*state(idV,j+jj,hs+i); }
+        reconstruct_gll_values( stencil , v_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+        for (int jj=0; jj < ngll; jj++) {
+          real w1 = h_DTs(0,jj);
+          real w2 = v_DTs(0,jj);
+          surf_DTs(0,jj) =       w1 +      w2;
+          v_DTs   (0,jj) = -gw/h*w1 + gw/h*w2;
+        }
+      }
+
+      for (int jj=0; jj<ord; jj++) { stencil(jj) = bath(j+jj,hs+i); }
+      reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+      for (int jj=0; jj < ngll; jj++) { h_DTs(0,jj) = surf_DTs(0,jj) - h_DTs(0,jj); }
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idU,j+jj,hs+i); }
-      reconstruct_gll_values_and_derivs( stencil , u_DTs , du_DTs, dy , true , s2g , s2d2g ,
-                                         c2g , c2d2g , idl , s2c_ord );
+      reconstruct_gll_values_and_derivs( stencil , u_DTs , du_DTs, dy , s2g , s2d2g ,
+                                         c2g , c2d2g , idl , sigma , weno_recon );
 
-      for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idV,j+jj,hs+i); }
-      reconstruct_gll_values( stencil , v_DTs , true , s2g , c2g , idl , s2c_ord );
       if (bc_y == BC_WALL) {
         if (j == ny-1) v_DTs(0,ngll-1) = 0;
         if (j == 0   ) v_DTs(0,0     ) = 0;
       }
-
-      for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idH,j+jj,hs+i) + bath(j+jj,hs+i); }
-      reconstruct_gll_values( stencil , surf_DTs , true , s2g , c2g , idl , s2c_ord );
 
       SArray<real,2,nAder,ngll> h_v_DTs;
       SArray<real,2,nAder,ngll> v_du_DTs;
@@ -1751,7 +1695,7 @@ public:
 
 
     real2d data("data",ny,nx);
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idH,hs+j,hs+i)+
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idH,hs+j,hs+i)+
                                                                                   bath(hs+j,hs+i)-surf_level); });
     real data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
     real data_mean = data_mean_perproc;
@@ -1778,7 +1722,7 @@ public:
     }
 
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idU,hs+j,hs+i)); });
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idU,hs+j,hs+i)); });
     data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
     data_mean = data_mean_perproc;
     if (use_mpi) {
@@ -1802,7 +1746,7 @@ public:
     }
 
 
-    parallel_for( Bounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idV,hs+j,hs+i)); });
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idV,hs+j,hs+i)); });
     data_mean_perproc = yakl::intrinsics::sum(data)/nx/ny;
     data_mean = data_mean_perproc;
     if (use_mpi) {
@@ -1832,14 +1776,16 @@ public:
 
   // ord stencil values to ngll GLL values and ngll GLL derivatives; store in DTs
   YAKL_INLINE void reconstruct_gll_values_and_derivs( SArray<real,1,ord> const &stencil , SArray<real,2,nAder,ngll> &DTs ,
-                                                      SArray<real,2,nAder,ngll> &deriv_DTs, real dx , bool doweno  ,
+                                                      SArray<real,2,nAder,ngll> &deriv_DTs, real dx  ,
                                                       SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &s2d2g ,
                                                       SArray<real,2,ord,ngll> const &c2g , SArray<real,2,ord,ngll> const &c2d2g ,
-                                                      weno::wt_type const &idl ,
-                                                      SArray<real,2,ord,ord> const &s2c ) {
+                                                      weno::wt_type const &idl , real sigma ,
+                                                      SArray<real,3,ord,ord,ord> const &weno_recon ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
-    weno::compute_weno_coefs( s2c , stencil , wenoCoefs , idl );
+    #if (ORD > 1)
+      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+    #endif
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
       real tmp       = 0;
@@ -1857,14 +1803,14 @@ public:
 
 
   // ord stencil values to ngll GLL values; store in DTs
-  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,2,nAder,ngll> &DTs , bool doweno ,
+  YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,2,nAder,ngll> &DTs ,
                                            SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &c2g ,
-                                           weno::wt_type const &idl ,
-                                           SArray<real,2,ord,ord> const &s2c ) {
+                                           weno::wt_type const &idl , real sigma ,
+                                           SArray<real,3,ord,ord,ord> const &weno_recon ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
     #if (ORD > 1)
-      weno::compute_weno_coefs( s2c , stencil , wenoCoefs , idl );
+      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
     #endif
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {

@@ -43,7 +43,7 @@ namespace weno {
     } else if (ord == 9) {
       idl(0) = 1.;
       idl(1) = 1.;
-      idl(2) = 200000000.;
+      idl(2) = 10000.;
     }
     convexify(idl);
   }
@@ -84,7 +84,8 @@ namespace weno {
     // Compute total variation of all candidate polynomials
     tv(0) = al(1)*al(1);
     tv(1) = ar(1)*ar(1);
-    tv(2) = TransformMatrices::coefs_to_tv(ac);
+    // tv(2) = TransformMatrices::coefs_to_tv(ac);
+    tv(2) = (ac(1)*ac(1))+4.3333333333333333333333333333333333333_fp*(ac(2)*ac(2));
 
     // WENO weights are proportional to the inverse of TV**2 and then re-confexified
     for (int i=0; i<3; i++) {
@@ -93,8 +94,8 @@ namespace weno {
     convexify(wts);
 
     // Map WENO weights for sharper fronts and less sensitivity to "eps"
-    // map_weights(idl,wts);
-    // convexify(wts);
+    map_weights(idl,wts);
+    convexify(wts);
 
     // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
     for (int ii=0; ii<2; ii++) {

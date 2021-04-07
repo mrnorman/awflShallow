@@ -5,8 +5,8 @@ import numpy as np
 def compute_norms(lo,hi) :
   ny_lo = lo.shape[0]
   nx_lo = lo.shape[1]
-  factor_y = hi.shape[0] / lo.shape[0]
-  factor_x = hi.shape[1] / lo.shape[1]
+  factor_y = int( hi.shape[0] / lo.shape[0] )
+  factor_x = int( hi.shape[1] / lo.shape[1] )
   interp = lo.copy()
   for j in range(ny_lo) :
     for i in range(nx_lo) :

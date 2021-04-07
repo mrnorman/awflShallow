@@ -14,7 +14,6 @@
 #endif
 
 using yakl::c::parallel_for;
-using yakl::c::Bounds;
 using yakl::c::SimpleBounds;
 using yakl::fence;
 using yakl::min;
@@ -25,15 +24,11 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 3
+  #define ORD 5
 #endif
 
 #ifndef NGLL
   #define NGLL 3
-#endif
-
-#ifndef OVERSHOOT_THRESH
-  #define OVERSHOOT_THRESH .01
 #endif
 
 typedef double real;
@@ -62,7 +57,6 @@ typedef yakl::Array<real,8,yakl::memHost,yakl::styleC> realHost8d;
 
 int constexpr ord  = ORD;
 int constexpr ngll = NGLL;
-real constexpr overshootThresh = OVERSHOOT_THRESH;
 
 static_assert(ngll <= ord , "ERROR: ngll must be <= ord");
 
