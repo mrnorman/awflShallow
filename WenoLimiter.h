@@ -11,19 +11,21 @@ namespace weno {
 
   typedef SArray<real,1,hs+2> wt_type;
 
-  YAKL_INLINE void map_weights( SArray<real,1,hs+2> const &idl , SArray<real,1,hs+2> &wts ) {
+  template <unsigned int N>
+  YAKL_INLINE void map_weights( SArray<real,1,N> const &idl , SArray<real,1,N> &wts ) {
     // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
-    for (int i=0; i<hs+2; i++) {
+    for (int i=0; i<N; i++) {
       wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
     }
   }
 
 
-  YAKL_INLINE void convexify( SArray<real,1,hs+2> &wts ) {
+  template <unsigned int N>
+  YAKL_INLINE void convexify( SArray<real,1,N> &wts ) {
     real sum = 0._fp;
     real const eps = 1.0e-20;
-    for (int i=0; i<hs+2; i++) { sum += wts(i); }
-    for (int i=0; i<hs+2; i++) { wts(i) /= (sum + eps); }
+    for (int i=0; i<N; i++) { sum += wts(i); }
+    for (int i=0; i<N; i++) { wts(i) /= (sum + eps); }
   }
 
 
@@ -35,7 +37,7 @@ namespace weno {
       idl(2) = 8._fp;
     } else if (ord == 5) {
       sigma = 0.1_fp;
-      real f = 10;
+      real f = 5;
       idl(0) = 1._fp;
       idl(1) = f;
       idl(2) = 1._fp;
@@ -94,7 +96,19 @@ namespace weno {
   }
 
 
-  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u , SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl , real const sigma ) {
+  YAKL_INLINE void compute_weno_coefs_7( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
+                                         SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl_ignore ,
+                                         real const sigma_ignore );
+
+
+  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
+                                       SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl , real const sigma ) {
+
+    if (ord == 7) {
+      compute_weno_coefs_7( recon , u , aw , idl , sigma );
+      return;
+    }
+
     SArray<real,1,hs+2> tv;
     SArray<real,1,hs+2> wts;
     SArray<real,2,hs+2,ord> a;
@@ -172,6 +186,86 @@ namespace weno {
       for (int ii=0; ii<ord; ii++) {
         aw(ii) += wts(i) * a(i,ii);
       }
+    }
+  }
+
+
+
+  YAKL_INLINE void compute_weno_coefs_7( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
+                                         SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl_ignore ,
+                                         real const sigma_ignore ) {
+    SArray<real,1,4> idl;
+    SArray<real,1,4> tv;
+    SArray<real,1,4> wts;
+    SArray<real,1,3> al;
+    SArray<real,1,3> ac;
+    SArray<real,1,3> ar;
+    SArray<real,1,ord> ah;
+    real lo_avg;
+    real const eps = 1.0e-20;
+
+    idl(0) = 1.;
+    idl(1) = 2;
+    idl(2) = 1.;
+    idl(3) = 1000;
+    convexify(idl);
+
+    real sigma = 1.e-1;
+
+    al(0) = -1./24.*u(1) + 13./12.*u(2) - 1./24.*u(3);
+    ac(0) = -1./24.*u(2) + 13./12.*u(3) - 1./24.*u(4);
+    ar(0) = -1./24.*u(3) + 13./12.*u(4) - 1./24.*u(5);
+
+    al(1) = 0.5_fp * (u(3) - u(1));
+    ac(1) = 0.5_fp * (u(4) - u(2));
+    ar(1) = 0.5_fp * (u(5) - u(3));
+
+    al(2) = 0.5_fp*u(1) - u(2) + 0.5_fp*u(3);
+    ac(2) = 0.5_fp*u(2) - u(3) + 0.5_fp*u(4);
+    ar(2) = 0.5_fp*u(3) - u(4) + 0.5_fp*u(5);
+
+    for (int ii=0; ii<ord; ii++) {
+      ah(ii) = 0;
+      for (int s=0; s<ord; s++) {
+        ah(ii) += recon(hs+1,s,ii) * u(s);
+      }
+    }
+
+    // Compute "bridge" polynomial
+    for (int ii=0; ii<3; ii++) {
+      ah(ii) = ah(ii) - idl(0)*al(ii) - idl(1)*ac(ii) - idl(2)*ar(ii);
+    }
+    for (int ii=0; ii<ord; ii++) {
+      ah(ii) /= idl(3);
+    }
+
+    // Compute total variation of all candidate polynomials
+    tv(0) = al(1)*al(1) + 13./3.*al(2)*al(2);
+    tv(1) = ac(1)*ac(1) + 13./3.*ac(2)*ac(2);
+    tv(2) = ar(1)*ar(1) + 13./3.*ar(2)*ar(2);
+    tv(3) = ah(1)*ah(1) + 13./3.*ah(2)*ah(2);
+    // tv(3) = TransformMatrices::coefs_to_tv(ah);
+
+    // Reduce the bridge polynomial TV to something closer to the other TV values
+    lo_avg = ( tv(0) + tv(1) + tv(2) ) / 3.;
+    tv(3) = lo_avg + ( tv(3) - lo_avg ) * sigma;
+
+    // WENO weights are proportional to the inverse of TV**2 and then re-confexified
+    for (int i=0; i<4; i++) {
+      wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
+    }
+    convexify(wts);
+
+    // Map WENO weights for sharper fronts and less sensitivity to "eps"
+    // map_weights(idl,wts);
+    // convexify(wts);
+
+    // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
+    for (int ii=0; ii<3; ii++) {
+      aw(ii) = wts(0)*al(ii) + wts(1)*ac(ii) + wts(2)*ar(ii) + wts(3)*ah(ii);
+    }
+    for (int ii=3; ii<ord; ii++) {
+      aw(ii) = wts(3) * ah(ii);
     }
   }
 
