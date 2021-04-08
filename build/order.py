@@ -13,8 +13,8 @@ def compute_norms(lo,hi) :
   if (ny_hi == 1) :
     interp = np.mean( np.reshape(hi ,[-1,factor_x]) , axis=1 )
   else :
-    tmp    = np.reshape( np.mean( np.reshape(hi ,[-1,factor_x]) , axis=1 ) , [ny_hi,nx_lo] ).T
-    interp = np.reshape( np.mean( np.reshape(tmp,[-1,factor_y]) , axis=1 ) , [ny_lo,nx_lo] ).T
+    tmp    = np.mean( np.reshape( hi    , [ny_hi , nx_lo , factor_x] ) , axis=2 )
+    interp = np.mean( np.reshape( tmp.T , [nx_lo , ny_lo , factor_y] ) , axis=2 ).T
 
   l1 = np.sum(np.abs(interp-lo)) / np.sum(np.abs(interp))
   l2 = np.sqrt( np.sum(np.abs(interp-lo)**2) / np.sum(np.abs(interp)**2) )
@@ -56,7 +56,7 @@ def print_norms(fname_hi,fname_a,fname_b) :
   l1a_v,l2a_v,lia_v = compute_norms(v_a,v_hi)
   l1b_v,l2b_v,lib_v = compute_norms(v_b,v_hi)
 
-  denom = np.log(float(nx_a)/float(nx_b))
+  denom = np.log(float(ny_a)/float(ny_b))
   cv1_h,cv2_h,cvi_h = [np.log(l1b_h/l1a_h)/denom , np.log(l2b_h/l2a_h)/denom , np.log(lib_h/lia_h)/denom ]
   cv1_u,cv2_u,cvi_u = [np.log(l1b_u/l1a_u)/denom , np.log(l2b_u/l2a_u)/denom , np.log(lib_u/lia_u)/denom ]
   cv1_v,cv2_v,cvi_v = [np.log(l1b_v/l1a_v)/denom , np.log(l2b_v/l2a_v)/denom , np.log(lib_v/lia_v)/denom ]
