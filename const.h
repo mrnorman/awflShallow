@@ -28,7 +28,7 @@ using yakl::memset;
 #endif
 
 #ifndef NGLL
-  #define NGLL 3
+  #define NGLL 5
 #endif
 
 typedef double real;

@@ -3,18 +3,19 @@ from netCDF4 import Dataset
 import numpy as np
 
 def compute_norms(lo,hi) :
+  ny_hi = hi.shape[0]
+  nx_hi = hi.shape[1]
   ny_lo = lo.shape[0]
   nx_lo = lo.shape[1]
   factor_y = int( hi.shape[0] / lo.shape[0] )
   factor_x = int( hi.shape[1] / lo.shape[1] )
-  interp = lo.copy()
-  for j in range(ny_lo) :
-    for i in range(nx_lo) :
-      interp[j,i] = 0
-      for jj in range(factor_y) :
-        for ii in range(factor_x) :
-          interp[j,i] += hi[j*factor_y+jj,i*factor_x+ii]
-      interp[j,i] = interp[j,i] / (factor_y*factor_x)
+
+  if (ny_hi == 1) :
+    interp = np.mean( np.reshape(hi ,[-1,factor_x]) , axis=1 )
+  else :
+    tmp    = np.reshape( np.mean( np.reshape(hi ,[-1,factor_x]) , axis=1 ) , [ny_hi,nx_lo] ).T
+    interp = np.reshape( np.mean( np.reshape(tmp,[-1,factor_y]) , axis=1 ) , [ny_lo,nx_lo] ).T
+
   l1 = np.sum(np.abs(interp-lo)) / np.sum(np.abs(interp))
   l2 = np.sqrt( np.sum(np.abs(interp-lo)**2) / np.sum(np.abs(interp)**2) )
   li = np.max(np.abs(interp-lo)) / (np.max(interp) - np.min(interp))
@@ -64,11 +65,15 @@ def print_norms(fname_hi,fname_a,fname_b) :
     print(str(l1a_h)+" "+str(l1a_u)+" "+str(l1b_h)+" "+str(l1b_u)+" "+str(cv1_h)+" "+str(cv1_u))
     print(str(l2a_h)+" "+str(l2a_u)+" "+str(l2b_h)+" "+str(l2b_u)+" "+str(cv2_h)+" "+str(cv2_u))
     print(str(lia_h)+" "+str(lia_u)+" "+str(lib_h)+" "+str(lib_u)+" "+str(cvi_h)+" "+str(cvi_u))
+  else :
+    print(str(l1a_h)+" "+str(l1a_u)+" "+str(l1a_v)+" "+str(l1b_h)+" "+str(l1b_u)+" "+str(l1b_v)+" "+str(cv1_h)+" "+str(cv1_u)+" "+str(cv1_v))
+    print(str(l2a_h)+" "+str(l2a_u)+" "+str(l2a_v)+" "+str(l2b_h)+" "+str(l2b_u)+" "+str(l2b_v)+" "+str(cv2_h)+" "+str(cv2_u)+" "+str(cv2_v))
+    print(str(lia_h)+" "+str(lia_u)+" "+str(lia_v)+" "+str(lib_h)+" "+str(lib_u)+" "+str(lib_v)+" "+str(cvi_h)+" "+str(cvi_u)+" "+str(cvi_v))
 
 
-print_norms( "order_hi.nc" , "order_3_a.nc" , "order_3_b.nc" )
-print_norms( "order_hi.nc" , "order_5_a.nc" , "order_5_b.nc" )
-print_norms( "order_hi.nc" , "order_7_a.nc" , "order_7_b.nc" )
-print_norms( "order_hi.nc" , "order_9_a.nc" , "order_9_b.nc" )
+# print_norms( "order_hi.nc" , "order_3_a.nc" , "order_3_b.nc" )
+# print_norms( "order_hi.nc" , "order_5_a.nc" , "order_5_b.nc" )
 
+print_norms( "order_2d_hi.nc" , "order_2d_3_a.nc" , "order_2d_3_b.nc" )
+print_norms( "order_2d_hi.nc" , "order_2d_5_a.nc" , "order_2d_5_b.nc" )
 
