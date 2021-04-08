@@ -90,17 +90,12 @@ namespace profiles {
                             real &h, real &u, real &v, real &b) {
     h = 0;  u = 0;  v = 0;  b = 0;
 
-    // b = sin(2*M_PI*x) + cos(2*M_PI*y);
-    // h = 10 + exp( sin(2*M_PI*x) ) * cos(2*M_PI*y);
-    // real hu = sin( cos( 2*M_PI*x ) ) * sin(2*M_PI*y);
-    // real hv = cos(2*M_PI*x) * cos( sin( 2*M_PI*y ) );
-    // u = hu / h;
-    // v = hv / h;
-
-    b = sin(M_PI*y)*sin(M_PI*y);
-    h = 5 + exp( cos( 2*M_PI*y) );
-    real hv = sin( cos( 2*M_PI*y) );
-    u = hv / h;
+    b = sin(2*M_PI*x) + cos(2*M_PI*y);
+    h = 10 + exp( sin(2*M_PI*x) ) * cos(2*M_PI*y);
+    real hu = sin( cos( 2*M_PI*x ) ) * sin(2*M_PI*y);
+    real hv = cos(2*M_PI*x) * cos( sin( 2*M_PI*y ) );
+    u = hu / h;
+    v = hv / h;
   }
 
   
