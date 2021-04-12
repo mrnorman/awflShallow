@@ -34,7 +34,11 @@ public:
 
   // Flux time derivatives
   real4d fwaves;
+  real4d fwaves_x;
+  real4d fwaves_y;
   real3d surf_limits;
+  real3d surf_limits_x;
+  real3d surf_limits_y;
   real3d h_u_limits;
   real3d u_u_limits;
   real3d h_v_limits;
@@ -119,6 +123,8 @@ public:
   std::string bc_x_str;
   std::string bc_y_str;
 
+  bool dimsplit;
+
   static_assert(ord%2 == 1,"ERROR: ord must be an odd integer");
 
 
@@ -135,7 +141,8 @@ public:
 
 
   int num_split() const {
-    return 2;
+    if (dimsplit) { return 2; }
+    else          { return 1; }
   }
 
 
@@ -193,6 +200,8 @@ public:
 
     xlen = config["xlen"].as<real>();
     ylen = config["ylen"].as<real>();
+
+    dimsplit = config["dimsplit"].as<bool>();
 
     std::string bc_x_str = config["bc_x"].as<std::string>();
     if        (bc_x_str == "periodic") {
@@ -391,8 +400,15 @@ public:
       weno::wenoSetIdealSigma(this->idl,this->sigma);
     #endif
 
-    fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
-    surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
+    if (dimsplit) {
+      fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
+      surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
+    } else {
+      fwaves_x      = real4d("fwaves_x"     ,num_state,2,ny,nx+1);
+      fwaves_y      = real4d("fwaves_y"     ,num_state,2,ny+1,nx);
+      surf_limits_x = real3d("surf_limits_x"          ,2,ny,nx+1);
+      surf_limits_y = real3d("surf_limits_y"          ,2,ny+1,nx);
+    }
     h_u_limits   = real3d("h_u_limits"           ,2,ny+1,nx+1);
     u_u_limits   = real3d("u_u_limits"           ,2,ny+1,nx+1);
     h_v_limits   = real3d("h_v_limits"           ,2,ny+1,nx+1);
@@ -570,17 +586,27 @@ public:
 
 
 
-  // Compute state and tendency time derivatives from the state
   void compute_tendencies( StateArr &state , TendArr &tend , real dt , int splitIndex ) {
+    if (dimsplit) {
+      compute_tendencies_dimsplit(state,tend,dt,splitIndex);
+    } else {
+      compute_tendencies_multidim(state,tend,dt);
+    }
+  }
+
+
+
+  // Compute state and tendency time derivatives from the state
+  void compute_tendencies_dimsplit( StateArr &state , TendArr &tend , real dt , int splitIndex ) {
     if (dim_switch) {
       if      (splitIndex == 0) {
-        compute_tendenciesX( state , tend , dt );
+        compute_tendencies_dimsplit_X( state , tend , dt );
       }
       else if (splitIndex == 1) {
         if (sim1d) {
           memset( tend , 0._fp );
         } else {
-          compute_tendenciesY( state , tend , dt );
+          compute_tendencies_dimsplit_Y( state , tend , dt );
         }
       }
     } else {
@@ -588,10 +614,10 @@ public:
         if (sim1d) {
           memset( tend , 0._fp );
         } else {
-          compute_tendenciesY( state , tend , dt );
+          compute_tendencies_dimsplit_Y( state , tend , dt );
         }
       } else if (splitIndex == 1) {
-        compute_tendenciesX( state , tend , dt );
+        compute_tendencies_dimsplit_X( state , tend , dt );
       }
     }
   }
@@ -604,8 +630,221 @@ public:
 
 
 
+  void compute_tendencies_multidim( StateArr &state , TendArr &tend , real dt ) {
+    YAKL_SCOPE( bc_x          , this->bc_x               );
+    YAKL_SCOPE( bc_y          , this->bc_y               );
+    YAKL_SCOPE( nx            , this->nx                 );
+    YAKL_SCOPE( ny            , this->ny                 );
+    YAKL_SCOPE( dx            , this->dx                 );
+    YAKL_SCOPE( dy            , this->dy                 );
+    YAKL_SCOPE( bath          , this->bath               );
+    YAKL_SCOPE( s2g           , this->sten_to_gll        );
+    YAKL_SCOPE( s2d2g         , this->sten_to_deriv_gll  );
+    YAKL_SCOPE( c2g           , this->coefs_to_gll       );
+    YAKL_SCOPE( c2d2g         , this->coefs_to_deriv_gll );
+    YAKL_SCOPE( deriv_matrix  , this->deriv_matrix       );
+    YAKL_SCOPE( fwaves_x      , this->fwaves_x           );
+    YAKL_SCOPE( fwaves_y      , this->fwaves_y           );
+    YAKL_SCOPE( surf_limits_x , this->surf_limits_x      );
+    YAKL_SCOPE( surf_limits_y , this->surf_limits_y      );
+    YAKL_SCOPE( h_u_limits    , this->h_u_limits         );
+    YAKL_SCOPE( u_u_limits    , this->u_u_limits         );
+    YAKL_SCOPE( h_v_limits    , this->h_v_limits         );
+    YAKL_SCOPE( v_v_limits    , this->v_v_limits         );
+    YAKL_SCOPE( grav          , this->grav               );
+    YAKL_SCOPE( gllWts_ngll   , this->gllWts_ngll        );
+    YAKL_SCOPE( idl           , this->idl                );
+    YAKL_SCOPE( sigma         , this->sigma              );
+    YAKL_SCOPE( weno_recon    , this->weno_recon         );
+    YAKL_SCOPE( use_mpi       , this->use_mpi            );
+
+    if (sim1d) { endrun("ERROR: Cannot use multidim with ny == 1"); }
+
+    // Boundaries
+    if (use_mpi) {
+
+      #ifdef __ENABLE_MPI__
+      #endif
+
+    } else {
+
+      parallel_for( SimpleBounds<3>(num_state,ny,hs) , YAKL_LAMBDA (int l, int j, int ii) {
+        if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
+          state(l,hs+j,      ii) = state(l,hs+j,hs     );
+          state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+nx-1);
+          if (bc_x == BC_WALL && l == idU) {
+            state(l,hs+j,      ii) = 0;
+            state(l,hs+j,nx+hs+ii) = 0;
+          }
+        } else if (bc_x == BC_PERIODIC) {
+          state(l,hs+j,      ii) = state(l,hs+j,nx+ii);
+          state(l,hs+j,nx+hs+ii) = state(l,hs+j,hs+ii);
+        }
+      });
+
+      parallel_for( SimpleBounds<3>(num_state,hs,nx+2*hs) , YAKL_LAMBDA (int l, int jj, int i) {
+        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+          state(l,      jj,i) = state(l,hs     ,i);
+          state(l,ny+hs+jj,i) = state(l,hs+ny-1,i);
+          if (bc_y == BC_WALL && l == idV) {
+            state(l,      jj,i) = 0;
+            state(l,ny+hs+jj,i) = 0;
+          }
+        } else if (bc_y == BC_PERIODIC) {
+          state(l,      jj,i) = state(l,ny+jj,i);
+          state(l,ny+hs+jj,i) = state(l,hs+jj,i);
+        }
+      });
+
+    }
+
+    #if (ORD == 1)
+      // Split the flux difference into characteristic waves
+      parallel_for( SimpleBounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
+        // State values for left and right
+        real h_L  = state(idH,hs+j,hs+i-1);
+        real u_L  = state(idU,hs+j,hs+i-1);
+        real v_L  = state(idV,hs+j,hs+i-1);
+        real hs_L = bath (    hs+j,hs+i-1) + h_L;  // Surface height
+        real h_R  = state(idH,hs+j,hs+i  );
+        real u_R  = state(idU,hs+j,hs+i  );
+        real v_R  = state(idV,hs+j,hs+i  );
+        real hs_R = bath (    hs+j,hs+i  ) + h_R;  // Surface height
+        // Compute interface linearly averaged values for the state
+        real h = 0.5_fp * (h_L + h_R);
+        real u = 0.5_fp * (u_L + u_R);
+        real v = 0.5_fp * (v_L + v_R);
+        real gw = sqrt(grav*h);
+        if (gw > 0) {
+          // Compute flux difference splitting for v
+          fwaves_x(idV,0,j,i) = 0;
+          fwaves_x(idV,1,j,i) = 0;
+          if (! sim1d) {
+            if (u < 0) {
+              fwaves_x(idV,0,j,i) += u*(v_R - v_L);
+            } else {
+              fwaves_x(idV,1,j,i) += u*(v_R - v_L);
+            }
+          }
+
+          // Compute left and right flux for h and u
+          real f1_L = h_L*u_L;
+          real f1_R = h_R*u_R;
+          real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
+          real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
+          // Compute left and right flux-based characteristic variables
+          real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
+          real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);
+          real w2_L = 0.5_fp * f1_L + h*f2_L/(2*gw);
+          real w2_R = 0.5_fp * f1_R + h*f2_R/(2*gw);
+          // Compute upwind flux-based characteristic variables
+          real w1_U, w2_U;
+          // Wave 1 (u-gw)
+          if (u-gw > 0) {
+            w1_U = w1_L;
+          } else {
+            w1_U = w1_R;
+          }
+          // Wave 2 (u+gw)
+          if (u+gw > 0) {
+            w2_U = w2_L;
+          } else {
+            w2_U = w2_R;
+          }
+          fwaves_x(idH,0,j,i) = w1_U + w2_U;
+          fwaves_x(idU,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+        } else {
+          fwaves_x(idV,0,j,i) = 0;
+          fwaves_x(idV,1,j,i) = 0;
+          fwaves_x(idH,0,j,i) = 0;
+          fwaves_x(idU,0,j,i) = 0;
+        }
+      });
+
+      // Split the flux difference into characteristic waves
+      parallel_for( SimpleBounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
+        // State values for left and right
+        real h_L  = state(idH,hs+j-1,hs+i);
+        real u_L  = state(idU,hs+j-1,hs+i);
+        real v_L  = state(idV,hs+j-1,hs+i);
+        real hs_L = bath (    hs+j-1,hs+i) + h_L;  // Surface height
+        real h_R  = state(idH,hs+j  ,hs+i);
+        real u_R  = state(idU,hs+j  ,hs+i);
+        real v_R  = state(idV,hs+j  ,hs+i);
+        real hs_R = bath (    hs+j  ,hs+i) + h_R;  // Surface height
+        // Compute interface linearly averaged values for the state
+        real h = 0.5_fp * (h_L + h_R);
+        real u = 0.5_fp * (u_L + u_R);
+        real v = 0.5_fp * (v_L + v_R);
+        real gw = sqrt(grav*h);
+        if (gw > 0) {
+          // Compute flux difference splitting for u update
+          fwaves_y(idU,0,j,i) = 0;
+          fwaves_y(idU,1,j,i) = 0;
+
+          if (v < 0) {
+            fwaves_y(idU,0,j,i) += v*(u_R  - u_L);
+          } else {
+            fwaves_y(idU,1,j,i) += v*(u_R  - u_L);
+          }
+
+
+          // Compute left and right flux for h and v
+          real f1_L = h_L*v_L;
+          real f1_R = h_R*v_R;
+          real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
+          real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
+          // Compute left and right flux-based characteristic variables
+          real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
+          real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
+          real w2_L = 0.5_fp * f1_L + h*f3_L/(2*gw);
+          real w2_R = 0.5_fp * f1_R + h*f3_R/(2*gw);
+          // Compute upwind flux-based characteristic variables
+          real w1_U, w2_U;
+          // Wave 1 (v-gw)
+          if (v-gw > 0) {
+            w1_U = w1_L;
+          } else {
+            w1_U = w1_R;
+          }
+          // Wave 2 (v+gw)
+          if (v+gw > 0) {
+            w2_U = w2_L;
+          } else {
+            w2_U = w2_R;
+          }
+          fwaves_y(idH,0,j,i) = w1_U + w2_U;
+          fwaves_y(idV,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
+        } else {
+          fwaves_y(idU,0,j,i) = 0;
+          fwaves_y(idU,1,j,i) = 0;
+          fwaves_y(idH,0,j,i) = 0;
+          fwaves_y(idV,0,j,i) = 0;
+        }
+      });
+      //
+      // Apply the tendencies
+      parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
+        if (l == idH || l == idU) {
+          tend(l,j,i) = -( fwaves_x(l,0,j,i+1) - fwaves_x(l,0,j,i) ) / dx;
+        } else {
+          tend(l,j,i) = -( fwaves_x(l,1,j,i) + fwaves_x(l,0,j,i+1) ) / dx;
+        }
+        if (l == idH || l == idV) {
+          tend(l,j,i) = -( fwaves_y(l,0,j+1,i) - fwaves_y(l,0,j,i) ) / dy;
+        } else {
+          tend(l,j,i) = -( fwaves_y(l,1,j,i) + fwaves_y(l,0,j+1,i) ) / dy;
+        }
+      });
+      return;
+    #endif
+
+  }
+
+
+
   // Compute state and tendency time derivatives from the state
-  void compute_tendenciesX( StateArr &state , TendArr &tend , real dt ) {
+  void compute_tendencies_dimsplit_X( StateArr &state , TendArr &tend , real dt ) {
     YAKL_SCOPE( bc_x         , this->bc_x               );
     YAKL_SCOPE( nx           , this->nx                 );
     YAKL_SCOPE( dx           , this->dx                 );
@@ -1072,7 +1311,7 @@ public:
 
 
   // Compute state and tendency time derivatives from the state
-  void compute_tendenciesY( StateArr &state , TendArr &tend , real dt ) {
+  void compute_tendencies_dimsplit_Y( StateArr &state , TendArr &tend , real dt ) {
     YAKL_SCOPE( bc_y         , this->bc_y               );
     YAKL_SCOPE( ny           , this->ny                 );
     YAKL_SCOPE( dy           , this->dy                 );

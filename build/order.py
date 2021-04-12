@@ -11,7 +11,7 @@ def compute_norms(lo,hi) :
   factor_x = int( hi.shape[1] / lo.shape[1] )
 
   if (ny_hi == 1) :
-    interp = np.mean( np.reshape(hi ,[-1,factor_x]) , axis=1 )
+    interp = np.mean( np.reshape(hi ,[nx_lo,factor_x]) , axis=1 )
   else :
     tmp    = np.mean( np.reshape( hi    , [ny_hi , nx_lo , factor_x] ) , axis=2 )
     interp = np.mean( np.reshape( tmp.T , [nx_lo , ny_lo , factor_y] ) , axis=2 ).T
