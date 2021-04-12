@@ -24,11 +24,11 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 1
+  #define ORD 3
 #endif
 
 #ifndef NGLL
-  #define NGLL 1
+  #define NGLL 3
 #endif
 
 typedef double real;

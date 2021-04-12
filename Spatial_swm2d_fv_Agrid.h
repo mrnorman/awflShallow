@@ -838,6 +838,75 @@ public:
       return;
     #endif
 
+
+    // Loop over cells, reconstruct, compute time derivs, time average,
+    // store state edge fluxes, compute cell-centered tendencies
+    parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
+      SArray<real,3,nAder,ngll,ngll> h_DTs;
+      SArray<real,3,nAder,ngll,ngll> u_DTs;
+      SArray<real,3,nAder,ngll,ngll> v_DTs;
+      SArray<real,3,nAder,ngll,ngll> du_DTs;
+      SArray<real,3,nAder,ngll,ngll> dv_DTs;
+      SArray<real,3,nAder,ngll,ngll> surf_DTs;
+
+      ///////////////////////
+      // X-direction
+      ///////////////////////
+      // Reconstruct surface height and u velocity via characteristics
+      {
+        real h  = state(idH,hs+j,hs+i);
+        real gw = sqrt(grav*h);
+
+        SArray<real,1,ord> avg_s;
+        SArray<real,1,ord> avg_u;
+
+        // Compute the average row for h and u
+        for (int ii=0; ii < ord; ii++) {
+          avg_s(ii) = 0;
+          avg_u(ii) = 0;
+          for (int jj=0; jj < ord; jj++) {
+            avg_s(ii) += state(idH,j+jj,i+ii) + bath(j+jj,i+ii);
+            avg_u(ii) += state(idU,j+jj,i+ii);
+          }
+          avg_s(ii) /= ord;
+          avg_u(ii) /= ord;
+        }
+
+        SArray<real,1,hs+2> wts_w1;
+        SArray<real,1,hs+2> wts_w2;
+
+        // Compute WENO weights for average row of first characteristic variable
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) - h/(2*gw)*avg_u(ii); }
+        compute_weno_weights( recon , u , idl , sigma , wts_w1 );
+
+        // Compute WENO weights for average row of second characteristic variable
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) + h/(2*gw)*avg_u(ii); }
+        compute_weno_weights( recon , u , idl , sigma , wts_w2 );
+
+        for (int ii=0; ii < ngll; ii++) {
+          real w1 = du_DTs(0,ii);
+          real w2 = u_DTs(0,ii);
+          surf_DTs(0,ii) =       w1 +      w2;
+          u_DTs   (0,ii) = -gw/h*w1 + gw/h*w2;
+        }
+      }
+
+      for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(hs+j,i+ii); }
+      reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+
+      for (int ii=0; ii<ngll; ii++) { h_DTs(0,ii) = surf_DTs(0,ii) - h_DTs(0,ii); }
+
+      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
+      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , s2g , s2d2g ,
+                                         c2g , c2d2g , idl , sigma , weno_recon );
+
+      if (bc_x == BC_WALL) {
+        if (i == nx-1) u_DTs(0,ngll-1) = 0;
+        if (i == 0   ) u_DTs(0,0     ) = 0;
+      }
+
+    });
+
   }
 
 
