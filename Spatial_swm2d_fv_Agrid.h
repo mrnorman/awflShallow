@@ -719,12 +719,10 @@ public:
           // Compute flux difference splitting for v
           fwaves_x(idV,0,j,i) = 0;
           fwaves_x(idV,1,j,i) = 0;
-          if (! sim1d) {
-            if (u < 0) {
-              fwaves_x(idV,0,j,i) += u*(v_R - v_L);
-            } else {
-              fwaves_x(idV,1,j,i) += u*(v_R - v_L);
-            }
+          if (u < 0) {
+            fwaves_x(idV,0,j,i) += u*(v_R - v_L);
+          } else {
+            fwaves_x(idV,1,j,i) += u*(v_R - v_L);
           }
 
           // Compute left and right flux for h and u
@@ -831,9 +829,9 @@ public:
           tend(l,j,i) = -( fwaves_x(l,1,j,i) + fwaves_x(l,0,j,i+1) ) / dx;
         }
         if (l == idH || l == idV) {
-          tend(l,j,i) = -( fwaves_y(l,0,j+1,i) - fwaves_y(l,0,j,i) ) / dy;
+          tend(l,j,i) += -( fwaves_y(l,0,j+1,i) - fwaves_y(l,0,j,i) ) / dy;
         } else {
-          tend(l,j,i) = -( fwaves_y(l,1,j,i) + fwaves_y(l,0,j+1,i) ) / dy;
+          tend(l,j,i) += -( fwaves_y(l,1,j,i) + fwaves_y(l,0,j+1,i) ) / dy;
         }
       });
       return;
