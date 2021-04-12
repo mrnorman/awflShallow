@@ -700,127 +700,128 @@ public:
 
     #if (ORD == 1)
       // Split the flux difference into characteristic waves
-      parallel_for( SimpleBounds<2>(ny,nx+1) , YAKL_LAMBDA (int j, int i) {
-        // State values for left and right
-        real h_L  = state(idH,hs+j,hs+i-1);
-        real u_L  = state(idU,hs+j,hs+i-1);
-        real v_L  = state(idV,hs+j,hs+i-1);
-        real hs_L = bath (    hs+j,hs+i-1) + h_L;  // Surface height
-        real h_R  = state(idH,hs+j,hs+i  );
-        real u_R  = state(idU,hs+j,hs+i  );
-        real v_R  = state(idV,hs+j,hs+i  );
-        real hs_R = bath (    hs+j,hs+i  ) + h_R;  // Surface height
-        // Compute interface linearly averaged values for the state
-        real h = 0.5_fp * (h_L + h_R);
-        real u = 0.5_fp * (u_L + u_R);
-        real v = 0.5_fp * (v_L + v_R);
-        real gw = sqrt(grav*h);
-        if (gw > 0) {
-          // Compute flux difference splitting for v
-          fwaves_x(idV,0,j,i) = 0;
-          fwaves_x(idV,1,j,i) = 0;
-          if (u < 0) {
-            fwaves_x(idV,0,j,i) += u*(v_R - v_L);
-          } else {
-            fwaves_x(idV,1,j,i) += u*(v_R - v_L);
-          }
+      parallel_for( SimpleBounds<2>(ny+1,nx+1) , YAKL_LAMBDA (int j, int i) {
+        if (j < ny) {
+          // State values for left and right
+          real h_L  = state(idH,hs+j,hs+i-1);
+          real u_L  = state(idU,hs+j,hs+i-1);
+          real v_L  = state(idV,hs+j,hs+i-1);
+          real hs_L = bath (    hs+j,hs+i-1) + h_L;  // Surface height
+          real h_R  = state(idH,hs+j,hs+i  );
+          real u_R  = state(idU,hs+j,hs+i  );
+          real v_R  = state(idV,hs+j,hs+i  );
+          real hs_R = bath (    hs+j,hs+i  ) + h_R;  // Surface height
+          // Compute interface linearly averaged values for the state
+          real h = 0.5_fp * (h_L + h_R);
+          real u = 0.5_fp * (u_L + u_R);
+          real v = 0.5_fp * (v_L + v_R);
+          real gw = sqrt(grav*h);
+          if (gw > 0) {
+            // Compute flux difference splitting for v
+            fwaves_x(idV,0,j,i) = 0;
+            fwaves_x(idV,1,j,i) = 0;
+            if (u < 0) {
+              fwaves_x(idV,0,j,i) += u*(v_R - v_L);
+            } else {
+              fwaves_x(idV,1,j,i) += u*(v_R - v_L);
+            }
 
-          // Compute left and right flux for h and u
-          real f1_L = h_L*u_L;
-          real f1_R = h_R*u_R;
-          real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
-          real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
-          // Compute left and right flux-based characteristic variables
-          real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
-          real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);
-          real w2_L = 0.5_fp * f1_L + h*f2_L/(2*gw);
-          real w2_R = 0.5_fp * f1_R + h*f2_R/(2*gw);
-          // Compute upwind flux-based characteristic variables
-          real w1_U, w2_U;
-          // Wave 1 (u-gw)
-          if (u-gw > 0) {
-            w1_U = w1_L;
+            // Compute left and right flux for h and u
+            real f1_L = h_L*u_L;
+            real f1_R = h_R*u_R;
+            real f2_L = u_L*u_L*0.5_fp + grav*hs_L;
+            real f2_R = u_R*u_R*0.5_fp + grav*hs_R;
+            // Compute left and right flux-based characteristic variables
+            real w1_L = 0.5_fp * f1_L - h*f2_L/(2*gw);
+            real w1_R = 0.5_fp * f1_R - h*f2_R/(2*gw);
+            real w2_L = 0.5_fp * f1_L + h*f2_L/(2*gw);
+            real w2_R = 0.5_fp * f1_R + h*f2_R/(2*gw);
+            // Compute upwind flux-based characteristic variables
+            real w1_U, w2_U;
+            // Wave 1 (u-gw)
+            if (u-gw > 0) {
+              w1_U = w1_L;
+            } else {
+              w1_U = w1_R;
+            }
+            // Wave 2 (u+gw)
+            if (u+gw > 0) {
+              w2_U = w2_L;
+            } else {
+              w2_U = w2_R;
+            }
+            fwaves_x(idH,0,j,i) = w1_U + w2_U;
+            fwaves_x(idU,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
           } else {
-            w1_U = w1_R;
+            fwaves_x(idV,0,j,i) = 0;
+            fwaves_x(idV,1,j,i) = 0;
+            fwaves_x(idH,0,j,i) = 0;
+            fwaves_x(idU,0,j,i) = 0;
           }
-          // Wave 2 (u+gw)
-          if (u+gw > 0) {
-            w2_U = w2_L;
+        }
+        if (i < nx) {
+          // State values for left and right
+          real h_L  = state(idH,hs+j-1,hs+i);
+          real u_L  = state(idU,hs+j-1,hs+i);
+          real v_L  = state(idV,hs+j-1,hs+i);
+          real hs_L = bath (    hs+j-1,hs+i) + h_L;  // Surface height
+          real h_R  = state(idH,hs+j  ,hs+i);
+          real u_R  = state(idU,hs+j  ,hs+i);
+          real v_R  = state(idV,hs+j  ,hs+i);
+          real hs_R = bath (    hs+j  ,hs+i) + h_R;  // Surface height
+          // Compute interface linearly averaged values for the state
+          real h = 0.5_fp * (h_L + h_R);
+          real u = 0.5_fp * (u_L + u_R);
+          real v = 0.5_fp * (v_L + v_R);
+          real gw = sqrt(grav*h);
+          if (gw > 0) {
+            // Compute flux difference splitting for u update
+            fwaves_y(idU,0,j,i) = 0;
+            fwaves_y(idU,1,j,i) = 0;
+
+            if (v < 0) {
+              fwaves_y(idU,0,j,i) += v*(u_R  - u_L);
+            } else {
+              fwaves_y(idU,1,j,i) += v*(u_R  - u_L);
+            }
+
+
+            // Compute left and right flux for h and v
+            real f1_L = h_L*v_L;
+            real f1_R = h_R*v_R;
+            real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
+            real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
+            // Compute left and right flux-based characteristic variables
+            real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
+            real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
+            real w2_L = 0.5_fp * f1_L + h*f3_L/(2*gw);
+            real w2_R = 0.5_fp * f1_R + h*f3_R/(2*gw);
+            // Compute upwind flux-based characteristic variables
+            real w1_U, w2_U;
+            // Wave 1 (v-gw)
+            if (v-gw > 0) {
+              w1_U = w1_L;
+            } else {
+              w1_U = w1_R;
+            }
+            // Wave 2 (v+gw)
+            if (v+gw > 0) {
+              w2_U = w2_L;
+            } else {
+              w2_U = w2_R;
+            }
+            fwaves_y(idH,0,j,i) = w1_U + w2_U;
+            fwaves_y(idV,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
           } else {
-            w2_U = w2_R;
+            fwaves_y(idU,0,j,i) = 0;
+            fwaves_y(idU,1,j,i) = 0;
+            fwaves_y(idH,0,j,i) = 0;
+            fwaves_y(idV,0,j,i) = 0;
           }
-          fwaves_x(idH,0,j,i) = w1_U + w2_U;
-          fwaves_x(idU,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
-        } else {
-          fwaves_x(idV,0,j,i) = 0;
-          fwaves_x(idV,1,j,i) = 0;
-          fwaves_x(idH,0,j,i) = 0;
-          fwaves_x(idU,0,j,i) = 0;
         }
       });
 
-      // Split the flux difference into characteristic waves
-      parallel_for( SimpleBounds<2>(ny+1,nx) , YAKL_LAMBDA (int j, int i) {
-        // State values for left and right
-        real h_L  = state(idH,hs+j-1,hs+i);
-        real u_L  = state(idU,hs+j-1,hs+i);
-        real v_L  = state(idV,hs+j-1,hs+i);
-        real hs_L = bath (    hs+j-1,hs+i) + h_L;  // Surface height
-        real h_R  = state(idH,hs+j  ,hs+i);
-        real u_R  = state(idU,hs+j  ,hs+i);
-        real v_R  = state(idV,hs+j  ,hs+i);
-        real hs_R = bath (    hs+j  ,hs+i) + h_R;  // Surface height
-        // Compute interface linearly averaged values for the state
-        real h = 0.5_fp * (h_L + h_R);
-        real u = 0.5_fp * (u_L + u_R);
-        real v = 0.5_fp * (v_L + v_R);
-        real gw = sqrt(grav*h);
-        if (gw > 0) {
-          // Compute flux difference splitting for u update
-          fwaves_y(idU,0,j,i) = 0;
-          fwaves_y(idU,1,j,i) = 0;
 
-          if (v < 0) {
-            fwaves_y(idU,0,j,i) += v*(u_R  - u_L);
-          } else {
-            fwaves_y(idU,1,j,i) += v*(u_R  - u_L);
-          }
-
-
-          // Compute left and right flux for h and v
-          real f1_L = h_L*v_L;
-          real f1_R = h_R*v_R;
-          real f3_L = v_L*v_L*0.5_fp + grav*hs_L;
-          real f3_R = v_R*v_R*0.5_fp + grav*hs_R;
-          // Compute left and right flux-based characteristic variables
-          real w1_L = 0.5_fp * f1_L - h*f3_L/(2*gw);
-          real w1_R = 0.5_fp * f1_R - h*f3_R/(2*gw);
-          real w2_L = 0.5_fp * f1_L + h*f3_L/(2*gw);
-          real w2_R = 0.5_fp * f1_R + h*f3_R/(2*gw);
-          // Compute upwind flux-based characteristic variables
-          real w1_U, w2_U;
-          // Wave 1 (v-gw)
-          if (v-gw > 0) {
-            w1_U = w1_L;
-          } else {
-            w1_U = w1_R;
-          }
-          // Wave 2 (v+gw)
-          if (v+gw > 0) {
-            w2_U = w2_L;
-          } else {
-            w2_U = w2_R;
-          }
-          fwaves_y(idH,0,j,i) = w1_U + w2_U;
-          fwaves_y(idV,0,j,i) = -w1_U*gw/h + w2_U*gw/h;
-        } else {
-          fwaves_y(idU,0,j,i) = 0;
-          fwaves_y(idU,1,j,i) = 0;
-          fwaves_y(idH,0,j,i) = 0;
-          fwaves_y(idV,0,j,i) = 0;
-        }
-      });
-      //
       // Apply the tendencies
       parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
         if (l == idH || l == idU) {
