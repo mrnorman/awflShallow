@@ -845,60 +845,152 @@ public:
       SArray<real,3,nAder,ngll,ngll> h_DTs;
       SArray<real,3,nAder,ngll,ngll> u_DTs;
       SArray<real,3,nAder,ngll,ngll> v_DTs;
-      SArray<real,3,nAder,ngll,ngll> du_DTs;
-      SArray<real,3,nAder,ngll,ngll> dv_DTs;
+      SArray<real,3,nAder,ngll,ngll> dudy_DTs;
+      SArray<real,3,nAder,ngll,ngll> dvdx_DTs;
       SArray<real,3,nAder,ngll,ngll> surf_DTs;
 
-      ///////////////////////
-      // X-direction
-      ///////////////////////
+      ///////////////////////////////////////
+      // X-direction surf, u, v, dvdx, bath
+      ///////////////////////////////////////
       // Reconstruct surface height and u velocity via characteristics
       {
-        real h  = state(idH,hs+j,hs+i);
-        real gw = sqrt(grav*h);
-
-        SArray<real,1,ord> avg_s;
-        SArray<real,1,ord> avg_u;
-
-        // Compute the average row for h and u
-        for (int ii=0; ii < ord; ii++) {
-          avg_s(ii) = 0;
-          avg_u(ii) = 0;
-          for (int jj=0; jj < ord; jj++) {
-            avg_s(ii) += state(idH,j+jj,i+ii) + bath(j+jj,i+ii);
-            avg_u(ii) += state(idU,j+jj,i+ii);
-          }
-          avg_s(ii) /= ord;
-          avg_u(ii) /= ord;
-        }
-
         SArray<real,1,hs+2> wts_w1;
         SArray<real,1,hs+2> wts_w2;
 
-        // Compute WENO weights for average row of first characteristic variable
-        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) - h/(2*gw)*avg_u(ii); }
-        compute_weno_weights( recon , u , idl , sigma , wts_w1 );
+        // Compute WENO weights on average stencils of characteristic variables
+        {
+          real h  = state(idH,hs+j,hs+i);
+          real gw = sqrt(grav*h);
 
-        // Compute WENO weights for average row of second characteristic variable
-        for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) + h/(2*gw)*avg_u(ii); }
-        compute_weno_weights( recon , u , idl , sigma , wts_w2 );
+          SArray<real,1,ord> avg_s;
+          SArray<real,1,ord> avg_u;
 
-        for (int ii=0; ii < ngll; ii++) {
-          real w1 = du_DTs(0,ii);
-          real w2 = u_DTs(0,ii);
-          surf_DTs(0,ii) =       w1 +      w2;
-          u_DTs   (0,ii) = -gw/h*w1 + gw/h*w2;
+          // Compute the average row for h and u
+          for (int ii=0; ii < ord; ii++) {
+            avg_s(ii) = 0;
+            avg_u(ii) = 0;
+            for (int jj=0; jj < ord; jj++) {
+              avg_s(ii) += state(idH,j+jj,i+ii) + bath(j+jj,i+ii);
+              avg_u(ii) += state(idU,j+jj,i+ii);
+            }
+            avg_s(ii) /= ord;
+            avg_u(ii) /= ord;
+          }
+
+          // Compute WENO weights for average stencil of characteristic variables
+          for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) - h/(2*gw)*avg_u(ii); }
+          compute_weno_weights( weno_recon , stencil , idl , sigma , wts_w1 );
+          for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) + h/(2*gw)*avg_u(ii); }
+          compute_weno_weights( weno_recon , stencil , idl , sigma , wts_w2 );
+        }
+
+        // Apply WENO weights to each row to compute WENO coefficients and then GLL points
+        for (int jj=0; jj < ord; jj++) {
+          SArray<real,1,ord> coefs;
+          SArray<real,1,ord> gll_w1;
+          SArray<real,1,ord> gll_w2;
+
+          // First characteristic variable at ord GLL points
+          for (int ii=0; ii<ord; ii++) {
+            stencil(ii) = 0.5_fp * (state(idH,j+jj,i+ii) + bath(j+jj,i+ii)) - h/(2*gw) * state(idU,j+jj,i+ii);
+          }
+          apply_weno_weights( weno_recon , stencil , idl , wts_w1 , coefs );
+          for (int ii=0; ii<ngll; ii++) {
+            real tmp = 0;
+            for (int s=0; s < ord; s++) {
+              tmp += c2g(s,ii) * coefs(s);
+            }
+            gll_w1(ii) = tmp;
+          }
+
+          // Second characteristic variable at ord GLL points
+          for (int ii=0; ii<ord; ii++) {
+            stencil(ii) = 0.5_fp * (state(idH,j+jj,i+ii) + bath(j+jj,i+ii)) + h/(2*gw) * state(idU,j+jj,i+ii);
+          }
+          apply_weno_weights( weno_recon , stencil , idl , wts_w2 , coefs );
+          for (int ii=0; ii<ngll; ii++) {
+            real tmp = 0;
+            for (int s=0; s < ord; s++) {
+              tmp += c2g(s,ii) * coefs(s);
+            }
+            gll_w2(ii) = tmp;
+          }
+
+          // Transform char vars into surface and u
+          for (int ii=0; ii < ngll; ii++) {
+            real w1 = gll_w1(ii);
+            real w2 = gll_w2(ii);
+            surf_DTs(0,jj,ii) =       w1 +      w2;
+            u_DTs   (0,jj,ii) = -gw/h*w1 + gw/h*w2;
+          }
         }
       }
 
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(hs+j,i+ii); }
-      reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+      SArray<real,1,ord> wts;
+      SArray<real,1,ord> avg;
 
-      for (int ii=0; ii<ngll; ii++) { h_DTs(0,ii) = surf_DTs(0,ii) - h_DTs(0,ii); }
+      // Reconstruct v and dvdx
+      // Compute average v
+      for (int ii=0; ii < ord; ii++) {
+        avg(ii) = 0;
+        for (int jj=0; jj < ord; jj++) {
+          avg(ii) += state(idV,j+jj,i+ii);
+        }
+        avg(ii) /= ord;
+      }
+      // Compute WENO weights for average stencil of v
+      compute_weno_weights( weno_recon , avg , idl , sigma , wts );
+      // Apply WENO weights to each row of v
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,j+jj,i+ii); }
+        apply_weno_weights( weno_recon , stencil , idl , wts , coefs );
+        for (int ii=0; ii<ngll; ii++) {
+          real tmp_val = 0;
+          real tmp_der = 0;
+          for (int s=0; s < ord; s++) {
+            tmp_val += c2g  (s,ii) * coefs(s);
+            tmp_der += c2d2g(s,ii) * coefs(s);
+          }
+          v_DTs   (0,jj,ii) = tmp_val;
+          dvdx_DTs(0,jj,ii) = tmp_der / dx;
+        }
+      }
 
-      for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
-      reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , s2g , s2d2g ,
-                                         c2g , c2d2g , idl , sigma , weno_recon );
+      // Reconstruct bath into h
+      // Compute average bath
+      for (int ii=0; ii < ord; ii++) {
+        avg(ii) = 0;
+        for (int jj=0; jj < ord; jj++) {
+          avg(ii) += bath(j+jj,i+ii);
+        }
+        avg(ii) /= ord;
+      }
+      // Compute WENO weights for average stencil of v
+      compute_weno_weights( weno_recon , avg , idl , sigma , wts );
+      // Apply WENO weights to each row of v
+      for (int jj=0; jj < ord; jj++) {
+        for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(j+jj,i+ii); }
+        apply_weno_weights( weno_recon , stencil , idl , wts , coefs );
+        for (int ii=0; ii<ngll; ii++) {
+          real tmp = 0;
+          for (int s=0; s < ord; s++) {
+            tmp += c2g(s,ii) * coefs(s);
+          }
+          h_DTs(0,jj,ii) = tmp;
+        }
+      }
+
+      /////////////////////////////////////////////
+      // Y-direction surf, v, u, dudy, bath, dvdx
+      /////////////////////////////////////////////
+
+
+
+
+      /////////////////////////////////////////////
+      // X-direction dudy
+      /////////////////////////////////////////////
+
 
       if (bc_x == BC_WALL) {
         if (i == nx-1) u_DTs(0,ngll-1) = 0;
