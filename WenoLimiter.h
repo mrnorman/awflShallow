@@ -181,7 +181,7 @@ namespace weno {
 
 
   YAKL_INLINE void compute_weno_weights( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                         SArray<real,1,hs+2> const &idl , real const sigma , SArray<real,1,ord> &wts ) {
+                                         SArray<real,1,hs+2> const &idl , real const sigma , SArray<real,1,hs+2> &wts ) {
     SArray<real,1,hs+2> tv;
     SArray<real,2,hs+2,ord> a;
     SArray<real,1,hs+1> lotmp;
@@ -254,7 +254,7 @@ namespace weno {
 
 
   YAKL_INLINE void apply_weno_weights( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                       SArray<real,1,hs+2> const &idl , SArray<real,1,ord> const &wts ,
+                                       SArray<real,1,hs+2> const &idl , SArray<real,1,hs+2> const &wts ,
                                        SArray<real,1,ord> &aw ) {
     SArray<real,2,hs+2,ord> a;
 

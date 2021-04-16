@@ -20,7 +20,7 @@ cfl     : 0.4
 # Data to initialize: dam, lake_at_rest_pert_1d, dam_rect_1d, lake_at_rest_pert_2d, lake_at_rest_disc_2d
 init_data : lake_at_rest_pert_2d
 
-dimsplit : false
+dimsplit : true
 
 # Data to initialize: periodic, wall, or open
 bc_x : open
