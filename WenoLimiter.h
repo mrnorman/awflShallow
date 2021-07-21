@@ -31,15 +31,16 @@ public:
       weno_internal.idl_3  = 0;
       weno_internal.idl_4  = 0;
       weno_internal.idl_5  = 0;
-      weno_internal.idl_hi = 87607.6;
+      weno_internal.idl_hi = 500;
     }
     if (ord == 5) {
       weno_internal.idl_1  = 1;
-      weno_internal.idl_2  = 6.51734;
+      weno_internal.idl_2  = 5;
       weno_internal.idl_3  = 1;
       weno_internal.idl_4  = 0;
       weno_internal.idl_5  = 0;
-      weno_internal.idl_hi = 11097.5;
+      weno_internal.idl_hi = 600;
+      // weno_internal.idl_hi = 11097.5;
     }
     if (ord == 7) {
       weno_internal.idl_1  = 1;
