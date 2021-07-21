@@ -32,6 +32,8 @@ public:
 
   typedef real3d TendArr;
 
+  Weno<ord> weno;
+
   // Flux time derivatives
   real4d fwaves;
   real4d fwaves_x;
@@ -52,9 +54,6 @@ public:
   SArray<real,2,ord,ngll> sten_to_deriv_gll;
   SArray<real,2,ord,ngll> coefs_to_gll;
   SArray<real,2,ord,ngll> coefs_to_deriv_gll;
-  SArray<real,3,ord,ord,ord> weno_recon;
-  weno::wt_type idl;
-  real sigma;
   // For ADER spatial derivative computation
   SArray<real,2,ngll,ngll> deriv_matrix;
   // For quadrature
@@ -363,10 +362,6 @@ public:
     dx = xlen/nx_glob;
     dy = ylen/ny_glob;
 
-    #if (ORD > 1)
-      TransformMatrices::weno_sten_to_coefs(weno_recon);
-    #endif
-
     // Store to_gll and weno_recon
     {
       SArray<real,2,ord, ord>    s2c;
@@ -398,10 +393,6 @@ public:
     TransformMatrices::get_gll_weights(this->gllWts_ord);
     TransformMatrices::get_gll_points (this->gllPts_ngll);
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
-
-    #if (ORD > 1)
-      weno::wenoSetIdealSigma(this->idl,this->sigma);
-    #endif
 
     if (dimsplit) {
       fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
@@ -450,9 +441,6 @@ public:
     YAKL_SCOPE( bath_gll_y , this->bath_gll_y   );
     YAKL_SCOPE( bath_gll   , this->bath_gll     );
     YAKL_SCOPE( dimsplit   , this->dimsplit     );
-    YAKL_SCOPE( idl        , this->idl          );
-    YAKL_SCOPE( sigma      , this->sigma        );
-    YAKL_SCOPE( weno_recon , this->weno_recon   );
 
     if        (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
       surf_level = 10;
@@ -582,12 +570,12 @@ public:
       if (dimsplit) {
         // x-direction
         for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(hs+j,i+ii); }
-        reconstruct_gll_values( stencil , gll , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , gll , s2g , c2g , weno.weno_internal );
         for (int ii=0; ii<ngll; ii++) { bath_gll_x(j,i,ii) = gll(ii); }
 
         // y-direction
         for (int jj=0; jj<ord; jj++) { stencil(jj) = bath(j+jj,hs+i); }
-        reconstruct_gll_values( stencil , gll , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , gll , s2g , c2g , weno.weno_internal );
         for (int jj=0; jj<ngll; jj++) { bath_gll_y(j,i,jj) = gll(jj); }
       }
     });
@@ -688,9 +676,6 @@ public:
     YAKL_SCOPE( v_v_limits    , this->v_v_limits         );
     YAKL_SCOPE( grav          , this->grav               );
     YAKL_SCOPE( gllWts_ngll   , this->gllWts_ngll        );
-    YAKL_SCOPE( idl           , this->idl                );
-    YAKL_SCOPE( sigma         , this->sigma              );
-    YAKL_SCOPE( weno_recon    , this->weno_recon         );
     YAKL_SCOPE( use_mpi       , this->use_mpi            );
 
     if (sim1d) { endrun("ERROR: Cannot use multidim with ny == 1"); }
@@ -872,168 +857,6 @@ public:
       });
       return;
     #endif
-
-
-    // // Loop over cells, reconstruct, compute time derivs, time average,
-    // // store state edge fluxes, compute cell-centered tendencies
-    // parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
-    //   SArray<real,3,nAder,ngll,ngll> h_DTs;
-    //   SArray<real,3,nAder,ngll,ngll> u_DTs;
-    //   SArray<real,3,nAder,ngll,ngll> v_DTs;
-    //   SArray<real,3,nAder,ngll,ngll> dudy_DTs;
-    //   SArray<real,3,nAder,ngll,ngll> dvdx_DTs;
-    //   SArray<real,3,nAder,ngll,ngll> surf_DTs;
-
-    //   ///////////////////////////////////////
-    //   // X-direction surf, u, v, dvdx, bath
-    //   ///////////////////////////////////////
-    //   // Reconstruct surface height and u velocity via characteristics
-    //   {
-    //     SArray<real,1,hs+2> wts_w1;
-    //     SArray<real,1,hs+2> wts_w2;
-
-    //     // Compute WENO weights on average stencils of characteristic variables
-    //     {
-    //       real h  = state(idH,hs+j,hs+i);
-    //       real gw = sqrt(grav*h);
-
-    //       SArray<real,1,ord> avg_s;
-    //       SArray<real,1,ord> avg_u;
-
-    //       // Compute the average row for h and u
-    //       for (int ii=0; ii < ord; ii++) {
-    //         avg_s(ii) = 0;
-    //         avg_u(ii) = 0;
-    //         for (int jj=0; jj < ord; jj++) {
-    //           avg_s(ii) += state(idH,j+jj,i+ii) + bath(j+jj,i+ii);
-    //           avg_u(ii) += state(idU,j+jj,i+ii);
-    //         }
-    //         avg_s(ii) /= ord;
-    //         avg_u(ii) /= ord;
-    //       }
-
-    //       // Compute WENO weights for average stencil of characteristic variables
-    //       for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) - h/(2*gw)*avg_u(ii); }
-    //       compute_weno_weights( weno_recon , stencil , idl , sigma , wts_w1 );
-    //       for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * avg_s(ii) + h/(2*gw)*avg_u(ii); }
-    //       compute_weno_weights( weno_recon , stencil , idl , sigma , wts_w2 );
-    //     }
-
-    //     // Apply WENO weights to each row to compute WENO coefficients and then GLL points
-    //     for (int jj=0; jj < ord; jj++) {
-    //       SArray<real,1,ord> coefs;
-    //       SArray<real,1,ord> gll_w1;
-    //       SArray<real,1,ord> gll_w2;
-
-    //       // First characteristic variable at ord GLL points
-    //       for (int ii=0; ii<ord; ii++) {
-    //         stencil(ii) = 0.5_fp * (state(idH,j+jj,i+ii) + bath(j+jj,i+ii)) - h/(2*gw) * state(idU,j+jj,i+ii);
-    //       }
-    //       apply_weno_weights( weno_recon , stencil , idl , wts_w1 , coefs );
-    //       for (int ii=0; ii<ngll; ii++) {
-    //         real tmp = 0;
-    //         for (int s=0; s < ord; s++) {
-    //           tmp += c2g(s,ii) * coefs(s);
-    //         }
-    //         gll_w1(ii) = tmp;
-    //       }
-
-    //       // Second characteristic variable at ord GLL points
-    //       for (int ii=0; ii<ord; ii++) {
-    //         stencil(ii) = 0.5_fp * (state(idH,j+jj,i+ii) + bath(j+jj,i+ii)) + h/(2*gw) * state(idU,j+jj,i+ii);
-    //       }
-    //       apply_weno_weights( weno_recon , stencil , idl , wts_w2 , coefs );
-    //       for (int ii=0; ii<ngll; ii++) {
-    //         real tmp = 0;
-    //         for (int s=0; s < ord; s++) {
-    //           tmp += c2g(s,ii) * coefs(s);
-    //         }
-    //         gll_w2(ii) = tmp;
-    //       }
-
-    //       // Transform char vars into surface and u
-    //       for (int ii=0; ii < ngll; ii++) {
-    //         real w1 = gll_w1(ii);
-    //         real w2 = gll_w2(ii);
-    //         surf_DTs(0,jj,ii) =       w1 +      w2;
-    //         u_DTs   (0,jj,ii) = -gw/h*w1 + gw/h*w2;
-    //       }
-    //     }
-    //   }
-
-    //   SArray<real,1,ord> wts;
-    //   SArray<real,1,ord> avg;
-
-    //   // Reconstruct v and dvdx
-    //   // Compute average v
-    //   for (int ii=0; ii < ord; ii++) {
-    //     avg(ii) = 0;
-    //     for (int jj=0; jj < ord; jj++) {
-    //       avg(ii) += state(idV,j+jj,i+ii);
-    //     }
-    //     avg(ii) /= ord;
-    //   }
-    //   // Compute WENO weights for average stencil of v
-    //   compute_weno_weights( weno_recon , avg , idl , sigma , wts );
-    //   // Apply WENO weights to each row of v
-    //   for (int jj=0; jj < ord; jj++) {
-    //     for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,j+jj,i+ii); }
-    //     apply_weno_weights( weno_recon , stencil , idl , wts , coefs );
-    //     for (int ii=0; ii<ngll; ii++) {
-    //       real tmp_val = 0;
-    //       real tmp_der = 0;
-    //       for (int s=0; s < ord; s++) {
-    //         tmp_val += c2g  (s,ii) * coefs(s);
-    //         tmp_der += c2d2g(s,ii) * coefs(s);
-    //       }
-    //       v_DTs   (0,jj,ii) = tmp_val;
-    //       dvdx_DTs(0,jj,ii) = tmp_der / dx;
-    //     }
-    //   }
-
-    //   // Reconstruct bath into h
-    //   // Compute average bath
-    //   for (int ii=0; ii < ord; ii++) {
-    //     avg(ii) = 0;
-    //     for (int jj=0; jj < ord; jj++) {
-    //       avg(ii) += bath(j+jj,i+ii);
-    //     }
-    //     avg(ii) /= ord;
-    //   }
-    //   // Compute WENO weights for average stencil of v
-    //   compute_weno_weights( weno_recon , avg , idl , sigma , wts );
-    //   // Apply WENO weights to each row of v
-    //   for (int jj=0; jj < ord; jj++) {
-    //     for (int ii=0; ii<ord; ii++) { stencil(ii) = bath(j+jj,i+ii); }
-    //     apply_weno_weights( weno_recon , stencil , idl , wts , coefs );
-    //     for (int ii=0; ii<ngll; ii++) {
-    //       real tmp = 0;
-    //       for (int s=0; s < ord; s++) {
-    //         tmp += c2g(s,ii) * coefs(s);
-    //       }
-    //       h_DTs(0,jj,ii) = tmp;
-    //     }
-    //   }
-
-    //   /////////////////////////////////////////////
-    //   // Y-direction surf, v, u, dudy, bath, dvdx
-    //   /////////////////////////////////////////////
-
-
-
-
-    //   /////////////////////////////////////////////
-    //   // X-direction dudy
-    //   /////////////////////////////////////////////
-
-
-    //   if (bc_x == BC_WALL) {
-    //     if (i == nx-1) u_DTs(0,ngll-1) = 0;
-    //     if (i == 0   ) u_DTs(0,0     ) = 0;
-    //   }
-
-    // });
-
   }
 
 
@@ -1055,9 +878,6 @@ public:
     YAKL_SCOPE( u_u_limits   , this->u_u_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
-    YAKL_SCOPE( idl          , this->idl                );
-    YAKL_SCOPE( sigma        , this->sigma              );
-    YAKL_SCOPE( weno_recon   , this->weno_recon         );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_x   , this->bath_gll_x         );
@@ -1202,12 +1022,12 @@ public:
         // Reconstruct first characteristic variable stored in h
         for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * (state(idH,hs+j,i+ii)+bath(hs+j,i+ii)) -
                                                      h/(2*gw)*state(idU,hs+j,i+ii); }
-        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , weno.weno_internal );
 
         // Reconstruct second characteristic variable stored in u
         for (int ii=0; ii<ord; ii++) { stencil(ii) = 0.5_fp * (state(idH,hs+j,i+ii)+bath(hs+j,i+ii)) +
                                                      h/(2*gw)*state(idU,hs+j,i+ii); }
-        reconstruct_gll_values( stencil , u_DTs , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , u_DTs , s2g , c2g , weno.weno_internal );
 
         for (int ii=0; ii < ngll; ii++) {
           real w1 = h_DTs(0,ii);
@@ -1222,7 +1042,7 @@ public:
 
       for (int ii=0; ii<ord; ii++) { stencil(ii) = state(idV,hs+j,i+ii); }
       reconstruct_gll_values_and_derivs( stencil , v_DTs , dv_DTs, dx , s2g , s2d2g ,
-                                         c2g , c2d2g , idl , sigma , weno_recon );
+                                         c2g , c2d2g , weno.weno_internal );
 
       if (bc_x == BC_WALL) {
         if (i == nx-1) u_DTs(0,ngll-1) = 0;
@@ -1523,9 +1343,6 @@ public:
     YAKL_SCOPE( v_v_limits   , this->v_v_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
-    YAKL_SCOPE( idl          , this->idl                );
-    YAKL_SCOPE( sigma        , this->sigma              );
-    YAKL_SCOPE( weno_recon   , this->weno_recon         );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_y   , this->bath_gll_y         );
@@ -1670,12 +1487,12 @@ public:
         // Reconstruct first characteristic variable stored in h
         for (int jj=0; jj<ord; jj++) { stencil(jj) = 0.5_fp*(state(idH,j+jj,hs+i)+bath(j+jj,hs+i)) -
                                                      h/(2*gw)*state(idV,j+jj,hs+i); }
-        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , h_DTs , s2g , c2g , weno.weno_internal );
 
         // Reconstruct second characteristic variable stored in v
         for (int jj=0; jj<ord; jj++) { stencil(jj) = 0.5_fp*(state(idH,j+jj,hs+i)+bath(j+jj,hs+i)) +
                                                      h/(2*gw)*state(idV,j+jj,hs+i); }
-        reconstruct_gll_values( stencil , v_DTs , s2g , c2g , idl , sigma , weno_recon );
+        reconstruct_gll_values( stencil , v_DTs , s2g , c2g , weno.weno_internal );
 
         for (int jj=0; jj < ngll; jj++) {
           real w1 = h_DTs(0,jj);
@@ -1689,7 +1506,7 @@ public:
 
       for (int jj=0; jj<ord; jj++) { stencil(jj) = state(idU,j+jj,hs+i); }
       reconstruct_gll_values_and_derivs( stencil , u_DTs , du_DTs, dy , s2g , s2d2g ,
-                                         c2g , c2d2g , idl , sigma , weno_recon );
+                                         c2g , c2d2g , weno.weno_internal );
 
       if (bc_y == BC_WALL) {
         if (j == ny-1) v_DTs(0,ngll-1) = 0;
@@ -2220,12 +2037,11 @@ public:
                                                       SArray<real,2,nAder,ngll> &deriv_DTs, real dx  ,
                                                       SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &s2d2g ,
                                                       SArray<real,2,ord,ngll> const &c2g , SArray<real,2,ord,ngll> const &c2d2g ,
-                                                      weno::wt_type const &idl , real sigma ,
-                                                      SArray<real,3,ord,ord,ord> const &weno_recon ) {
+                                                      Weno<ord>::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
     #if (ORD > 1)
-      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     #endif
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
@@ -2246,12 +2062,11 @@ public:
   // ord stencil values to ngll GLL values; store in DTs
   YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,2,nAder,ngll> &DTs ,
                                            SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &c2g ,
-                                           weno::wt_type const &idl , real sigma ,
-                                           SArray<real,3,ord,ord,ord> const &weno_recon ) {
+                                           Weno<ord>::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
     #if (ORD > 1)
-      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     #endif
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
@@ -2268,12 +2083,11 @@ public:
   // ord stencil values to ngll GLL values; store in DTs
   YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,1,ngll> &gll ,
                                            SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &c2g ,
-                                           weno::wt_type const &idl , real sigma ,
-                                           SArray<real,3,ord,ord,ord> const &weno_recon ) {
+                                           Weno<ord>::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
     #if (ORD > 1)
-      weno::compute_weno_coefs( weno_recon , stencil , wenoCoefs , idl , sigma );
+      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     #endif
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
