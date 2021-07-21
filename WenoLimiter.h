@@ -2,306 +2,512 @@
 #pragma once
 
 #include "const.h"
+#include "YAKL.h"
 #include "TransformMatrices.h"
 
 
-namespace weno {
+class Weno {
+public:
 
-  int constexpr hs = (ord-1)/2;
+  real static constexpr eps = 1.0e-20;
+  int  static constexpr hs  = (ord-1)/2;
 
-  typedef SArray<real,1,hs+2> wt_type;
+  struct WenoInternal {
+    real idl_1;
+    real idl_2;
+    real idl_3;
+    real idl_4;
+    real idl_5;
+    real idl_hi;
+  };
 
-  template <unsigned int N>
-  YAKL_INLINE void map_weights( SArray<real,1,N> const &idl , SArray<real,1,N> &wts ) {
-    // Map the weights for quicker convergence. WARNING: Ideal weights must be (0,1) before mapping
-    for (int i=0; i<N; i++) {
-      wts(i) = wts(i) * ( idl(i) + idl(i)*idl(i) - 3._fp*idl(i)*wts(i) + wts(i)*wts(i) ) / ( idl(i)*idl(i) + wts(i) * ( 1._fp - 2._fp * idl(i) ) );
+  WenoInternal weno_internal;
+
+
+  Weno() {
+    if (ord == 3) {
+      weno_internal.idl_1  = 1;
+      weno_internal.idl_2  = 1;
+      weno_internal.idl_3  = 0;
+      weno_internal.idl_4  = 0;
+      weno_internal.idl_5  = 0;
+      weno_internal.idl_hi = 87607.6;
     }
+    if (ord == 5) {
+      weno_internal.idl_1  = 1;
+      weno_internal.idl_2  = 6.51734;
+      weno_internal.idl_3  = 1;
+      weno_internal.idl_4  = 0;
+      weno_internal.idl_5  = 0;
+      weno_internal.idl_hi = 11097.5;
+    }
+    if (ord == 7) {
+      weno_internal.idl_1  = 1;
+      weno_internal.idl_2  = 2.71859;
+      weno_internal.idl_3  = 2.71859;
+      weno_internal.idl_4  = 1;
+      weno_internal.idl_5  = 0;
+      weno_internal.idl_hi = 23154.3;
+    }
+    if (ord == 9) {
+      weno_internal.idl_1  = 1;
+      weno_internal.idl_2  = 1;
+      weno_internal.idl_3  = 1;
+      weno_internal.idl_4  = 1;
+      weno_internal.idl_5  = 1;
+      weno_internal.idl_hi = 125752;
+    }
+    real tot = weno_internal.idl_1 + weno_internal.idl_2 + weno_internal.idl_3 +
+               weno_internal.idl_4 + weno_internal.idl_5 + weno_internal.idl_hi;
+    weno_internal.idl_1  /= tot;
+    weno_internal.idl_2  /= tot;
+    weno_internal.idl_3  /= tot;
+    weno_internal.idl_4  /= tot;
+    weno_internal.idl_5  /= tot;
+    weno_internal.idl_hi /= tot;
   }
 
 
-  template <unsigned int N>
-  YAKL_INLINE void convexify( SArray<real,1,N> &wts ) {
-    real sum = 0._fp;
-    real const eps = 1.0e-20;
-    for (int i=0; i<N; i++) { sum += wts(i); }
-    for (int i=0; i<N; i++) { wts(i) /= (sum + eps); }
+  YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
+                                              SArray<real,1,1> const &s,
+                                              SArray<real,1,1> &limited_coefs ) {
+    limited_coefs(0) = s(0);
   }
 
 
-  YAKL_INLINE void wenoSetIdealSigma(SArray<real,1,hs+2> &idl, real &sigma) {
-    if        (ord == 3) {
-      sigma = 0.1_fp;
-      idl(0) = 1._fp;
-      idl(1) = 1._fp;
-      idl(2) = 8._fp;
-    } else if (ord == 5) {
-      sigma = 0.1_fp;
-      real f = 5;
-      idl(0) = 1._fp;
-      idl(1) = f;
-      idl(2) = 1._fp;
-      idl(3) = f*f;
-    } else if (ord == 7) {
-      sigma = 0.01_fp;
-      real f = 2;
-      idl(0) = 1._fp;
-      idl(1) = f;
-      idl(2) = f;
-      idl(3) = 1._fp;
-      idl(4) = f*f;
-    } else if (ord == 9) {
-      sigma = 0.0288539981181442_fp;
-      idl(0) = 1._fp;
-      idl(1) = 2.15766927997459_fp;
-      idl(2) = 2.40224886796286_fp;
-      idl(3) = 2.15766927997459_fp;
-      idl(4) = 1._fp;
-      idl(5) = 1136.12697719888_fp;
-    } else if (ord == 11) {
-      // These aren't tuned!!!
-      sigma = 0.1_fp;
-      idl(0) = 1._fp;
-      idl(1) = 1._fp;
-      idl(2) = 1._fp;
-      idl(3) = 1._fp;
-      idl(4) = 1._fp;
-      idl(5) = 1._fp;
-      idl(6) = 1._fp;
-    } else if (ord == 13) {
-      // These aren't tuned!!!
-      sigma = 0.1_fp;
-      idl(0) = 1._fp;
-      idl(1) = 1._fp;
-      idl(2) = 1._fp;
-      idl(3) = 1._fp;
-      idl(4) = 1._fp;
-      idl(5) = 1._fp;
-      idl(6) = 1._fp;
-      idl(7) = 1._fp;
-    } else if (ord == 15) {
-      // These aren't tuned!!!
-      sigma = 0.1_fp;
-      idl(0) = 1._fp;
-      idl(1) = 1._fp;
-      idl(2) = 1._fp;
-      idl(3) = 1._fp;
-      idl(4) = 1._fp;
-      idl(5) = 1._fp;
-      idl(6) = 1._fp;
-      idl(7) = 1._fp;
-      idl(8) = 1._fp;
-    }
-    convexify( idl );
-  }
+  YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
+                                              SArray<real,1,3> const &s,
+                                              SArray<real,1,3> &limited_coefs ) {
+    // Store the ideal weights
+    real idl_1 = wi.idl_1;
+    real idl_2 = wi.idl_2;
+    real idl_H = wi.idl_hi;
 
-
-  YAKL_INLINE void compute_weno_coefs( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                       SArray<real,1,ord> &aw , SArray<real,1,hs+2> const &idl , real const sigma ) {
-
-    SArray<real,1,hs+2> tv;
-    SArray<real,1,hs+2> wts;
-    SArray<real,2,hs+2,ord> a;
-    SArray<real,1,hs+1> lotmp;
-    SArray<real,1,ord > hitmp;
-    real lo_avg;
-    real const eps = 1.0e-20;
-
-    // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0._fp;
-      }
-    }
-
-    // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
-    for(int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        for (int s=0; s<hs+1; s++) {
-          a(i,ii) += recon(i,s,ii) * u(i+s);
-        }
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      for (int s=0; s<ord; s++) {
-        a(hs+1,ii) += recon(hs+1,s,ii) * u(s);
-      }
-    }
+    // Get the hi and lo coefficients
+    SArray<real,1,2> coefs_1, coefs_2;
+    SArray<real,1,3> coefs_H;
+    coefs2_shift1( coefs_1 , s(0) , s(1) );
+    coefs2_shift2( coefs_2 , s(1) , s(2) );
+    coefs3_shift2( coefs_H , s(0) , s(1) , s(2) );
 
     // Compute "bridge" polynomial
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        a(hs+1,ii) -= idl(i)*a(i,ii);
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      a(hs+1,ii) /= idl(hs+1);
+    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) ) / idl_H;
+    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) ) / idl_H;
+    coefs_H(2) =   coefs_H(2)                                         / idl_H;
+
+    // Compute TV for each
+    real TV_1 = TV( coefs_1 );
+    real TV_2 = TV( coefs_2 );
+    real TV_H = TV( coefs_H );
+
+    // Compute WENO weights (inverse square of TV)
+    real w_1 = idl_1 / (TV_1*TV_1 + eps);
+    real w_2 = idl_2 / (TV_2*TV_2 + eps);
+    real w_H = idl_H / (TV_H*TV_H + eps);
+
+    // Normalize WENO weights
+    real tot = w_1 + w_2 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_H = idl_H;
     }
 
-    // Compute total variation of all candidate polynomials
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        lotmp(ii) = a(i,ii);
-      }
-      tv(i) = TransformMatrices::coefs_to_tv(lotmp);
-    }
-    for (int ii=0; ii<ord; ii++) {
-      hitmp(ii) = a(hs+1,ii);
-    }
-    tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
-
-    // Reduce the bridge polynomial TV to something closer to the other TV values
-    lo_avg = 0._fp;
-    for (int i=0; i<hs+1; i++) {
-      lo_avg += tv(i);
-    }
-    lo_avg /= hs+1;
-    tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
-
-    // WENO weights are proportional to the inverse of TV**2 and then re-confexified
-    for (int i=0; i<hs+2; i++) {
-      wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
-    }
-    convexify(wts);
-
-    // Map WENO weights for sharper fronts and less sensitivity to "eps"
-    map_weights(idl,wts);
-    convexify(wts);
-
-    // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    for (int i=0; i<ord; i++) {
-      aw(i) = 0._fp;
-    }
-    for (int i=0; i<hs+2; i++) {
-      for (int ii=0; ii<ord; ii++) {
-        aw(ii) += wts(i) * a(i,ii);
-      }
-    }
+    // Compute WENO polynomial coefficients
+    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0);
+    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1);
+    limited_coefs(2) = w_H*coefs_H(2);
   }
 
 
-  YAKL_INLINE void compute_weno_weights( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                         SArray<real,1,hs+2> const &idl , real const sigma , SArray<real,1,hs+2> &wts ) {
-    SArray<real,1,hs+2> tv;
-    SArray<real,2,hs+2,ord> a;
-    SArray<real,1,hs+1> lotmp;
-    SArray<real,1,ord > hitmp;
-    real lo_avg;
-    real const eps = 1.0e-20;
+  YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
+                                              SArray<real,1,5> const &s,
+                                              SArray<real,1,5> &limited_coefs ) {
+    // Store the ideal weights
+    real idl_1 = wi.idl_1;
+    real idl_2 = wi.idl_2;
+    real idl_3 = wi.idl_3;
+    real idl_H = wi.idl_hi;
 
-    // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0._fp;
-      }
-    }
-
-    // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
-    for(int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        for (int s=0; s<hs+1; s++) {
-          a(i,ii) += recon(i,s,ii) * u(i+s);
-        }
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      for (int s=0; s<ord; s++) {
-        a(hs+1,ii) += recon(hs+1,s,ii) * u(s);
-      }
-    }
+    // Get the hi and lo coefficients
+    SArray<real,1,3> coefs_1, coefs_2, coefs_3;
+    SArray<real,1,5> coefs_H;
+    coefs3_shift1( coefs_1 , s(0) , s(1) , s(2) );
+    coefs3_shift2( coefs_2 , s(1) , s(2) , s(3) );
+    coefs3_shift3( coefs_3 , s(2) , s(3) , s(4) );
+    coefs5_shift3( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) );
 
     // Compute "bridge" polynomial
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        a(hs+1,ii) -= idl(i)*a(i,ii);
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      a(hs+1,ii) /= idl(hs+1);
+    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) - idl_3*coefs_3(0) ) / idl_H;
+    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) - idl_3*coefs_3(1) ) / idl_H;
+    coefs_H(2) = ( coefs_H(2) - idl_1*coefs_1(2) - idl_2*coefs_2(2) - idl_3*coefs_3(2) ) / idl_H;
+    coefs_H(3) =   coefs_H(3)                                                            / idl_H;
+    coefs_H(4) =   coefs_H(4)                                                            / idl_H;
+
+    // Compute TV for each
+    real TV_1 = TV( coefs_1 );
+    real TV_2 = TV( coefs_2 );
+    real TV_3 = TV( coefs_3 );
+    real TV_H = TV( coefs_H );
+
+    // Compute WENO weights (inverse square of TV)
+    real w_1 = idl_1 / (TV_1*TV_1 + eps);
+    real w_2 = idl_2 / (TV_2*TV_2 + eps);
+    real w_3 = idl_3 / (TV_3*TV_3 + eps);
+    real w_H = idl_H / (TV_H*TV_H + eps);
+
+    // Normalize WENO weights
+    real tot = w_1 + w_2 + w_3 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_3 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_3 = idl_3;
+      w_H = idl_H;
     }
 
-    // Compute total variation of all candidate polynomials
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        lotmp(ii) = a(i,ii);
-      }
-      tv(i) = TransformMatrices::coefs_to_tv(lotmp);
-    }
-    for (int ii=0; ii<ord; ii++) {
-      hitmp(ii) = a(hs+1,ii);
-    }
-    tv(hs+1) = TransformMatrices::coefs_to_tv(hitmp);
-
-    // Reduce the bridge polynomial TV to something closer to the other TV values
-    lo_avg = 0._fp;
-    for (int i=0; i<hs+1; i++) {
-      lo_avg += tv(i);
-    }
-    lo_avg /= hs+1;
-    tv(hs+1) = lo_avg + ( tv(hs+1) - lo_avg ) * sigma;
-
-    // WENO weights are proportional to the inverse of TV**2 and then re-confexified
-    for (int i=0; i<hs+2; i++) {
-      wts(i) = idl(i) / ( tv(i)*tv(i) + eps );
-    }
-    convexify(wts);
-
-    // Map WENO weights for sharper fronts and less sensitivity to "eps"
-    map_weights(idl,wts);
-    convexify(wts);
+    // Compute WENO polynomial coefficients
+    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0);
+    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1) + w_3*coefs_3(1);
+    limited_coefs(2) = w_H*coefs_H(2) + w_1*coefs_1(2) + w_2*coefs_2(2) + w_3*coefs_3(2);
+    limited_coefs(3) = w_H*coefs_H(3);
+    limited_coefs(4) = w_H*coefs_H(4);
   }
 
 
+  YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
+                                              SArray<real,1,7> const &s,
+                                              SArray<real,1,7> &limited_coefs ) {
+    // Store the ideal weights
+    real idl_1 = wi.idl_1;
+    real idl_2 = wi.idl_2;
+    real idl_3 = wi.idl_3;
+    real idl_4 = wi.idl_4;
+    real idl_H = wi.idl_hi;
 
-  YAKL_INLINE void apply_weno_weights( SArray<real,3,ord,ord,ord> const &recon , SArray<real,1,ord> const &u ,
-                                       SArray<real,1,hs+2> const &idl , SArray<real,1,hs+2> const &wts ,
-                                       SArray<real,1,ord> &aw ) {
-    SArray<real,2,hs+2,ord> a;
-
-    // Init to zero
-    for (int j=0; j<hs+2; j++) {
-      for (int i=0; i<ord; i++) {
-        a(j,i) = 0._fp;
-      }
-    }
-
-    // Compute three quadratic polynomials (left, center, and right) and the high-order polynomial
-    for(int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        for (int s=0; s<hs+1; s++) {
-          a(i,ii) += recon(i,s,ii) * u(i+s);
-        }
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      for (int s=0; s<ord; s++) {
-        a(hs+1,ii) += recon(hs+1,s,ii) * u(s);
-      }
-    }
+    // Get the hi and lo coefficients
+    SArray<real,1,4> coefs_1, coefs_2, coefs_3, coefs_4;
+    SArray<real,1,7> coefs_H;
+    coefs4_shift1( coefs_1 , s(0) , s(1) , s(2) , s(3) );
+    coefs4_shift2( coefs_2 , s(1) , s(2) , s(3) , s(4) );
+    coefs4_shift3( coefs_3 , s(2) , s(3) , s(4) , s(5) );
+    coefs4_shift4( coefs_4 , s(3) , s(4) , s(5) , s(6) );
+    coefs7       ( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) , s(5) , s(6) );
 
     // Compute "bridge" polynomial
-    for (int i=0; i<hs+1; i++) {
-      for (int ii=0; ii<hs+1; ii++) {
-        a(hs+1,ii) -= idl(i)*a(i,ii);
-      }
-    }
-    for (int ii=0; ii<ord; ii++) {
-      a(hs+1,ii) /= idl(hs+1);
+    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) - idl_3*coefs_3(0) - idl_4*coefs_4(0) ) / idl_H;
+    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) - idl_3*coefs_3(1) - idl_4*coefs_4(1) ) / idl_H;
+    coefs_H(2) = ( coefs_H(2) - idl_1*coefs_1(2) - idl_2*coefs_2(2) - idl_3*coefs_3(2) - idl_4*coefs_4(2) ) / idl_H;
+    coefs_H(3) = ( coefs_H(3) - idl_1*coefs_1(3) - idl_2*coefs_2(3) - idl_3*coefs_3(3) - idl_4*coefs_4(3) ) / idl_H;
+    coefs_H(4) =   coefs_H(4)                                                                               / idl_H;
+    coefs_H(5) =   coefs_H(5)                                                                               / idl_H;
+    coefs_H(6) =   coefs_H(6)                                                                               / idl_H;
+
+    // Compute TV for each
+    real TV_1 = TV( coefs_1 );
+    real TV_2 = TV( coefs_2 );
+    real TV_3 = TV( coefs_3 );
+    real TV_4 = TV( coefs_4 );
+    real TV_H = TV( coefs_H );
+
+    // Compute WENO weights (inverse square of TV)
+    real w_1 = idl_1 / (TV_1*TV_1 + eps);
+    real w_2 = idl_2 / (TV_2*TV_2 + eps);
+    real w_3 = idl_3 / (TV_3*TV_3 + eps);
+    real w_4 = idl_4 / (TV_4*TV_4 + eps);
+    real w_H = idl_H / (TV_H*TV_H + eps);
+
+    // Normalize WENO weights
+    real tot = w_1 + w_2 + w_3 + w_4 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_3 /= tot;
+      w_4 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_3 = idl_3;
+      w_4 = idl_4;
+      w_H = idl_H;
     }
 
-    // WENO polynomial is the weighted sum of candidate polynomials using WENO weights instead of ideal weights
-    for (int i=0; i<ord; i++) {
-      aw(i) = 0._fp;
-    }
-    for (int i=0; i<hs+2; i++) {
-      for (int ii=0; ii<ord; ii++) {
-        aw(ii) += wts(i) * a(i,ii);
-      }
-    }
+    // Compute WENO polynomial coefficients
+    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0) + w_4*coefs_4(0);
+    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1) + w_3*coefs_3(1) + w_4*coefs_4(1);
+    limited_coefs(2) = w_H*coefs_H(2) + w_1*coefs_1(2) + w_2*coefs_2(2) + w_3*coefs_3(2) + w_4*coefs_4(2);
+    limited_coefs(3) = w_H*coefs_H(3) + w_1*coefs_1(3) + w_2*coefs_2(3) + w_3*coefs_3(3) + w_4*coefs_4(3);
+    limited_coefs(4) = w_H*coefs_H(4);
+    limited_coefs(5) = w_H*coefs_H(5);
+    limited_coefs(6) = w_H*coefs_H(6);
   }
 
 
+  YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
+                                              SArray<real,1,9> const &s,
+                                              SArray<real,1,9> &limited_coefs ) {
+    // Store the ideal weights
+    real idl_1 = wi.idl_1;
+    real idl_2 = wi.idl_2;
+    real idl_3 = wi.idl_3;
+    real idl_4 = wi.idl_4;
+    real idl_5 = wi.idl_5;
+    real idl_H = wi.idl_hi;
 
-}
+    // Get the hi and lo coefficients
+    SArray<real,1,5> coefs_1, coefs_2, coefs_3, coefs_4, coefs_5;
+    SArray<real,1,9> coefs_H;
+    coefs5_shift1( coefs_1 , s(0) , s(1) , s(2) , s(3) , s(4) );
+    coefs5_shift2( coefs_2 , s(1) , s(2) , s(3) , s(4) , s(5) );
+    coefs5_shift3( coefs_3 , s(2) , s(3) , s(4) , s(5) , s(6) );
+    coefs5_shift4( coefs_4 , s(3) , s(4) , s(5) , s(6) , s(7) );
+    coefs5_shift5( coefs_5 , s(4) , s(5) , s(6) , s(7) , s(8) );
+    coefs9       ( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) , s(5) , s(6) , s(7) , s(8) );
+
+    // Compute "bridge" polynomial
+    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) - idl_3*coefs_3(0) - idl_4*coefs_4(0) - idl_5*coefs_5(0) ) / idl_H;
+    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) - idl_3*coefs_3(1) - idl_4*coefs_4(1) - idl_5*coefs_5(1) ) / idl_H;
+    coefs_H(2) = ( coefs_H(2) - idl_1*coefs_1(2) - idl_2*coefs_2(2) - idl_3*coefs_3(2) - idl_4*coefs_4(2) - idl_5*coefs_5(2) ) / idl_H;
+    coefs_H(3) = ( coefs_H(3) - idl_1*coefs_1(3) - idl_2*coefs_2(3) - idl_3*coefs_3(3) - idl_4*coefs_4(3) - idl_5*coefs_5(3) ) / idl_H;
+    coefs_H(4) = ( coefs_H(4) - idl_1*coefs_1(4) - idl_2*coefs_2(4) - idl_3*coefs_3(4) - idl_4*coefs_4(4) - idl_5*coefs_5(4) ) / idl_H;
+    coefs_H(5) =   coefs_H(5)                                                                                                  / idl_H;
+    coefs_H(6) =   coefs_H(6)                                                                                                  / idl_H;
+    coefs_H(7) =   coefs_H(7)                                                                                                  / idl_H;
+    coefs_H(8) =   coefs_H(8)                                                                                                  / idl_H;
+
+    // Compute TV for each
+    real TV_1 = TV( coefs_1 );
+    real TV_2 = TV( coefs_2 );
+    real TV_3 = TV( coefs_3 );
+    real TV_4 = TV( coefs_4 );
+    real TV_5 = TV( coefs_5 );
+    real TV_H = TV( coefs_H );
+
+    // Compute WENO weights (inverse square of TV)
+    real w_1 = idl_1 / (TV_1*TV_1 + eps);
+    real w_2 = idl_2 / (TV_2*TV_2 + eps);
+    real w_3 = idl_3 / (TV_3*TV_3 + eps);
+    real w_4 = idl_4 / (TV_4*TV_4 + eps);
+    real w_5 = idl_5 / (TV_5*TV_5 + eps);
+    real w_H = idl_H / (TV_H*TV_H + eps);
+
+    // Normalize WENO weights
+    real tot = w_1 + w_2 + w_3 + w_4 + w_5 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_3 /= tot;
+      w_4 /= tot;
+      w_5 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_3 = idl_3;
+      w_4 = idl_4;
+      w_5 = idl_5;
+      w_H = idl_H;
+    }
+
+    // Compute WENO polynomial coefficients
+    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0) + w_4*coefs_4(0) + w_5*coefs_5(0);
+    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1) + w_3*coefs_3(1) + w_4*coefs_4(1) + w_5*coefs_5(1);
+    limited_coefs(2) = w_H*coefs_H(2) + w_1*coefs_1(2) + w_2*coefs_2(2) + w_3*coefs_3(2) + w_4*coefs_4(2) + w_5*coefs_5(2);
+    limited_coefs(3) = w_H*coefs_H(3) + w_1*coefs_1(3) + w_2*coefs_2(3) + w_3*coefs_3(3) + w_4*coefs_4(3) + w_5*coefs_5(3);
+    limited_coefs(4) = w_H*coefs_H(4) + w_1*coefs_1(4) + w_2*coefs_2(4) + w_3*coefs_3(4) + w_4*coefs_4(4) + w_5*coefs_5(4);
+    limited_coefs(5) = w_H*coefs_H(5);
+    limited_coefs(6) = w_H*coefs_H(6);
+    limited_coefs(7) = w_H*coefs_H(7);
+    limited_coefs(8) = w_H*coefs_H(8);
+  }
+
+
+  YAKL_INLINE static real TV(SArray<real,1,2> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1));
+
+    return TV;
+  }
+
+  YAKL_INLINE static real TV(SArray<real,1,3> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1))+4.3333333333333333333333333333333333333_fp*(a(2)*a(2));
+
+    return TV;
+  }
+
+  YAKL_INLINE static real TV(SArray<real,1,4> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1))+4.3333333333333333333333333333333333333_fp*(a(2)*a(2))+0.50000000000000000000000000000000000000_fp*a(1)*a(3)+39.112500000000000000000000000000000000_fp*(a(3)*a(3));
+
+    return TV;
+  }
+
+  YAKL_INLINE static real TV(SArray<real,1,5> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1))+4.3333333333333333333333333333333333333_fp*(a(2)*a(2))+0.50000000000000000000000000000000000000_fp*a(1)*a(3)+39.112500000000000000000000000000000000_fp*(a(3)*a(3))+4.2000000000000000000000000000000000000_fp*a(2)*a(4)+625.83571428571428571428571428571428571_fp*(a(4)*a(4));
+
+    return TV;
+  }
+
+  YAKL_INLINE static real TV(SArray<real,1,7> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1))+4.3333333333333333333333333333333333333_fp*(a(2)*a(2))+0.50000000000000000000000000000000000000_fp*a(1)*a(3)+39.112500000000000000000000000000000000_fp*(a(3)*a(3))+4.2000000000000000000000000000000000000_fp*a(2)*a(4)+625.83571428571428571428571428571428571_fp*(a(4)*a(4))+0.12500000000000000000000000000000000000_fp*a(1)*a(5)+63.066964285714285714285714285714285714_fp*a(3)*a(5)+15645.903707837301587301587301587301587_fp*(a(5)*a(5))+1.5535714285714285714285714285714285714_fp*a(2)*a(6)+1513.6279761904761904761904761904761905_fp*a(4)*a(6)+563252.53667816558441558441558441558442_fp*(a(6)*a(6));
+
+    return TV;
+  }
+
+  YAKL_INLINE static real TV(SArray<real,1,9> &a) {
+    real TV;
+    TV=1.0000000000000000000000000000000000000_fp*(a(1)*a(1))+4.3333333333333333333333333333333333333_fp*(a(2)*a(2))+0.50000000000000000000000000000000000000_fp*a(1)*a(3)+39.112500000000000000000000000000000000_fp*(a(3)*a(3))+4.2000000000000000000000000000000000000_fp*a(2)*a(4)+625.83571428571428571428571428571428571_fp*(a(4)*a(4))+0.12500000000000000000000000000000000000_fp*a(1)*a(5)+63.066964285714285714285714285714285714_fp*a(3)*a(5)+15645.903707837301587301587301587301587_fp*(a(5)*a(5))+1.5535714285714285714285714285714285714_fp*a(2)*a(6)+1513.6279761904761904761904761904761905_fp*a(4)*a(6)+563252.53667816558441558441558441558442_fp*(a(6)*a(6))+0.031250000000000000000000000000000000000_fp*a(1)*a(7)+32.643229166666666666666666666666666667_fp*a(3)*a(7)+52976.985381155303030303030303030303030_fp*a(5)*a(7)+2.7599374298150335992132867132867132867e7_fp*(a(7)*a(7))+0.51388888888888888888888888888888888889_fp*a(2)*a(8)+1044.5890151515151515151515151515151515_fp*a(4)*a(8)+2.5428953000983391608391608391608391608e6_fp*a(6)*a(8)+1.7663599550818819201631701631701631702e9_fp*(a(8)*a(8));
+
+    return TV;
+  }
+
+  YAKL_INLINE static void coefs2_shift1(SArray<real,1,2> &coefs2_1, real v0, real v1) {
+    coefs2_1(0)=1.0000000000000000000000000000000000000_fp*v1;
+    coefs2_1(1)=-1.0000000000000000000000000000000000000_fp*v0+1.0000000000000000000000000000000000000_fp*v1;
+
+  }
+
+  YAKL_INLINE static void coefs2_shift2(SArray<real,1,2> &coefs2_2, real v0, real v1) {
+    coefs2_2(0)=1.0000000000000000000000000000000000000_fp*v0;
+    coefs2_2(1)=-1.0000000000000000000000000000000000000_fp*v0+1.0000000000000000000000000000000000000_fp*v1;
+
+  }
+
+  YAKL_INLINE static void coefs3_shift1(SArray<real,1,3> &coefs3_1, real v0, real v1, real v2) {
+    coefs3_1(0)=-0.041666666666666666666666666666666666667_fp*v0+0.083333333333333333333333333333333333333_fp*v1+0.95833333333333333333333333333333333333_fp*v2;
+    coefs3_1(1)=0.50000000000000000000000000000000000000_fp*v0-2.0000000000000000000000000000000000000_fp*v1+1.5000000000000000000000000000000000000_fp*v2;
+    coefs3_1(2)=0.50000000000000000000000000000000000000_fp*v0-1.0000000000000000000000000000000000000_fp*v1+0.50000000000000000000000000000000000000_fp*v2;
+
+  }
+
+  YAKL_INLINE static void coefs3_shift2(SArray<real,1,3> &coefs3_2, real v0, real v1, real v2) {
+    coefs3_2(0)=-0.041666666666666666666666666666666666667_fp*v0+1.0833333333333333333333333333333333333_fp*v1-0.041666666666666666666666666666666666667_fp*v2;
+    coefs3_2(1)=-0.50000000000000000000000000000000000000_fp*v0+0.50000000000000000000000000000000000000_fp*v2;
+    coefs3_2(2)=0.50000000000000000000000000000000000000_fp*v0-1.0000000000000000000000000000000000000_fp*v1+0.50000000000000000000000000000000000000_fp*v2;
+
+  }
+
+  YAKL_INLINE static void coefs3_shift3(SArray<real,1,3> &coefs3_3, real v0, real v1, real v2) {
+    coefs3_3(0)=0.95833333333333333333333333333333333333_fp*v0+0.083333333333333333333333333333333333333_fp*v1-0.041666666666666666666666666666666666667_fp*v2;
+    coefs3_3(1)=-1.5000000000000000000000000000000000000_fp*v0+2.0000000000000000000000000000000000000_fp*v1-0.50000000000000000000000000000000000000_fp*v2;
+    coefs3_3(2)=0.50000000000000000000000000000000000000_fp*v0-1.0000000000000000000000000000000000000_fp*v1+0.50000000000000000000000000000000000000_fp*v2;
+
+  }
+
+  YAKL_INLINE static void coefs4_shift1(SArray<real,1,4> &coefs4_1, real v0, real v1, real v2, real v3) {
+    coefs4_1(0)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.20833333333333333333333333333333333333_fp*v2+0.91666666666666666666666666666666666667_fp*v3;
+    coefs4_1(1)=-0.29166666666666666666666666666666666667_fp*v0+1.3750000000000000000000000000000000000_fp*v1-2.8750000000000000000000000000000000000_fp*v2+1.7916666666666666666666666666666666667_fp*v3;
+    coefs4_1(2)=-0.50000000000000000000000000000000000000_fp*v0+2.0000000000000000000000000000000000000_fp*v1-2.5000000000000000000000000000000000000_fp*v2+1.0000000000000000000000000000000000000_fp*v3;
+    coefs4_1(3)=-0.16666666666666666666666666666666666667_fp*v0+0.50000000000000000000000000000000000000_fp*v1-0.50000000000000000000000000000000000000_fp*v2+0.16666666666666666666666666666666666667_fp*v3;
+
+  }
+
+  YAKL_INLINE static void coefs4_shift2(SArray<real,1,4> &coefs4_2, real v0, real v1, real v2, real v3) {
+    coefs4_2(0)=-0.041666666666666666666666666666666666667_fp*v1+1.0833333333333333333333333333333333333_fp*v2-0.041666666666666666666666666666666666667_fp*v3;
+    coefs4_2(1)=0.20833333333333333333333333333333333333_fp*v0-1.1250000000000000000000000000000000000_fp*v1+0.62500000000000000000000000000000000000_fp*v2+0.29166666666666666666666666666666666667_fp*v3;
+    coefs4_2(2)=0.50000000000000000000000000000000000000_fp*v1-1.0000000000000000000000000000000000000_fp*v2+0.50000000000000000000000000000000000000_fp*v3;
+    coefs4_2(3)=-0.16666666666666666666666666666666666667_fp*v0+0.50000000000000000000000000000000000000_fp*v1-0.50000000000000000000000000000000000000_fp*v2+0.16666666666666666666666666666666666667_fp*v3;
+
+  }
+
+  YAKL_INLINE static void coefs4_shift3(SArray<real,1,4> &coefs4_3, real v0, real v1, real v2, real v3) {
+    coefs4_3(0)=-0.041666666666666666666666666666666666667_fp*v0+1.0833333333333333333333333333333333333_fp*v1-0.041666666666666666666666666666666666667_fp*v2;
+    coefs4_3(1)=-0.29166666666666666666666666666666666667_fp*v0-0.62500000000000000000000000000000000000_fp*v1+1.1250000000000000000000000000000000000_fp*v2-0.20833333333333333333333333333333333333_fp*v3;
+    coefs4_3(2)=0.50000000000000000000000000000000000000_fp*v0-1.0000000000000000000000000000000000000_fp*v1+0.50000000000000000000000000000000000000_fp*v2;
+    coefs4_3(3)=-0.16666666666666666666666666666666666667_fp*v0+0.50000000000000000000000000000000000000_fp*v1-0.50000000000000000000000000000000000000_fp*v2+0.16666666666666666666666666666666666667_fp*v3;
+
+  }
+
+  YAKL_INLINE static void coefs4_shift4(SArray<real,1,4> &coefs4_4, real v0, real v1, real v2, real v3) {
+    coefs4_4(0)=0.91666666666666666666666666666666666667_fp*v0+0.20833333333333333333333333333333333333_fp*v1-0.16666666666666666666666666666666666667_fp*v2+0.041666666666666666666666666666666666667_fp*v3;
+    coefs4_4(1)=-1.7916666666666666666666666666666666667_fp*v0+2.8750000000000000000000000000000000000_fp*v1-1.3750000000000000000000000000000000000_fp*v2+0.29166666666666666666666666666666666667_fp*v3;
+    coefs4_4(2)=1.0000000000000000000000000000000000000_fp*v0-2.5000000000000000000000000000000000000_fp*v1+2.0000000000000000000000000000000000000_fp*v2-0.50000000000000000000000000000000000000_fp*v3;
+    coefs4_4(3)=-0.16666666666666666666666666666666666667_fp*v0+0.50000000000000000000000000000000000000_fp*v1-0.50000000000000000000000000000000000000_fp*v2+0.16666666666666666666666666666666666667_fp*v3;
+
+  }
+
+  YAKL_INLINE static void coefs5_shift1(SArray<real,1,5> &coefs5_1, real v0, real v1, real v2, real v3, real v4) {
+    coefs5_1(0)=-0.036979166666666666666666666666666666667_fp*v0+0.18958333333333333333333333333333333333_fp*v1-0.38854166666666666666666666666666666667_fp*v2+0.35625000000000000000000000000000000000_fp*v3+0.87968750000000000000000000000000000000_fp*v4;
+    coefs5_1(1)=0.18750000000000000000000000000000000000_fp*v0-1.0416666666666666666666666666666666667_fp*v1+2.5000000000000000000000000000000000000_fp*v2-3.6250000000000000000000000000000000000_fp*v3+1.9791666666666666666666666666666666667_fp*v4;
+    coefs5_1(2)=0.43750000000000000000000000000000000000_fp*v0-2.2500000000000000000000000000000000000_fp*v1+4.6250000000000000000000000000000000000_fp*v2-4.2500000000000000000000000000000000000_fp*v3+1.4375000000000000000000000000000000000_fp*v4;
+    coefs5_1(3)=0.25000000000000000000000000000000000000_fp*v0-1.1666666666666666666666666666666666667_fp*v1+2.0000000000000000000000000000000000000_fp*v2-1.5000000000000000000000000000000000000_fp*v3+0.41666666666666666666666666666666666667_fp*v4;
+    coefs5_1(4)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.25000000000000000000000000000000000000_fp*v2-0.16666666666666666666666666666666666667_fp*v3+0.041666666666666666666666666666666666667_fp*v4;
+
+  }
+
+  YAKL_INLINE static void coefs5_shift2(SArray<real,1,5> &coefs5_2, real v0, real v1, real v2, real v3, real v4) {
+    coefs5_2(0)=0.0046875000000000000000000000000000000000_fp*v0-0.018750000000000000000000000000000000000_fp*v1-0.013541666666666666666666666666666666667_fp*v2+1.0645833333333333333333333333333333333_fp*v3-0.036979166666666666666666666666666666667_fp*v4;
+    coefs5_2(1)=-0.10416666666666666666666666666666666667_fp*v0+0.62500000000000000000000000000000000000_fp*v1-1.7500000000000000000000000000000000000_fp*v2+1.0416666666666666666666666666666666667_fp*v3+0.18750000000000000000000000000000000000_fp*v4;
+    coefs5_2(2)=-0.062500000000000000000000000000000000000_fp*v0+0.25000000000000000000000000000000000000_fp*v1+0.12500000000000000000000000000000000000_fp*v2-0.75000000000000000000000000000000000000_fp*v3+0.43750000000000000000000000000000000000_fp*v4;
+    coefs5_2(3)=0.083333333333333333333333333333333333333_fp*v0-0.50000000000000000000000000000000000000_fp*v1+1.0000000000000000000000000000000000000_fp*v2-0.83333333333333333333333333333333333333_fp*v3+0.25000000000000000000000000000000000000_fp*v4;
+    coefs5_2(4)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.25000000000000000000000000000000000000_fp*v2-0.16666666666666666666666666666666666667_fp*v3+0.041666666666666666666666666666666666667_fp*v4;
+
+  }
+
+  YAKL_INLINE static void coefs5_shift3(SArray<real,1,5> &coefs5_3, real v0, real v1, real v2, real v3, real v4) {
+    coefs5_3(0)=0.0046875000000000000000000000000000000000_fp*v0-0.060416666666666666666666666666666666667_fp*v1+1.1114583333333333333333333333333333333_fp*v2-0.060416666666666666666666666666666666667_fp*v3+0.0046875000000000000000000000000000000000_fp*v4;
+    coefs5_3(1)=0.10416666666666666666666666666666666667_fp*v0-0.70833333333333333333333333333333333333_fp*v1+0.70833333333333333333333333333333333333_fp*v3-0.10416666666666666666666666666666666667_fp*v4;
+    coefs5_3(2)=-0.062500000000000000000000000000000000000_fp*v0+0.75000000000000000000000000000000000000_fp*v1-1.3750000000000000000000000000000000000_fp*v2+0.75000000000000000000000000000000000000_fp*v3-0.062500000000000000000000000000000000000_fp*v4;
+    coefs5_3(3)=-0.083333333333333333333333333333333333333_fp*v0+0.16666666666666666666666666666666666667_fp*v1-0.16666666666666666666666666666666666667_fp*v3+0.083333333333333333333333333333333333333_fp*v4;
+    coefs5_3(4)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.25000000000000000000000000000000000000_fp*v2-0.16666666666666666666666666666666666667_fp*v3+0.041666666666666666666666666666666666667_fp*v4;
+
+  }
+
+  YAKL_INLINE static void coefs5_shift4(SArray<real,1,5> &coefs5_4, real v0, real v1, real v2, real v3, real v4) {
+    coefs5_4(0)=-0.036979166666666666666666666666666666667_fp*v0+1.0645833333333333333333333333333333333_fp*v1-0.013541666666666666666666666666666666667_fp*v2-0.018750000000000000000000000000000000000_fp*v3+0.0046875000000000000000000000000000000000_fp*v4;
+    coefs5_4(1)=-0.18750000000000000000000000000000000000_fp*v0-1.0416666666666666666666666666666666667_fp*v1+1.7500000000000000000000000000000000000_fp*v2-0.62500000000000000000000000000000000000_fp*v3+0.10416666666666666666666666666666666667_fp*v4;
+    coefs5_4(2)=0.43750000000000000000000000000000000000_fp*v0-0.75000000000000000000000000000000000000_fp*v1+0.12500000000000000000000000000000000000_fp*v2+0.25000000000000000000000000000000000000_fp*v3-0.062500000000000000000000000000000000000_fp*v4;
+    coefs5_4(3)=-0.25000000000000000000000000000000000000_fp*v0+0.83333333333333333333333333333333333333_fp*v1-1.0000000000000000000000000000000000000_fp*v2+0.50000000000000000000000000000000000000_fp*v3-0.083333333333333333333333333333333333333_fp*v4;
+    coefs5_4(4)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.25000000000000000000000000000000000000_fp*v2-0.16666666666666666666666666666666666667_fp*v3+0.041666666666666666666666666666666666667_fp*v4;
+
+  }
+
+  YAKL_INLINE static void coefs5_shift5(SArray<real,1,5> &coefs5_5, real v0, real v1, real v2, real v3, real v4) {
+    coefs5_5(0)=0.87968750000000000000000000000000000000_fp*v0+0.35625000000000000000000000000000000000_fp*v1-0.38854166666666666666666666666666666667_fp*v2+0.18958333333333333333333333333333333333_fp*v3-0.036979166666666666666666666666666666667_fp*v4;
+    coefs5_5(1)=-1.9791666666666666666666666666666666667_fp*v0+3.6250000000000000000000000000000000000_fp*v1-2.5000000000000000000000000000000000000_fp*v2+1.0416666666666666666666666666666666667_fp*v3-0.18750000000000000000000000000000000000_fp*v4;
+    coefs5_5(2)=1.4375000000000000000000000000000000000_fp*v0-4.2500000000000000000000000000000000000_fp*v1+4.6250000000000000000000000000000000000_fp*v2-2.2500000000000000000000000000000000000_fp*v3+0.43750000000000000000000000000000000000_fp*v4;
+    coefs5_5(3)=-0.41666666666666666666666666666666666667_fp*v0+1.5000000000000000000000000000000000000_fp*v1-2.0000000000000000000000000000000000000_fp*v2+1.1666666666666666666666666666666666667_fp*v3-0.25000000000000000000000000000000000000_fp*v4;
+    coefs5_5(4)=0.041666666666666666666666666666666666667_fp*v0-0.16666666666666666666666666666666666667_fp*v1+0.25000000000000000000000000000000000000_fp*v2-0.16666666666666666666666666666666666667_fp*v3+0.041666666666666666666666666666666666667_fp*v4;
+
+  }
+
+  YAKL_INLINE static void coefs7(SArray<real,1,7> &coefs7, real v0, real v1, real v2, real v3, real v4, real v5, real v6) {
+    coefs7(0)=-0.00069754464285714285714285714285714285714_fp*v0+0.0088727678571428571428571428571428571429_fp*v1-0.070879836309523809523809523809523809524_fp*v2+1.1254092261904761904761904761904761905_fp*v3-0.070879836309523809523809523809523809524_fp*v4+0.0088727678571428571428571428571428571429_fp*v5-0.00069754464285714285714285714285714285714_fp*v6;
+    coefs7(1)=-0.022482638888888888888888888888888888889_fp*v0+0.19409722222222222222222222222222222222_fp*v1-0.82074652777777777777777777777777777778_fp*v2+0.82074652777777777777777777777777777778_fp*v4-0.19409722222222222222222222222222222222_fp*v5+0.022482638888888888888888888888888888889_fp*v6;
+    coefs7(2)=0.0096354166666666666666666666666666666667_fp*v0-0.12031250000000000000000000000000000000_fp*v1+0.89453125000000000000000000000000000000_fp*v2-1.5677083333333333333333333333333333333_fp*v3+0.89453125000000000000000000000000000000_fp*v4-0.12031250000000000000000000000000000000_fp*v5+0.0096354166666666666666666666666666666667_fp*v6;
+    coefs7(3)=0.024305555555555555555555555555555555556_fp*v0-0.18055555555555555555555555555555555556_fp*v1+0.28819444444444444444444444444444444444_fp*v2-0.28819444444444444444444444444444444444_fp*v4+0.18055555555555555555555555555555555556_fp*v5-0.024305555555555555555555555555555555556_fp*v6;
+    coefs7(4)=-0.0086805555555555555555555555555555555555_fp*v0+0.093750000000000000000000000000000000000_fp*v1-0.29687500000000000000000000000000000000_fp*v2+0.42361111111111111111111111111111111111_fp*v3-0.29687500000000000000000000000000000000_fp*v4+0.093750000000000000000000000000000000000_fp*v5-0.0086805555555555555555555555555555555555_fp*v6;
+    coefs7(5)=-0.0041666666666666666666666666666666666667_fp*v0+0.016666666666666666666666666666666666667_fp*v1-0.020833333333333333333333333333333333333_fp*v2+0.020833333333333333333333333333333333333_fp*v4-0.016666666666666666666666666666666666667_fp*v5+0.0041666666666666666666666666666666666667_fp*v6;
+    coefs7(6)=0.0013888888888888888888888888888888888889_fp*v0-0.0083333333333333333333333333333333333333_fp*v1+0.020833333333333333333333333333333333333_fp*v2-0.027777777777777777777777777777777777778_fp*v3+0.020833333333333333333333333333333333333_fp*v4-0.0083333333333333333333333333333333333333_fp*v5+0.0013888888888888888888888888888888888889_fp*v6;
+
+  }
+
+  YAKL_INLINE static void coefs9(SArray<real,1,9> &coefs9, real v0, real v1, real v2, real v3, real v4, real v5, real v6, real v7, real v8) {
+    coefs9(0)=0.00011867947048611111111111111111111111111_fp*v0-0.0016469804067460317460317460317460317460_fp*v1+0.012195793030753968253968253968253968254_fp*v2-0.077525886656746031746031746031746031746_fp*v3+1.1337167891245039682539682539682539683_fp*v4-0.077525886656746031746031746031746031746_fp*v5+0.012195793030753968253968253968253968254_fp*v6-0.0016469804067460317460317460317460317460_fp*v7+0.00011867947048611111111111111111111111111_fp*v8;
+    coefs9(1)=0.0050052703373015873015873015873015873016_fp*v0-0.052514260912698412698412698412698412698_fp*v1+0.26417100694444444444444444444444444444_fp*v2-0.89082031250000000000000000000000000000_fp*v3+0.89082031250000000000000000000000000000_fp*v5-0.26417100694444444444444444444444444444_fp*v6+0.052514260912698412698412698412698412698_fp*v7-0.0050052703373015873015873015873015873016_fp*v8;
+    coefs9(2)=-0.0016684234457671957671957671957671957672_fp*v0+0.022982804232804232804232804232804232804_fp*v1-0.16702835648148148148148148148148148148_fp*v2+0.98796296296296296296296296296296296296_fp*v3-1.6844979745370370370370370370370370370_fp*v4+0.98796296296296296296296296296296296296_fp*v5-0.16702835648148148148148148148148148148_fp*v6+0.022982804232804232804232804232804232804_fp*v7-0.0016684234457671957671957671957671957672_fp*v8;
+    coefs9(3)=-0.0061197916666666666666666666666666666667_fp*v0+0.061024305555555555555555555555555555556_fp*v1-0.26623263888888888888888888888888888889_fp*v2+0.37387152777777777777777777777777777778_fp*v3-0.37387152777777777777777777777777777778_fp*v5+0.26623263888888888888888888888888888889_fp*v6-0.061024305555555555555555555555555555556_fp*v7+0.0061197916666666666666666666666666666667_fp*v8;
+    coefs9(4)=0.0016999421296296296296296296296296296296_fp*v0-0.022280092592592592592592592592592592593_fp*v1+0.14134837962962962962962962962962962963_fp*v2-0.39207175925925925925925925925925925926_fp*v3+0.54260706018518518518518518518518518518_fp*v4-0.39207175925925925925925925925925925926_fp*v5+0.14134837962962962962962962962962962963_fp*v6-0.022280092592592592592592592592592592593_fp*v7+0.0016999421296296296296296296296296296296_fp*v8;
+    coefs9(5)=0.0015625000000000000000000000000000000000_fp*v0-0.013541666666666666666666666666666666667_fp*v1+0.038541666666666666666666666666666666667_fp*v2-0.042708333333333333333333333333333333333_fp*v3+0.042708333333333333333333333333333333333_fp*v5-0.038541666666666666666666666666666666667_fp*v6+0.013541666666666666666666666666666666667_fp*v7-0.0015625000000000000000000000000000000000_fp*v8;
+    coefs9(6)=-0.00040509259259259259259259259259259259259_fp*v0+0.0046296296296296296296296296296296296296_fp*v1-0.019675925925925925925925925925925925926_fp*v2+0.043518518518518518518518518518518518519_fp*v3-0.056134259259259259259259259259259259259_fp*v4+0.043518518518518518518518518518518518519_fp*v5-0.019675925925925925925925925925925925926_fp*v6+0.0046296296296296296296296296296296296296_fp*v7-0.00040509259259259259259259259259259259259_fp*v8;
+    coefs9(7)=-0.000099206349206349206349206349206349206349_fp*v0+0.00059523809523809523809523809523809523810_fp*v1-0.0013888888888888888888888888888888888889_fp*v2+0.0013888888888888888888888888888888888889_fp*v3-0.0013888888888888888888888888888888888889_fp*v5+0.0013888888888888888888888888888888888889_fp*v6-0.00059523809523809523809523809523809523810_fp*v7+0.000099206349206349206349206349206349206349_fp*v8;
+    coefs9(8)=0.000024801587301587301587301587301587301587_fp*v0-0.00019841269841269841269841269841269841270_fp*v1+0.00069444444444444444444444444444444444444_fp*v2-0.0013888888888888888888888888888888888889_fp*v3+0.0017361111111111111111111111111111111111_fp*v4-0.0013888888888888888888888888888888888889_fp*v5+0.00069444444444444444444444444444444444444_fp*v6-0.00019841269841269841269841269841269841270_fp*v7+0.000024801587301587301587301587301587301587_fp*v8;
+
+  }
+
+
+};
 
 
