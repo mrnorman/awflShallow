@@ -48,7 +48,7 @@ public:
       weno_internal.idl_3  = 2.71859;
       weno_internal.idl_4  = 1;
       weno_internal.idl_5  = 0;
-      weno_internal.idl_hi = 23154.3;
+      weno_internal.idl_hi = 10000;
     }
     if (ord == 9) {
       weno_internal.idl_1  = 1;
@@ -56,7 +56,7 @@ public:
       weno_internal.idl_3  = 1;
       weno_internal.idl_4  = 1;
       weno_internal.idl_5  = 1;
-      weno_internal.idl_hi = 125752;
+      weno_internal.idl_hi = 50000;
     }
     real tot = weno_internal.idl_1 + weno_internal.idl_2 + weno_internal.idl_3 +
                weno_internal.idl_4 + weno_internal.idl_5 + weno_internal.idl_hi;
