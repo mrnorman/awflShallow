@@ -34,7 +34,7 @@ public:
       weno_internal.idl(3) = f*f;
     } else if (ord == 7) {
       weno_internal.sigma = 0.01_fp;
-      real f = 2;
+      real f = 10;
       weno_internal.idl(0) = 1._fp;
       weno_internal.idl(1) = f;
       weno_internal.idl(2) = f;

@@ -441,6 +441,7 @@ public:
     YAKL_SCOPE( bath_gll_y , this->bath_gll_y   );
     YAKL_SCOPE( bath_gll   , this->bath_gll     );
     YAKL_SCOPE( dimsplit   , this->dimsplit     );
+    YAKL_SCOPE( weno       , this->weno         );
 
     if        (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
       surf_level = 10;
@@ -881,6 +882,7 @@ public:
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_x   , this->bath_gll_x         );
+    YAKL_SCOPE( weno         , this->weno               );
 
     // x-direction boundaries
     if (use_mpi) {
@@ -1346,6 +1348,7 @@ public:
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_y   , this->bath_gll_y         );
+    YAKL_SCOPE( weno         , this->weno               );
 
     // y-direction boundaries
     if (use_mpi) {

@@ -24,7 +24,7 @@ using yakl::memHost;
 using yakl::memset;
 
 #ifndef ORD
-  #define ORD 5
+  #define ORD 7
 #endif
 
 #ifndef NGLL
