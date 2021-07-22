@@ -32,7 +32,7 @@ public:
 
   typedef real3d TendArr;
 
-  Weno<ord> weno;
+  Weno weno;
 
   // Flux time derivatives
   real4d fwaves;
@@ -2040,12 +2040,10 @@ public:
                                                       SArray<real,2,nAder,ngll> &deriv_DTs, real dx  ,
                                                       SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &s2d2g ,
                                                       SArray<real,2,ord,ngll> const &c2g , SArray<real,2,ord,ngll> const &c2d2g ,
-                                                      Weno<ord>::WenoInternal const &wi ) {
+                                                      Weno::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
-    #if (ORD > 1)
-      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
-    #endif
+    weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
       real tmp       = 0;
@@ -2065,12 +2063,10 @@ public:
   // ord stencil values to ngll GLL values; store in DTs
   YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,2,nAder,ngll> &DTs ,
                                            SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &c2g ,
-                                           Weno<ord>::WenoInternal const &wi ) {
+                                           Weno::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
-    #if (ORD > 1)
-      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
-    #endif
+    weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
       real tmp = 0;
@@ -2086,12 +2082,10 @@ public:
   // ord stencil values to ngll GLL values; store in DTs
   YAKL_INLINE void reconstruct_gll_values( SArray<real,1,ord> const stencil , SArray<real,1,ngll> &gll ,
                                            SArray<real,2,ord,ngll> const &s2g , SArray<real,2,ord,ngll> const &c2g ,
-                                           Weno<ord>::WenoInternal const &wi ) {
+                                           Weno::WenoInternal const &wi ) {
     // Reconstruct values
     SArray<real,1,ord> wenoCoefs;
-    #if (ORD > 1)
-      weno.compute_weno_coefs( wi , stencil , wenoCoefs );
-    #endif
+    weno.compute_weno_coefs( wi , stencil , wenoCoefs );
     // Transform ord weno coefficients into ngll GLL points
     for (int ii=0; ii<ngll; ii++) {
       real tmp = 0;
