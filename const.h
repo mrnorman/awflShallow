@@ -22,6 +22,7 @@ using yakl::SArray;
 using yakl::memDevice;
 using yakl::memHost;
 using yakl::memset;
+using yakl::intrinsics::matmul_cr;
 
 #ifndef ORD
   #define ORD 5

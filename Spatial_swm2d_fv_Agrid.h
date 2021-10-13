@@ -373,9 +373,9 @@ public:
       TransformMatrices::coefs_to_deriv(c2d);
 
       coefs_to_gll = c2g_lower;
-      coefs_to_deriv_gll = c2g_lower * c2d;
-      sten_to_gll = c2g_lower * s2c;
-      sten_to_deriv_gll = c2g_lower * c2d * s2c;
+      coefs_to_deriv_gll = matmul_cr( c2g_lower , c2d );
+      sten_to_gll = matmul_cr( c2g_lower , s2c );
+      sten_to_deriv_gll = matmul_cr( matmul_cr( c2g_lower , c2d ) , s2c );
     }
     // Store ader deriv_matrix
     {
@@ -387,7 +387,7 @@ public:
       TransformMatrices::coefs_to_deriv(c2d);
       TransformMatrices::coefs_to_gll  (c2g);
 
-      this->deriv_matrix = c2g * c2d * g2c;
+      this->deriv_matrix = matmul_cr( matmul_cr( c2g , c2d ) , g2c );
     }
     TransformMatrices::get_gll_points (this->gllPts_ord);
     TransformMatrices::get_gll_weights(this->gllWts_ord);
