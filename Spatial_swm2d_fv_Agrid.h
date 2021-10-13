@@ -447,6 +447,10 @@ public:
       surf_level = 10;
     } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_1D) {
       surf_level = 10;
+    } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_2D) {
+      surf_level = 1;
+    } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_2D) {
+      surf_level = 1;
     }
 
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
@@ -478,8 +482,6 @@ public:
             profiles::lake_at_rest_pert_2d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_ORDER_2D) {
             profiles::order_2d(xloc,yloc,xlen,ylen,h,u,v,b);
-          } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_2D) {
-            profiles::balance_smooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_BALANCE_SMOOTH_2D) {
             profiles::balance_smooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
           } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_2D) {
@@ -2002,9 +2004,7 @@ public:
                        MPI_MAX , MPI_COMM_WORLD );
       #endif
     }
-    if (surf_level > 0) {
-      if (masterproc) std::cout << "Max abs(uvel): " << data_max << "\n";
-    }
+    if (masterproc) std::cout << "Max abs(uvel): " << data_max << "\n";
 
 
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) { data(j,i) = abs(state(idV,hs+j,hs+i)); });
@@ -2026,9 +2026,7 @@ public:
                        MPI_MAX , MPI_COMM_WORLD );
       #endif
     }
-    if (surf_level > 0) {
-      if (masterproc) std::cout << "Max abs(vvel): " << data_max << "\n";
-    }
+    if (masterproc) std::cout << "Max abs(vvel): " << data_max << "\n";
 
 
   }
