@@ -44,9 +44,9 @@ public:
     }
     if (ord == 7) {
       weno_internal.idl_1  = 1;
-      weno_internal.idl_2  = 3;
-      weno_internal.idl_3  = 3;
-      weno_internal.idl_4  = 1;
+      weno_internal.idl_2  = 2;
+      weno_internal.idl_3  = 1;
+      weno_internal.idl_4  = 0;
       weno_internal.idl_5  = 0;
       weno_internal.idl_hi = 5000;
     }
@@ -191,62 +191,47 @@ public:
     real idl_1 = wi.idl_1;
     real idl_2 = wi.idl_2;
     real idl_3 = wi.idl_3;
-    real idl_4 = wi.idl_4;
     real idl_H = wi.idl_hi;
 
     // Get the hi and lo coefficients
-    SArray<real,1,4> coefs_1, coefs_2, coefs_3, coefs_4;
+    SArray<real,1,3> coefs_1, coefs_2, coefs_3;
     SArray<real,1,7> coefs_H;
-    coefs4_shift1( coefs_1 , s(0) , s(1) , s(2) , s(3) );
-    coefs4_shift2( coefs_2 , s(1) , s(2) , s(3) , s(4) );
-    coefs4_shift3( coefs_3 , s(2) , s(3) , s(4) , s(5) );
-    coefs4_shift4( coefs_4 , s(3) , s(4) , s(5) , s(6) );
+    coefs3_shift1( coefs_1 , s(1) , s(2) , s(3) );
+    coefs3_shift2( coefs_2 , s(2) , s(3) , s(4) );
+    coefs3_shift3( coefs_3 , s(3) , s(4) , s(5) );
     coefs7       ( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) , s(5) , s(6) );
-
-    // Compute "bridge" polynomial
-    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) - idl_3*coefs_3(0) - idl_4*coefs_4(0) ) / idl_H;
-    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) - idl_3*coefs_3(1) - idl_4*coefs_4(1) ) / idl_H;
-    coefs_H(2) = ( coefs_H(2) - idl_1*coefs_1(2) - idl_2*coefs_2(2) - idl_3*coefs_3(2) - idl_4*coefs_4(2) ) / idl_H;
-    coefs_H(3) = ( coefs_H(3) - idl_1*coefs_1(3) - idl_2*coefs_2(3) - idl_3*coefs_3(3) - idl_4*coefs_4(3) ) / idl_H;
-    coefs_H(4) =   coefs_H(4)                                                                               / idl_H;
-    coefs_H(5) =   coefs_H(5)                                                                               / idl_H;
-    coefs_H(6) =   coefs_H(6)                                                                               / idl_H;
 
     // Compute TV for each
     real TV_1 = TV( coefs_1 );
     real TV_2 = TV( coefs_2 );
     real TV_3 = TV( coefs_3 );
-    real TV_4 = TV( coefs_4 );
     real TV_H = TV( coefs_H );
 
     // Compute WENO weights (inverse square of TV)
     real w_1 = idl_1 / (TV_1*TV_1 + eps);
     real w_2 = idl_2 / (TV_2*TV_2 + eps);
     real w_3 = idl_3 / (TV_3*TV_3 + eps);
-    real w_4 = idl_4 / (TV_4*TV_4 + eps);
     real w_H = idl_H / (TV_H*TV_H + eps);
 
     // Normalize WENO weights
-    real tot = w_1 + w_2 + w_3 + w_4 + w_H;
+    real tot = w_1 + w_2 + w_3 + w_H;
     if ( abs(tot) > eps ) {
       w_1 /= tot;
       w_2 /= tot;
       w_3 /= tot;
-      w_4 /= tot;
       w_H /= tot;
     } else {
       w_1 = idl_1;
       w_2 = idl_2;
       w_3 = idl_3;
-      w_4 = idl_4;
       w_H = idl_H;
     }
 
     // Compute WENO polynomial coefficients
-    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0) + w_4*coefs_4(0);
-    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1) + w_3*coefs_3(1) + w_4*coefs_4(1);
-    limited_coefs(2) = w_H*coefs_H(2) + w_1*coefs_1(2) + w_2*coefs_2(2) + w_3*coefs_3(2) + w_4*coefs_4(2);
-    limited_coefs(3) = w_H*coefs_H(3) + w_1*coefs_1(3) + w_2*coefs_2(3) + w_3*coefs_3(3) + w_4*coefs_4(3);
+    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0);
+    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1) + w_3*coefs_3(1);
+    limited_coefs(2) = w_H*coefs_H(2) + w_1*coefs_1(2) + w_2*coefs_2(2) + w_3*coefs_3(2);
+    limited_coefs(3) = w_H*coefs_H(3);
     limited_coefs(4) = w_H*coefs_H(4);
     limited_coefs(5) = w_H*coefs_H(5);
     limited_coefs(6) = w_H*coefs_H(6);
