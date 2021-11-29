@@ -1,6 +1,7 @@
 
 from netCDF4 import Dataset
 from matplotlib import pyplot as plt
+import matplotlib
 import numpy as np
 
 nc = Dataset("dam_rect_hi.nc","r")
@@ -30,45 +31,54 @@ x_5     = nc.variables["x"]      [:]
 surf_5  = nc.variables["surface"][nt-1,0,:]
 u_5     = nc.variables["u"]      [nt-1,0,:]
 
-# nc = Dataset("dam_rect_7.nc","r")
-# nt = nc.variables["t"][:].shape[0]
-# x_7     = nc.variables["x"]      [:]
-# surf_7  = nc.variables["surface"][nt-1,0,:]
-# u_7     = nc.variables["u"]      [nt-1,0,:]
+nc = Dataset("dam_rect_7.nc","r")
+nt = nc.variables["t"][:].shape[0]
+x_7     = nc.variables["x"]      [:]
+surf_7  = nc.variables["surface"][nt-1,0,:]
+u_7     = nc.variables["u"]      [nt-1,0,:]
 
+nc = Dataset("dam_rect_9.nc","r")
+nt = nc.variables["t"][:].shape[0]
+x_9     = nc.variables["x"]      [:]
+surf_9  = nc.variables["surface"][nt-1,0,:]
+u_9     = nc.variables["u"]      [nt-1,0,:]
+
+
+matplotlib.use('agg')
 ####################################
 # Height Full
 ####################################
 plt.rcParams.update({'font.size': 15})
-plt.plot(x_hi,surf_hi,'-',color="black",linewidth="0.6")
-plt.plot(x_1 ,surf_1 ,'-',color="red"  ,linewidth="0.6")
-plt.plot(x_3 ,surf_3 ,'-',color="green",linewidth="0.6")
-plt.plot(x_5 ,surf_5 ,'-',color="blue" ,linewidth="0.6")
-plt.tight_layout()
-plt.legend(["Exact","Order=1","Order=3","Order=5"])
-plt.xlabel("x-coordinate")
-plt.ylabel("Surface Height")
-#plt.show()
-plt.savefig("dam_rect_1d_height_full.eps", bbox_inches = 'tight', pad_inches=0.05, dpi=600)
-plt.close()
-
-####################################
-# Height Zoom
-####################################
-x1_hi = int( 0.383*nx_hi )
-x2_hi = int( 0.517*nx_hi )
-x1_lo = int( 0.383*nx_lo )
-x2_lo = int( 0.517*nx_lo )
-plt.rcParams.update({'font.size': 15})
-plt.plot(x_hi[x1_hi:x2_hi],surf_hi[x1_hi:x2_hi],'-' ,color="black",linewidth="0.6")
-plt.plot(x_1 [x1_lo:x2_lo],surf_1 [x1_lo:x2_lo],'-x',color="red"  ,linewidth="0.6",markersize="2")
-plt.plot(x_3 [x1_lo:x2_lo],surf_3 [x1_lo:x2_lo],'-x',color="green",linewidth="0.6",markersize="2")
-plt.plot(x_5 [x1_lo:x2_lo],surf_5 [x1_lo:x2_lo],'-x',color="blue" ,linewidth="0.6",markersize="2")
-plt.tight_layout()
-plt.legend(["Exact","Order=1","Order=3","Order=5"])
-plt.xlabel("x-coordinate")
-plt.ylabel("Surface Height")
-#plt.show()
-plt.savefig("dam_rect_1d_height_zoom.eps", bbox_inches = 'tight', pad_inches=0.05, dpi=600)
-plt.close()
+plt.subplots()
+# plt.plot(x_hi,surf_hi,'-',color="black",linewidth="0.6")
+# plt.plot(x_1 ,surf_1 ,'-',color="red"  ,linewidth="0.6")
+# plt.plot(x_3 ,surf_3 ,'-',color="green",linewidth="0.6")
+# plt.plot(x_5 ,surf_5 ,'-',color="blue" ,linewidth="0.6")
+# plt.tight_layout()
+# plt.legend(["Exact","Order=1","Order=3","Order=5"])
+# plt.xlabel("x-coordinate")
+# plt.ylabel("Surface Height")
+# #plt.show()
+# plt.savefig("dam_rect_1d_height_full.eps", bbox_inches = 'tight', pad_inches=0.05, dpi=600)
+# plt.close()
+# 
+# ####################################
+# # Height Zoom
+# ####################################
+# x1_hi = int( 0.383*nx_hi )
+# x2_hi = int( 0.517*nx_hi )
+# x1_lo = int( 0.383*nx_lo )
+# x2_lo = int( 0.517*nx_lo )
+# plt.rcParams.update({'font.size': 15})
+# plt.plot(x_hi[x1_hi:x2_hi],surf_hi[x1_hi:x2_hi],'-' ,color="black",linewidth="0.6")
+# plt.plot(x_1 [x1_lo:x2_lo],surf_1 [x1_lo:x2_lo],'-x',color="red"  ,linewidth="0.6",markersize="2")
+# plt.plot(x_3 [x1_lo:x2_lo],surf_3 [x1_lo:x2_lo],'-x',color="green",linewidth="0.6",markersize="2")
+# plt.plot(x_5 [x1_lo:x2_lo],surf_5 [x1_lo:x2_lo],'-x',color="blue" ,linewidth="0.6",markersize="2")
+# plt.tight_layout()
+# plt.legend(["Exact","Order=1","Order=3","Order=5"])
+# plt.xlabel("x-coordinate")
+# plt.ylabel("Surface Height")
+# #plt.show()
+# plt.savefig("dam_rect_1d_height_zoom.eps", bbox_inches = 'tight', pad_inches=0.05, dpi=600)
+# plt.close()
 

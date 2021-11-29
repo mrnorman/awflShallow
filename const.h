@@ -25,7 +25,7 @@ using yakl::memset;
 using yakl::intrinsics::matmul_cr;
 
 #ifndef ORD
-  #define ORD 3
+  #define ORD 5
 #endif
 
 #ifndef NGLL
