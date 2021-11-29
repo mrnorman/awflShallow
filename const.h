@@ -25,11 +25,11 @@ using yakl::memset;
 using yakl::intrinsics::matmul_cr;
 
 #ifndef ORD
-  #define ORD 7
+  #define ORD 9
 #endif
 
 #ifndef NGLL
-  #define NGLL 3
+  #define NGLL 9
 #endif
 
 typedef double real;

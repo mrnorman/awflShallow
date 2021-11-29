@@ -56,7 +56,7 @@ def print_norms(fname_hi,fname_a,fname_b) :
   l1a_v,l2a_v,lia_v = compute_norms(v_a,v_hi)
   l1b_v,l2b_v,lib_v = compute_norms(v_b,v_hi)
 
-  denom = np.log(float(ny_a)/float(ny_b))
+  denom = np.log(float(nx_a)/float(nx_b))
   cv1_h,cv2_h,cvi_h = [np.log(l1b_h/l1a_h)/denom , np.log(l2b_h/l2a_h)/denom , np.log(lib_h/lia_h)/denom ]
   cv1_u,cv2_u,cvi_u = [np.log(l1b_u/l1a_u)/denom , np.log(l2b_u/l2a_u)/denom , np.log(lib_u/lia_u)/denom ]
   cv1_v,cv2_v,cvi_v = [np.log(l1b_v/l1a_v)/denom , np.log(l2b_v/l2a_v)/denom , np.log(lib_v/lia_v)/denom ]
@@ -73,7 +73,9 @@ def print_norms(fname_hi,fname_a,fname_b) :
 
 # print_norms( "order_hi.nc" , "order_3_a.nc" , "order_3_b.nc" )
 # print_norms( "order_hi.nc" , "order_5_a.nc" , "order_5_b.nc" )
+print_norms( "order_hi.nc" , "order_7_a.nc" , "order_7_b.nc" )
+print_norms( "order_hi.nc" , "order_9_a.nc" , "order_9_b.nc" )
 
-print_norms( "order_2d_hi.nc" , "order_2d_3_a.nc" , "order_2d_3_b.nc" )
-print_norms( "order_2d_hi.nc" , "order_2d_5_a.nc" , "order_2d_5_b.nc" )
+# print_norms( "order_2d_hi.nc" , "order_2d_3_a.nc" , "order_2d_3_b.nc" )
+# print_norms( "order_2d_hi.nc" , "order_2d_5_a.nc" , "order_2d_5_b.nc" )
 
