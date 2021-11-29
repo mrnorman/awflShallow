@@ -35,11 +35,11 @@ public:
     }
     if (ord == 5) {
       weno_internal.idl_1  = 1;
-      weno_internal.idl_2  = 5;
+      weno_internal.idl_2  = 2;
       weno_internal.idl_3  = 1;
       weno_internal.idl_4  = 0;
       weno_internal.idl_5  = 0;
-      weno_internal.idl_hi = 600;
+      weno_internal.idl_hi = 300;
     }
     if (ord == 7) {
       weno_internal.idl_1  = 1;
@@ -90,11 +90,6 @@ public:
     coefs2_shift2( coefs_2 , s(1) , s(2) );
     coefs3_shift2( coefs_H , s(0) , s(1) , s(2) );
 
-    // Compute "bridge" polynomial
-    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) ) / idl_H;
-    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) ) / idl_H;
-    coefs_H(2) =   coefs_H(2)                                         / idl_H;
-
     // Compute TV for each
     real TV_1 = TV( coefs_1 );
     real TV_2 = TV( coefs_2 );
@@ -107,6 +102,22 @@ public:
 
     // Normalize WENO weights
     real tot = w_1 + w_2 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_H = idl_H;
+    }
+
+    real dropoff = 0.2;
+    if (w_1 < dropoff) w_1 = 0;
+    if (w_2 < dropoff) w_2 = 0;
+
+    // Normalize WENO weights
+    tot = w_1 + w_2 + w_H;
     if ( abs(tot) > eps ) {
       w_1 /= tot;
       w_2 /= tot;
@@ -141,13 +152,6 @@ public:
     coefs3_shift3( coefs_3 , s(2) , s(3) , s(4) );
     coefs5_shift3( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) );
 
-    // Compute "bridge" polynomial
-    coefs_H(0) = ( coefs_H(0) - idl_1*coefs_1(0) - idl_2*coefs_2(0) - idl_3*coefs_3(0) ) / idl_H;
-    coefs_H(1) = ( coefs_H(1) - idl_1*coefs_1(1) - idl_2*coefs_2(1) - idl_3*coefs_3(1) ) / idl_H;
-    coefs_H(2) = ( coefs_H(2) - idl_1*coefs_1(2) - idl_2*coefs_2(2) - idl_3*coefs_3(2) ) / idl_H;
-    coefs_H(3) =   coefs_H(3)                                                            / idl_H;
-    coefs_H(4) =   coefs_H(4)                                                            / idl_H;
-
     // Compute TV for each
     real TV_1 = TV( coefs_1 );
     real TV_2 = TV( coefs_2 );
@@ -162,6 +166,25 @@ public:
 
     // Normalize WENO weights
     real tot = w_1 + w_2 + w_3 + w_H;
+    if ( abs(tot) > eps ) {
+      w_1 /= tot;
+      w_2 /= tot;
+      w_3 /= tot;
+      w_H /= tot;
+    } else {
+      w_1 = idl_1;
+      w_2 = idl_2;
+      w_3 = idl_3;
+      w_H = idl_H;
+    }
+
+    real dropoff = 0.08;
+    if (w_1 < dropoff) w_1 = 0;
+    if (w_2 < dropoff) w_2 = 0;
+    if (w_3 < dropoff) w_3 = 0;
+
+    // Normalize WENO weights
+    tot = w_1 + w_2 + w_3 + w_H;
     if ( abs(tot) > eps ) {
       w_1 /= tot;
       w_2 /= tot;
