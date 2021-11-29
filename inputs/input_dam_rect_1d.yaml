@@ -3,7 +3,7 @@
 sim_time  : 60
 
 # Number of cells to use
-nx_glob : 4000
+nx_glob : 40000
 ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
