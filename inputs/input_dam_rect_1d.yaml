@@ -3,7 +3,7 @@
 sim_time  : 60
 
 # Number of cells to use
-nx_glob : 40000
+nx_glob : 400
 ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
@@ -27,7 +27,7 @@ bc_x : open
 bc_y : open
 
 # Output filename
-out_file  : dam_rect_hi.nc
+out_file  : dam_rect_7.nc
 
 # Output frequency in seconds
 out_freq  : 60.
