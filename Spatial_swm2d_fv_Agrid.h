@@ -561,7 +561,6 @@ public:
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       SArray<real,1,ord> stencil;
       SArray<real,1,ngll> gll;
-      std::cout << j << " , " << i << std::endl;
 
       if (dimsplit) {
         // x-direction
@@ -603,50 +602,6 @@ public:
       val = amp * pow( (cos(M_PI*dist)+1)/2 , pwr );
     }
     return val;
-  }
-
-
-
-  void compute_tendencies( StateArr &state , TendArr &tend , real dt , int splitIndex ) {
-    if (dimsplit) {
-      compute_tendencies_dimsplit(state,tend,dt,splitIndex);
-    } else {
-      compute_tendencies_multidim(state,tend,dt);
-    }
-  }
-
-
-
-  // Compute state and tendency time derivatives from the state
-  void compute_tendencies_dimsplit( StateArr &state , TendArr &tend , real dt , int splitIndex ) {
-    if (dim_switch) {
-      if      (splitIndex == 0) {
-        compute_tendencies_dimsplit_X( state , tend , dt );
-      }
-      else if (splitIndex == 1) {
-        if (sim1d) {
-          memset( tend , 0._fp );
-        } else {
-          compute_tendencies_dimsplit_Y( state , tend , dt );
-        }
-      }
-    } else {
-      if      (splitIndex == 0) {
-        if (sim1d) {
-          memset( tend , 0._fp );
-        } else {
-          compute_tendencies_dimsplit_Y( state , tend , dt );
-        }
-      } else if (splitIndex == 1) {
-        compute_tendencies_dimsplit_X( state , tend , dt );
-      }
-    }
-  }
-
-
-
-  void switch_dimensions() {
-    dim_switch = ! dim_switch;
   }
 
 
@@ -953,6 +908,7 @@ public:
             } else {
               fwaves(idV,1,j,i) += u*(v_R - v_L);
             }
+          } else {
           }
 
           // Compute left and right flux for h and u
@@ -1163,6 +1119,8 @@ public:
           tmp += -u_dv_DTs(0,ii) * gllWts_ngll(ii);
         }
         tend(idV,j,i) = tmp;
+      } else {
+        tend(idV,j,i) = 0;
       }
 
     }); // Loop over cells
