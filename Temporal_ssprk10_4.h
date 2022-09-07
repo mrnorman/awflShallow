@@ -51,9 +51,9 @@ public:
 
 
   inline void zero_accum_arrays( real3d &tendAccum ) {
-    int num_state = tendAccum.dimension[0];
-    int ny        = tendAccum.dimension[1];
-    int nx        = tendAccum.dimension[2];
+    int num_state = tendAccum.extent(0);
+    int ny        = tendAccum.extent(1);
+    int nx        = tendAccum.extent(2);
 
     parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
       tendAccum(l,j,i) = 0;
@@ -62,9 +62,9 @@ public:
 
 
   inline void tendency_accum( real3d &tendAccum  , real3d const &tend ) {
-    int num_state = tendAccum.dimension[0];
-    int ny        = tendAccum.dimension[1];
-    int nx        = tendAccum.dimension[2];
+    int num_state = tendAccum.extent(0);
+    int ny        = tendAccum.extent(1);
+    int nx        = tendAccum.extent(2);
 
     parallel_for( SimpleBounds<3>(num_state,ny,nx) , YAKL_LAMBDA (int l, int j, int i) {
       tendAccum(l,j,i) += tend(l,j,i);

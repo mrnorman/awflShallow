@@ -207,10 +207,10 @@ public:
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
     YAKL_SCOPE( num_pack     , this->num_pack     );
-    int num_vars = arr.dimension[0];
+    int num_vars = arr.extent(0);
     if (num_pack + num_vars > max_pack) endrun("ERROR: Packing too many variables. Increase max_pack");
-    if (arr.dimension[1] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[2] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(1) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(2) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<3>(num_vars,ny,hs) , YAKL_LAMBDA (int v, int j, int ii) {
       if (exchW) haloSendBufW(num_pack+v,j,ii) = arr(v,hs+j,hs+ii);
       if (exchE) haloSendBufE(num_pack+v,j,ii) = arr(v,hs+j,nx+ii);
@@ -226,8 +226,8 @@ public:
     YAKL_SCOPE( exchE        , this->exchE        );
     YAKL_SCOPE( num_pack     , this->num_pack     );
     if (num_pack + 1 > max_pack) endrun("ERROR: Packing too many variables. Increase max_pack");
-    if (arr.dimension[0] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[1] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(0) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(1) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<2>(ny,hs) , YAKL_LAMBDA (int j, int ii) {
       if (exchW) haloSendBufW(num_pack,j,ii) = arr(hs+j,hs+ii);
       if (exchE) haloSendBufE(num_pack,j,ii) = arr(hs+j,nx+ii);
@@ -244,10 +244,10 @@ public:
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
     YAKL_SCOPE( num_pack     , this->num_pack     );
-    int num_vars = arr.dimension[0];
+    int num_vars = arr.extent(0);
     if (num_pack + num_vars > max_pack) endrun("ERROR: Packing too many variables. Increase max_pack");
-    if (arr.dimension[1] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[2] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(1) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(2) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<3>(num_vars,hs,nx) , YAKL_LAMBDA (int v, int jj, int i) {
       if (exchS) haloSendBufS(num_pack+v,jj,i) = arr(v,hs+jj,hs+i);
       if (exchN) haloSendBufN(num_pack+v,jj,i) = arr(v,ny+jj,hs+i);
@@ -263,8 +263,8 @@ public:
     YAKL_SCOPE( exchN        , this->exchN        );
     YAKL_SCOPE( num_pack     , this->num_pack     );
     if (num_pack + 1 > max_pack) endrun("ERROR: Packing too many variables. Increase max_pack");
-    if (arr.dimension[0] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[1] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(0) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(1) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<2>(hs,nx) , YAKL_LAMBDA (int jj, int i) {
       if (exchS) haloSendBufS(num_pack,jj,i) = arr(hs+jj,hs+i);
       if (exchN) haloSendBufN(num_pack,jj,i) = arr(ny+jj,hs+i);
@@ -280,10 +280,10 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
-    int num_vars = arr.dimension[0];
+    int num_vars = arr.extent(0);
     if (num_unpack + num_vars > num_pack) endrun("ERROR: Unpacking more items than you packed.");
-    if (arr.dimension[1] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[2] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(1) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(2) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<3>(num_vars,ny,hs) , YAKL_LAMBDA (int v, int j, int ii) {
       if (exchW) arr(v,hs+j,      ii) = haloRecvBufW(num_unpack+v,j,ii);
       if (exchE) arr(v,hs+j,nx+hs+ii) = haloRecvBufE(num_unpack+v,j,ii);
@@ -298,8 +298,8 @@ public:
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
     if (num_unpack + 1 > num_pack) endrun("ERROR: Unpacking more items than you packed.");
-    if (arr.dimension[0] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[1] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(0) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(1) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<2>(ny,hs) , YAKL_LAMBDA (int j, int ii) {
       if (exchW) arr(hs+j,      ii) = haloRecvBufW(num_unpack,j,ii);
       if (exchE) arr(hs+j,nx+hs+ii) = haloRecvBufE(num_unpack,j,ii);
@@ -315,10 +315,10 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
-    int num_vars = arr.dimension[0];
+    int num_vars = arr.extent(0);
     if (num_unpack + num_vars > num_pack) endrun("ERROR: Unpacking more items than you packed.");
-    if (arr.dimension[1] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[2] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(1) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(2) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<3>(num_vars,hs,nx) , YAKL_LAMBDA (int v, int jj, int i) {
       if (exchS) arr(v,      jj,hs+i) = haloRecvBufS(num_unpack+v,jj,i);
       if (exchN) arr(v,ny+hs+jj,hs+i) = haloRecvBufN(num_unpack+v,jj,i);
@@ -333,8 +333,8 @@ public:
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
     if (num_unpack + 1 > num_pack) endrun("ERROR: Unpacking more items than you packed.");
-    if (arr.dimension[0] != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
-    if (arr.dimension[1] != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
+    if (arr.extent(0) != ny+2*hs) endrun("ERROR: Array y-dimension not valid");
+    if (arr.extent(1) != nx+2*hs) endrun("ERROR: Array x-dimension not valid");
     parallel_for( SimpleBounds<2>(hs,nx) , YAKL_LAMBDA (int jj, int i) {
       if (exchS) arr(      jj,hs+i) = haloRecvBufS(num_unpack,jj,i);
       if (exchN) arr(ny+hs+jj,hs+i) = haloRecvBufN(num_unpack,jj,i);
@@ -436,7 +436,7 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
-    int numState = fwaves.dimension[0];
+    int numState = fwaves.extent(0);
     parallel_for( SimpleBounds<2>(numState+3,ny) , YAKL_LAMBDA (int v, int j) {
       if (v < numState) {
         if (exchW) edgeSendBufW(v,j) = fwaves(v,1,j,0 );
@@ -463,7 +463,7 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
-    int numState = fwaves.dimension[0];
+    int numState = fwaves.extent(0);
     parallel_for( SimpleBounds<2>(numState+3,nx) , YAKL_LAMBDA (int v, int i) {
       if (v < numState) {
         if (exchS) edgeSendBufS(v,i) = fwaves(v,1,0 ,i);
@@ -490,7 +490,7 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchW        , this->exchW        );
     YAKL_SCOPE( exchE        , this->exchE        );
-    int numState = fwaves.dimension[0];
+    int numState = fwaves.extent(0);
     parallel_for( SimpleBounds<2>(numState+3,ny) , YAKL_LAMBDA (int v, int j) {
       if (v < numState) {
         if (exchW) fwaves(v,0,j,0 ) = edgeRecvBufW(v,j);
@@ -517,7 +517,7 @@ public:
     YAKL_SCOPE( ny           , this->ny           );
     YAKL_SCOPE( exchS        , this->exchS        );
     YAKL_SCOPE( exchN        , this->exchN        );
-    int numState = fwaves.dimension[0];
+    int numState = fwaves.extent(0);
     parallel_for( SimpleBounds<2>(numState+3,nx) , YAKL_LAMBDA (int v, int i) {
       if (v < numState) {
         if (exchS) fwaves(v,0,0 ,i) = edgeRecvBufS(v,i);
