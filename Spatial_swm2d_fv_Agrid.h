@@ -35,16 +35,10 @@ public:
   Weno weno;
 
   // Flux time derivatives
-  real4d fwaves;
   real4d fwaves_x;
   real4d fwaves_y;
-  real3d surf_limits;
   real3d surf_limits_x;
   real3d surf_limits_y;
-  real3d h_u_limits;
-  real3d u_u_limits;
-  real3d h_v_limits;
-  real3d v_v_limits;
   real2d bath;
   real3d bath_gll_x;
   real3d bath_gll_y;
@@ -395,18 +389,12 @@ public:
     TransformMatrices::get_gll_weights(this->gllWts_ngll);
 
     if (dimsplit) {
-      fwaves       = real4d("fwaves"     ,num_state,2,ny+1,nx+1);
-      surf_limits  = real3d("surf_limits"          ,2,ny+1,nx+1);
     } else {
       fwaves_x      = real4d("fwaves_x"     ,num_state,2,ny,nx+1);
       fwaves_y      = real4d("fwaves_y"     ,num_state,2,ny+1,nx);
       surf_limits_x = real3d("surf_limits_x"          ,2,ny,nx+1);
       surf_limits_y = real3d("surf_limits_y"          ,2,ny+1,nx);
     }
-    h_u_limits   = real3d("h_u_limits"           ,2,ny+1,nx+1);
-    u_u_limits   = real3d("u_u_limits"           ,2,ny+1,nx+1);
-    h_v_limits   = real3d("h_v_limits"           ,2,ny+1,nx+1);
-    v_v_limits   = real3d("v_v_limits"           ,2,ny+1,nx+1);
     bath         = real2d("bathymetry" ,ny+2*hs,nx+2*hs);
     if (dimsplit) {
       bath_gll_x   = real3d("bath_gll_x" ,ny,nx,ngll);
@@ -519,24 +507,26 @@ public:
           }
         }
 
-        ////////////////
-        // y-direction
-        ////////////////
-        exch.halo_init();
-        exch.halo_pack_y(bath);
-        exch.halo_exchange_y();
-        exch.halo_unpack_y(bath);
-        exch.halo_finalize();
-        if (bc_y == BC_WALL || bc_y == BC_OPEN) {
-          if (py == 0) {
-            parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
-              bath(      ii,i) = bath(hs     ,i);
-            });
-          }
-          if (py == nproc_y-1) {
-            parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
-              bath(ny+hs+ii,i) = bath(hs+ny-1,i);
-            });
+        if (! sim1d) {
+          ////////////////
+          // y-direction
+          ////////////////
+          exch.halo_init();
+          exch.halo_pack_y(bath);
+          exch.halo_exchange_y();
+          exch.halo_unpack_y(bath);
+          exch.halo_finalize();
+          if (bc_y == BC_WALL || bc_y == BC_OPEN) {
+            if (py == 0) {
+              parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+                bath(      ii,i) = bath(hs     ,i);
+              });
+            }
+            if (py == nproc_y-1) {
+              parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
+                bath(ny+hs+ii,i) = bath(hs+ny-1,i);
+              });
+            }
           }
         }
       #endif
@@ -544,31 +534,34 @@ public:
     } else {  // if (use_mpi)
 
       // x-direction boundaries for bathymetry
-      parallel_for( SimpleBounds<2>(ny+2*hs,hs) , YAKL_LAMBDA (int j, int ii) {
+      parallel_for( SimpleBounds<2>(ny,hs) , YAKL_LAMBDA (int j, int ii) {
         if        (bc_x == BC_WALL || bc_x == BC_OPEN) {
-          bath(j,      ii) = bath(j,hs     );
-          bath(j,nx+hs+ii) = bath(j,hs+nx-1);
+          bath(hs+j,      ii) = bath(hs+j,hs     );
+          bath(hs+j,nx+hs+ii) = bath(hs+j,hs+nx-1);
         } else if (bc_x == BC_PERIODIC) {
-          bath(j,      ii) = bath(j,nx+ii);
-          bath(j,nx+hs+ii) = bath(j,hs+ii);
+          bath(hs+j,      ii) = bath(hs+j,nx+ii);
+          bath(hs+j,nx+hs+ii) = bath(hs+j,hs+ii);
         }
       });
-      // y-direction boundaries for bathymetry
-      parallel_for( SimpleBounds<2>(nx+2*hs,hs) , YAKL_LAMBDA (int i, int ii) {
-        if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
-          bath(      ii,i) = bath(hs     ,i);
-          bath(ny+hs+ii,i) = bath(hs+ny-1,i);
-        } else if (bc_y == BC_PERIODIC) {
-          bath(      ii,i) = bath(ny+ii,i);
-          bath(ny+hs+ii,i) = bath(hs+ii,i);
-        }
-      });
+      if (! sim1d) {
+        // y-direction boundaries for bathymetry
+        parallel_for( SimpleBounds<2>(hs,nx+2*hs) , YAKL_LAMBDA (int jj, int i) {
+          if        (bc_y == BC_WALL || bc_y == BC_OPEN) {
+            bath(      jj,i) = bath(hs     ,i);
+            bath(ny+hs+jj,i) = bath(hs+ny-1,i);
+          } else if (bc_y == BC_PERIODIC) {
+            bath(      jj,i) = bath(ny+jj,i);
+            bath(ny+hs+jj,i) = bath(hs+jj,i);
+          }
+        });
+      }
 
     } // if (use_mpi)
 
     parallel_for( SimpleBounds<2>(ny,nx) , YAKL_LAMBDA (int j, int i) {
       SArray<real,1,ord> stencil;
       SArray<real,1,ngll> gll;
+      std::cout << j << " , " << i << std::endl;
 
       if (dimsplit) {
         // x-direction
@@ -576,10 +569,12 @@ public:
         reconstruct_gll_values( stencil , gll , s2g , c2g , weno.weno_internal );
         for (int ii=0; ii<ngll; ii++) { bath_gll_x(j,i,ii) = gll(ii); }
 
-        // y-direction
-        for (int jj=0; jj<ord; jj++) { stencil(jj) = bath(j+jj,hs+i); }
-        reconstruct_gll_values( stencil , gll , s2g , c2g , weno.weno_internal );
-        for (int jj=0; jj<ngll; jj++) { bath_gll_y(j,i,jj) = gll(jj); }
+        if (! sim1d) {
+          // y-direction
+          for (int jj=0; jj<ord; jj++) { stencil(jj) = bath(j+jj,hs+i); }
+          reconstruct_gll_values( stencil , gll , s2g , c2g , weno.weno_internal );
+          for (int jj=0; jj<ngll; jj++) { bath_gll_y(j,i,jj) = gll(jj); }
+        }
       }
     });
 
@@ -673,10 +668,6 @@ public:
     YAKL_SCOPE( fwaves_y      , this->fwaves_y           );
     YAKL_SCOPE( surf_limits_x , this->surf_limits_x      );
     YAKL_SCOPE( surf_limits_y , this->surf_limits_y      );
-    YAKL_SCOPE( h_u_limits    , this->h_u_limits         );
-    YAKL_SCOPE( u_u_limits    , this->u_u_limits         );
-    YAKL_SCOPE( h_v_limits    , this->h_v_limits         );
-    YAKL_SCOPE( v_v_limits    , this->v_v_limits         );
     YAKL_SCOPE( grav          , this->grav               );
     YAKL_SCOPE( gllWts_ngll   , this->gllWts_ngll        );
     YAKL_SCOPE( use_mpi       , this->use_mpi            );
@@ -875,16 +866,17 @@ public:
     YAKL_SCOPE( c2g          , this->coefs_to_gll       );
     YAKL_SCOPE( c2d2g        , this->coefs_to_deriv_gll );
     YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
-    YAKL_SCOPE( fwaves       , this->fwaves             );
-    YAKL_SCOPE( surf_limits  , this->surf_limits        );
-    YAKL_SCOPE( h_u_limits   , this->h_u_limits         );
-    YAKL_SCOPE( u_u_limits   , this->u_u_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_x   , this->bath_gll_x         );
     YAKL_SCOPE( weno         , this->weno               );
+
+    real4d fwaves     ("fwaves"     ,num_state,2,ny,nx+1);
+    real3d surf_limits("surf_limits"          ,2,ny,nx+1);
+    real3d h_u_limits ("h_u_limits"           ,2,ny,nx+1);
+    real3d u_u_limits ("u_u_limits"           ,2,ny,nx+1);
 
     // x-direction boundaries
     if (use_mpi) {
@@ -1341,16 +1333,17 @@ public:
     YAKL_SCOPE( c2g          , this->coefs_to_gll       );
     YAKL_SCOPE( c2d2g        , this->coefs_to_deriv_gll );
     YAKL_SCOPE( deriv_matrix , this->deriv_matrix       );
-    YAKL_SCOPE( fwaves       , this->fwaves             );
-    YAKL_SCOPE( surf_limits  , this->surf_limits        );
-    YAKL_SCOPE( h_v_limits   , this->h_v_limits         );
-    YAKL_SCOPE( v_v_limits   , this->v_v_limits         );
     YAKL_SCOPE( grav         , this->grav               );
     YAKL_SCOPE( gllWts_ngll  , this->gllWts_ngll        );
     YAKL_SCOPE( sim1d        , this->sim1d              );
     YAKL_SCOPE( use_mpi      , this->use_mpi            );
     YAKL_SCOPE( bath_gll_y   , this->bath_gll_y         );
     YAKL_SCOPE( weno         , this->weno               );
+
+    real4d fwaves     ("fwaves"     ,num_state,2,ny+1,nx);
+    real3d surf_limits("surf_limits"          ,2,ny+1,nx);
+    real3d h_v_limits ("h_v_limits"           ,2,ny+1,nx);
+    real3d v_v_limits ("v_v_limits"           ,2,ny+1,nx);
 
     // y-direction boundaries
     if (use_mpi) {

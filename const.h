@@ -13,6 +13,8 @@
   #include "YAKL_netcdf.h"
 #endif
 
+#define DEBUG() std::cout << __FILE__ << ": " << __LINE__ << std::endl;
+
 using yakl::c::parallel_for;
 using yakl::c::SimpleBounds;
 using yakl::fence;

@@ -31,25 +31,37 @@ int main(int argc, char** argv) {
 
     std::cout << "Order: " << ord << std::endl;
     std::cout << "Ngll: " << ngll << std::endl;
+    DEBUG();
 
     Model model;
+    DEBUG();
 
     model.init(in_file);
+    DEBUG();
 
     real3d state = model.create_state_arr();
+    DEBUG();
 
     model.init_state(state);
+    DEBUG();
 
     real etime = 0;
+    DEBUG();
 
     model.output( state , etime );
+    DEBUG();
 
     std::chrono::duration<double,std::milli> timer;
+    DEBUG();
     
     int nstep = 0;
+    DEBUG();
     while (etime < sim_time) {
+    DEBUG();
       real dt = model.compute_time_step(cfl,state);
+      DEBUG();
       if (etime + dt > sim_time) { dt = sim_time - etime; }
+      DEBUG();
       yakl::fence();
       auto t1 = std::chrono::high_resolution_clock::now();
       model.time_step( state , dt );
