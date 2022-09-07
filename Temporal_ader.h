@@ -10,13 +10,12 @@ template <class Spatial>
 class Temporal_operator {
 public:
 
-  real3d tend;
   Spatial space_op;
-
+  bool dim_switch;
   
   void init(std::string in_file) {
     space_op.init(in_file);
-    tend = space_op.create_tend_arr();
+    dim_switch = true;
   }
 
 
@@ -46,22 +45,36 @@ public:
 
 
   inline void time_step( real3d &state , real dt ) {
-    // Loop over different items in the spatial splitting
-    for (int spl = 0 ; spl < space_op.num_split() ; spl++) {
-      space_op.compute_tendencies( state , tend , dt , spl );
-
-      YAKL_SCOPE( tend , this->tend );
-
-      int constexpr hs = Spatial::hs;
-      int constexpr num_state = Spatial::num_state;
-      int constexpr idH = Spatial::idH;
-      int constexpr idU = Spatial::idU;
-      int constexpr idV = Spatial::idV;
-      parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
-        state(l,hs+j,hs+i) += dt * tend(l,j,i);
-      });
+    auto tend = space_op.create_tend_arr();
+    int constexpr hs        = Spatial::hs;
+    int constexpr num_state = Spatial::num_state;
+    bool          sim1d     = space_op.sim1d;
+    if (space_op.dimsplit) {
+      if (dim_switch) {
+        space_op.compute_tendencies_dimsplit_X( state , tend , dt );
+        parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+          state(l,hs+j,hs+i) += dt * tend(l,j,i);
+        });
+        if (! sim1d) {
+          space_op.compute_tendencies_dimsplit_Y( state , tend , dt );
+          parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+            state(l,hs+j,hs+i) += dt * tend(l,j,i);
+          });
+        }
+      } else {
+        if (! sim1d) {
+          space_op.compute_tendencies_dimsplit_Y( state , tend , dt );
+          parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+            state(l,hs+j,hs+i) += dt * tend(l,j,i);
+          });
+        }
+        space_op.compute_tendencies_dimsplit_X( state , tend , dt );
+        parallel_for( SimpleBounds<3>(num_state, space_op.ny, space_op.nx) , YAKL_LAMBDA (int l, int j, int i) {
+          state(l,hs+j,hs+i) += dt * tend(l,j,i);
+        });
+      }
+      dim_switch = ! dim_switch;
     }
-    space_op.switch_dimensions();
   }
 
 
