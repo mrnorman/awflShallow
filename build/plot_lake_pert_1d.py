@@ -65,10 +65,10 @@ plt.close()
 ####################################
 # Height Zoom
 ####################################
-x1_hi = int( 0.75*nx_hi )
-x2_hi = int( 0.95*nx_hi )
-x1_lo = int( 0.75*nx_lo )
-x2_lo = int( 0.95*nx_lo )
+x1_hi = int( 0.19*nx_hi )
+x2_hi = int( 0.34*nx_hi )
+x1_lo = int( 0.19*nx_lo )
+x2_lo = int( 0.34*nx_lo )
 plt.rcParams.update({'font.size': 15})
 plt.plot(x_hi[x1_hi:x2_hi],surf_hi[x1_hi:x2_hi],'-' ,color="black"  ,linewidth="0.6")
 plt.plot(x_1 [x1_lo:x2_lo],surf_1 [x1_lo:x2_lo],'-x',color="red"    ,linewidth="0.6",markersize="2")

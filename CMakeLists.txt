@@ -22,6 +22,6 @@ add_executable(driver ${DRIVER_SRC})
 include(${YAKL_HOME}/yakl_utils.cmake)
 yakl_process_target(driver)
 
-target_link_libraries(driver ${NCFLAGS} -lyaml-cpp)
+target_link_libraries(driver ${LINK_FLAGS} -lyaml-cpp)
 
 

@@ -29,6 +29,9 @@ int main(int argc, char** argv) {
     real cfl      = config["cfl"     ].as<real>();
     int num_out = 0;
 
+    std::cout << "Order: " << ord << std::endl;
+    std::cout << "Ngll: " << ngll << std::endl;
+
     Model model;
 
     model.init(in_file);
