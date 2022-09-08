@@ -3,7 +3,7 @@
 sim_time  : 0.1
 
 # Number of cells to use
-nx_glob : 10
+nx_glob : 800
 ny_glob : 1
 
 # Number of tasks to use in the x- and y-directions
@@ -27,7 +27,7 @@ bc_x : periodic
 bc_y : periodic
 
 # Output filename
-out_file  : order_hi.nc
+out_file  : order_9_b.nc
 
 # Output frequency in seconds
 out_freq  : 0.001
