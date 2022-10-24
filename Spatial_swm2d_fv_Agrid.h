@@ -414,8 +414,6 @@ public:
     YAKL_SCOPE( data_spec   , this->data_spec   );
     YAKL_SCOPE( bc_x        , this->bc_x        );
     YAKL_SCOPE( bc_y        , this->bc_y        );
-    YAKL_SCOPE( gllPts_ord  , this->gllPts_ord  );
-    YAKL_SCOPE( gllWts_ord  , this->gllWts_ord  );
     YAKL_SCOPE( dx          , this->dx          );
     YAKL_SCOPE( dy          , this->dy          );
     YAKL_SCOPE( xlen        , this->xlen        );
@@ -430,6 +428,10 @@ public:
     YAKL_SCOPE( bath_gll   , this->bath_gll     );
     YAKL_SCOPE( dimsplit   , this->dimsplit     );
     YAKL_SCOPE( weno       , this->weno         );
+
+    SArray<real,1,9> gll_pts, gll_wts;
+    TransformMatrices::get_gll_points (gll_pts);
+    TransformMatrices::get_gll_weights(gll_wts);
 
     if        (data_spec == DATA_SPEC_BALANCE_SMOOTH_1D) {
       surf_level = 10;
@@ -448,10 +450,10 @@ public:
       bath (    hs+j,hs+i) = 0;
       int i_glob = i_beg + i;
       int j_glob = j_beg + j;
-      for (int jj=0; jj < ord; jj++) {
-        for (int ii=0; ii < ord; ii++) {
-          real xloc = (i_glob+0.5_fp)*dx + gllPts_ord(ii)*dx;
-          real yloc = (j_glob+0.5_fp)*dy + gllPts_ord(jj)*dy;
+      for (int jj=0; jj < 9; jj++) {
+        for (int ii=0; ii < 9; ii++) {
+          real xloc = (i_glob+0.5_fp)*dx + gll_pts(ii)*dx;
+          real yloc = (j_glob+0.5_fp)*dy + gll_pts(jj)*dy;
           if (sim1d) yloc = ylen/2.;
           real h, u, v, b;
           if        (data_spec == DATA_SPEC_DAM_2D) {
@@ -475,10 +477,10 @@ public:
           } else if (data_spec == DATA_SPEC_BALANCE_NONSMOOTH_2D) {
             profiles::balance_nonsmooth_2d(xloc,yloc,xlen,ylen,h,u,v,b);
           }
-          state(idH,hs+j,hs+i) += h * gllWts_ord(ii) * gllWts_ord(jj);
-          state(idU,hs+j,hs+i) += u * gllWts_ord(ii) * gllWts_ord(jj);
-          state(idV,hs+j,hs+i) += v * gllWts_ord(ii) * gllWts_ord(jj);
-          bath (    hs+j,hs+i) += b * gllWts_ord(ii) * gllWts_ord(jj);
+          state(idH,hs+j,hs+i) += h * gll_wts(ii) * gll_wts(jj);
+          state(idU,hs+j,hs+i) += u * gll_wts(ii) * gll_wts(jj);
+          state(idV,hs+j,hs+i) += v * gll_wts(ii) * gll_wts(jj);
+          bath (    hs+j,hs+i) += b * gll_wts(ii) * gll_wts(jj);
         }
       }
     });

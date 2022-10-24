@@ -27,7 +27,7 @@ bc_x : open
 bc_y : open
 
 # Output filename
-out_file  : dam_rect_9.nc
+out_file  : dam_rect_7.nc
 
 # Output frequency in seconds
 out_freq  : 60.

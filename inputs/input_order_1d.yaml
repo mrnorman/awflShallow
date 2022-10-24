@@ -27,7 +27,7 @@ bc_x : periodic
 bc_y : periodic
 
 # Output filename
-out_file  : order_9_b.nc
+out_file  : order_3_b.nc
 
 # Output frequency in seconds
 out_freq  : 0.001

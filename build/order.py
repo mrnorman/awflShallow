@@ -71,10 +71,10 @@ def print_norms(fname_hi,fname_a,fname_b) :
     print(str(lia_h)+" "+str(lia_u)+" "+str(lia_v)+" "+str(lib_h)+" "+str(lib_u)+" "+str(lib_v)+" "+str(cvi_h)+" "+str(cvi_u)+" "+str(cvi_v))
 
 
-# print_norms( "order_hi.nc" , "order_3_a.nc" , "order_3_b.nc" )
-# print_norms( "order_hi.nc" , "order_5_a.nc" , "order_5_b.nc" )
-# print_norms( "order_hi.nc" , "order_7_a.nc" , "order_7_b.nc" )
-print_norms( "order_hi.nc" , "order_9_a.nc" , "order_9_b.nc" )
+print_norms( "order_hi.nc" , "order_3_a.nc" , "order_3_b.nc" )
+print_norms( "order_hi.nc" , "order_5_a.nc" , "order_5_b.nc" )
+print_norms( "order_hi.nc" , "order_7_a.nc" , "order_7_b.nc" )
+# print_norms( "order_hi.nc" , "order_9_a.nc" , "order_9_b.nc" )
 
 # print_norms( "order_2d_hi.nc" , "order_2d_3_a.nc" , "order_2d_3_b.nc" )
 # print_norms( "order_2d_hi.nc" , "order_2d_5_a.nc" , "order_2d_5_b.nc" )
