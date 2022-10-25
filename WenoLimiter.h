@@ -9,7 +9,7 @@
 class Weno {
 public:
 
-  real static constexpr eps = 1.0e-20;
+  bool static constexpr ideal = false;
   int  static constexpr hs  = (ord-1)/2;
 
   struct WenoInternal {
@@ -17,7 +17,7 @@ public:
     real idl_2;
     real idl_3;
     real idl_4;
-    real idl_hi;
+    real idl_H;
     real dropoff;
   };
 
@@ -30,7 +30,7 @@ public:
       weno_internal.idl_2   = 1;
       weno_internal.idl_3   = 0;
       weno_internal.idl_4   = 0;
-      weno_internal.idl_hi  = 50;
+      weno_internal.idl_H   = 50;
       weno_internal.dropoff = 0.8;
     }
     if (ord == 5) {
@@ -38,15 +38,15 @@ public:
       weno_internal.idl_2   = 1;
       weno_internal.idl_3   = 1;
       weno_internal.idl_4   = 0;
-      weno_internal.idl_hi  = 50;
-      weno_internal.dropoff = 0.5;
+      weno_internal.idl_H   = 50;
+      weno_internal.dropoff = 0.2;
     }
     if (ord == 7) {
       weno_internal.idl_1   = 1;
       weno_internal.idl_2   = 1;
       weno_internal.idl_3   = 1;
       weno_internal.idl_4   = 0;
-      weno_internal.idl_hi  = 500;
+      weno_internal.idl_H   = 500;
       weno_internal.dropoff = 0.1;
     }
     if (ord == 9) {
@@ -54,15 +54,10 @@ public:
       weno_internal.idl_2   = 1;
       weno_internal.idl_3   = 0;
       weno_internal.idl_4   = 0;
-      weno_internal.idl_hi  = 5000;
+      weno_internal.idl_H   = 5000;
       weno_internal.dropoff = 0.05;
     }
-    real tot = weno_internal.idl_1 + weno_internal.idl_2  + weno_internal.idl_3 + weno_internal.idl_4 + weno_internal.idl_hi;
-    weno_internal.idl_1  /= tot;
-    weno_internal.idl_2  /= tot;
-    weno_internal.idl_3  /= tot;
-    weno_internal.idl_4  /= tot;
-    weno_internal.idl_hi /= tot;
+    convexify(weno_internal.idl_1 , weno_internal.idl_2  , weno_internal.idl_3 , weno_internal.idl_4 , weno_internal.idl_H);
   }
 
 
@@ -76,83 +71,65 @@ public:
   YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
                                               SArray<real,1,3> const &s,
                                               SArray<real,1,3> &limited_coefs ) {
-    // Store the ideal weights
-    real idl_1 = wi.idl_1;
-    real idl_2 = wi.idl_2;
-    real idl_H = wi.idl_hi;
-
-    // Get the hi and lo coefficients
-    SArray<real,1,2> coefs_1, coefs_2;
-    SArray<real,1,3> coefs_H;
-    coefs2_shift1( coefs_1 , s(0) , s(1) );
-    coefs2_shift2( coefs_2 , s(1) , s(2) );
-    coefs3_shift2( coefs_H , s(0) , s(1) , s(2) );
-
-    // Compute TV for each
-    real w_1 = TV( coefs_1 );
-    real w_2 = TV( coefs_2 );
-    real w_H = TV( coefs_H );
-
-    // Normalize WENO weights
-    real tot = w_1 + w_2 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_H /= tot;
+    bool constexpr monotone = true;
+    if (monotone) {
+      real d_L = s(1) - s(0);
+      real d_R = s(2) - s(1);
+      real slope = d_L;
+      if (std::abs(d_R) < std::abs(d_L)) slope = d_R;
+      if (d_L * d_R < 0) slope = 0;
+      limited_coefs(0) = s(1);
+      limited_coefs(1) = slope;
+      limited_coefs(2) = 0;
     } else {
-      w_1 = 0;
-      w_2 = 0;
-      w_H = 1;
+      real constexpr eps = 1.e-20;
+      // Get the hi and lo coefficients
+      SArray<real,1,2> coefs_1, coefs_2;
+      SArray<real,1,3> coefs_H;
+      coefs2_shift1( coefs_1 , s(0) , s(1) );
+      coefs2_shift2( coefs_2 , s(1) , s(2) );
+      coefs3_shift2( coefs_H , s(0) , s(1) , s(2) );
+
+      // Compute TV for each
+      real w_1 = TV( coefs_1 );
+      real w_2 = TV( coefs_2 );
+      real w_H = TV( coefs_H );
+
+      // Normalize WENO weights
+      convexify( w_1 , w_2 , w_H );
+
+      w_1 = std::max( eps , w_1 );
+      w_2 = std::max( eps , w_2 );
+      w_H = std::max( eps , w_H );
+
+      // Compute WENO weights (inverse square of TV)
+      w_1 = wi.idl_1 / ( w_1*w_1 );
+      w_2 = wi.idl_2 / ( w_2*w_2 );
+      w_H = wi.idl_H / ( w_H*w_H );
+
+      // Normalize WENO weights
+      convexify( w_1 , w_2 , w_H );
+
+      if (w_1 < wi.dropoff) w_1 = 0;
+      if (w_2 < wi.dropoff) w_2 = 0;
+
+      // Normalize WENO weights
+      convexify( w_1 , w_2 , w_H );
+
+      if constexpr (ideal) { w_1 = 0; w_2 = 0; w_H = 1; }
+
+      // Compute WENO polynomial coefficients
+      limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0);
+      limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1);
+      limited_coefs(2) = w_H*coefs_H(2);
     }
-
-    // Compute WENO weights (inverse square of TV)
-    w_1 = idl_1 / ( w_1*w_1 + eps);
-    w_2 = idl_2 / ( w_2*w_2 + eps);
-    w_H = idl_H / ( w_H*w_H + eps);
-
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = 0;
-      w_2 = 0;
-      w_H = 1;
-    }
-
-    if (w_1 < wi.dropoff) w_1 = 0;
-    if (w_2 < wi.dropoff) w_2 = 0;
-
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = 0;
-      w_2 = 0;
-      w_H = 1;
-    }
-
-    // Compute WENO polynomial coefficients
-    limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0);
-    limited_coefs(1) = w_H*coefs_H(1) + w_1*coefs_1(1) + w_2*coefs_2(1);
-    limited_coefs(2) = w_H*coefs_H(2);
   }
 
 
   YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
                                               SArray<real,1,5> const &s,
                                               SArray<real,1,5> &limited_coefs ) {
-    // Store the ideal weights
-    real idl_1 = wi.idl_1;
-    real idl_2 = wi.idl_2;
-    real idl_3 = wi.idl_3;
-    real idl_H = wi.idl_hi;
-
+    real constexpr eps = 1.e-20;
     // Get the hi and lo coefficients
     SArray<real,1,3> coefs_1, coefs_2, coefs_3;
     SArray<real,1,5> coefs_H;
@@ -167,57 +144,29 @@ public:
     real w_3 = TV( coefs_3 );
     real w_H = TV( coefs_H );
 
-    // Normalize WENO weights
-    real tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
+
+    // Compute TV for each
+    w_1 = std::max( eps , w_1 );
+    w_2 = std::max( eps , w_2 );
+    w_3 = std::max( eps , w_3 );
+    w_H = std::max( eps , w_H );
 
     // Compute WENO weights (inverse square of TV)
-    w_1 = idl_1 / ( w_1*w_1 + eps);
-    w_2 = idl_2 / ( w_2*w_2 + eps);
-    w_3 = idl_3 / ( w_3*w_3 + eps);
-    w_H = idl_H / ( w_H*w_H + eps);
+    w_1 = wi.idl_1 / ( w_1*w_1 );
+    w_2 = wi.idl_2 / ( w_2*w_2 );
+    w_3 = wi.idl_3 / ( w_3*w_3 );
+    w_H = wi.idl_H / ( w_H*w_H );
 
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
 
     if (w_1 < wi.dropoff) w_1 = 0;
     if (w_2 < wi.dropoff) w_2 = 0;
     if (w_3 < wi.dropoff) w_3 = 0;
 
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
+
+    if constexpr (ideal) { w_1 = 0; w_2 = 0; w_3 = 0; w_H = 1; }
 
     // Compute WENO polynomial coefficients
     limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0);
@@ -231,12 +180,7 @@ public:
   YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
                                               SArray<real,1,7> const &s,
                                               SArray<real,1,7> &limited_coefs ) {
-    // Store the ideal weights
-    real idl_1 = wi.idl_1;
-    real idl_2 = wi.idl_2;
-    real idl_3 = wi.idl_3;
-    real idl_H = wi.idl_hi;
-
+    real constexpr eps = 1.e-20;
     // Get the hi and lo coefficients
     SArray<real,1,3> coefs_1, coefs_2, coefs_3;
     SArray<real,1,7> coefs_H;
@@ -246,62 +190,28 @@ public:
     coefs7       ( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) , s(5) , s(6) );
 
     // Compute TV for each
-    real w_1 = TV( coefs_1 );
-    real w_2 = TV( coefs_2 );
-    real w_3 = TV( coefs_3 );
-    real w_H = TV( coefs_H );
+    real w_1 = std::max( eps , TV( coefs_1 ) );
+    real w_2 = std::max( eps , TV( coefs_2 ) );
+    real w_3 = std::max( eps , TV( coefs_3 ) );
+    real w_H = std::max( eps , TV( coefs_H ) );
 
-    // Normalize WENO weights
-    real tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
 
     // Compute WENO weights (inverse square of TV)
-    w_1 = idl_1 / ( w_1*w_1 + eps);
-    w_2 = idl_2 / ( w_2*w_2 + eps);
-    w_3 = idl_3 / ( w_3*w_3 + eps);
-    w_H = idl_H / ( w_H*w_H + eps);
+    w_1 = wi.idl_1 / ( w_1*w_1 );
+    w_2 = wi.idl_2 / ( w_2*w_2 );
+    w_3 = wi.idl_3 / ( w_3*w_3 );
+    w_H = wi.idl_H / ( w_H*w_H );
 
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
 
     if (w_1 < wi.dropoff) w_1 = 0;
     if (w_2 < wi.dropoff) w_2 = 0;
     if (w_3 < wi.dropoff) w_3 = 0;
 
-    // Normalize WENO weights
-    tot = w_1 + w_2 + w_3 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_3 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_3 = idl_3;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_3 , w_H );
+
+    if constexpr (ideal) { w_1 = 0; w_2 = 0; w_3 = 0; w_H = 1; }
 
     // Compute WENO polynomial coefficients
     limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0) + w_3*coefs_3(0);
@@ -317,11 +227,7 @@ public:
   YAKL_INLINE static void compute_weno_coefs( WenoInternal const &wi ,
                                               SArray<real,1,9> const &s,
                                               SArray<real,1,9> &limited_coefs ) {
-    // Store the ideal weights
-    real idl_1 = wi.idl_1;
-    real idl_2 = wi.idl_2;
-    real idl_H = wi.idl_hi;
-
+    real constexpr eps = 1.e-20;
     // Get the hi and lo coefficients
     SArray<real,1,2> coefs_1, coefs_2;
     SArray<real,1,9> coefs_H;
@@ -330,41 +236,27 @@ public:
     coefs9       ( coefs_H , s(0) , s(1) , s(2) , s(3) , s(4) , s(5) , s(6) , s(7) , s(8) );
 
     // Compute TV for each
-    real TV_1 = TV( coefs_1 );
-    real TV_2 = TV( coefs_2 );
-    real TV_H = TV( coefs_H );
+    real w_1 = std::max( eps , TV( coefs_1 ) );
+    real w_2 = std::max( eps , TV( coefs_2 ) );
+    real w_H = std::max( eps , TV( coefs_H ) );
+
+    convexify( w_1 , w_2 , w_H );
 
     // Compute WENO weights (inverse square of TV)
-    real w_1 = idl_1 / ( TV_1 + eps);
-    real w_2 = idl_2 / ( TV_2 + eps);
-    real w_H = idl_H / ( TV_H + eps);
+    w_1 = wi.idl_1 / ( w_1*w_1 );
+    w_2 = wi.idl_2 / ( w_2*w_2 );
+    w_H = wi.idl_H / ( w_H*w_H );
 
     // Normalize WENO weights
-    real tot = w_1 + w_2 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_H );
 
     if (w_1 < wi.dropoff) w_1 = 0;
     if (w_2 < wi.dropoff) w_2 = 0;
 
     // Normalize WENO weights
-    tot = w_1 + w_2 + w_H;
-    if ( abs(tot) > eps ) {
-      w_1 /= tot;
-      w_2 /= tot;
-      w_H /= tot;
-    } else {
-      w_1 = idl_1;
-      w_2 = idl_2;
-      w_H = idl_H;
-    }
+    convexify( w_1 , w_2 , w_H );
+
+    if constexpr (ideal) { w_1 = 0; w_2 = 0; w_H = 1; }
 
     // Compute WENO polynomial coefficients
     limited_coefs(0) = w_H*coefs_H(0) + w_1*coefs_1(0) + w_2*coefs_2(0);
@@ -376,6 +268,30 @@ public:
     limited_coefs(6) = w_H*coefs_H(6);
     limited_coefs(7) = w_H*coefs_H(7);
     limited_coefs(8) = w_H*coefs_H(8);
+  }
+
+
+  YAKL_INLINE static void convexify(real & w1, real & w2, real & w3) {
+    real tot = w1 + w2 + w3;
+    if (tot > 1.e-20) { w1 /= tot;   w2 /= tot;   w3 /= tot; }
+  }
+
+
+  YAKL_INLINE static void convexify(real & w1, real & w2, real & w3, real & w4) {
+    real tot = w1 + w2 + w3 + w4;
+    if (tot > 1.e-20) { w1 /= tot;   w2 /= tot;   w3 /= tot;   w4 /= tot; }
+  }
+
+
+  YAKL_INLINE static void convexify(real & w1, real & w2, real & w3, real & w4, real & w5) {
+    real tot = w1 + w2 + w3 + w4 + w5;
+    if (tot > 1.e-20) { w1 /= tot;   w2 /= tot;   w3 /= tot;   w4 /= tot;   w5 /= tot; }
+  }
+
+
+  YAKL_INLINE static void convexify(real & w1, real & w2, real & w3, real & w4, real & w5, real & w6) {
+    real tot = w1 + w2 + w3 + w4 + w5 + w6;
+    if (tot > 1.e-20) { w1 /= tot;   w2 /= tot;   w3 /= tot;   w4 /= tot;   w5 /= tot;   w6 /= tot; }
   }
 
 

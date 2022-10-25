@@ -408,19 +408,19 @@ public:
 
   // Initialize the state
   void init_state( StateArr &state ) {
-    YAKL_SCOPE( bath        , this->bath        );
-    YAKL_SCOPE( nx          , this->nx          );
-    YAKL_SCOPE( ny          , this->ny          );
-    YAKL_SCOPE( data_spec   , this->data_spec   );
-    YAKL_SCOPE( bc_x        , this->bc_x        );
-    YAKL_SCOPE( bc_y        , this->bc_y        );
-    YAKL_SCOPE( dx          , this->dx          );
-    YAKL_SCOPE( dy          , this->dy          );
-    YAKL_SCOPE( xlen        , this->xlen        );
-    YAKL_SCOPE( ylen        , this->ylen        );
-    YAKL_SCOPE( i_beg       , this->i_beg       );
-    YAKL_SCOPE( j_beg       , this->j_beg       );
-    YAKL_SCOPE( sim1d       , this->sim1d       );
+    YAKL_SCOPE( bath       , this->bath         );
+    YAKL_SCOPE( nx         , this->nx           );
+    YAKL_SCOPE( ny         , this->ny           );
+    YAKL_SCOPE( data_spec  , this->data_spec    );
+    YAKL_SCOPE( bc_x       , this->bc_x         );
+    YAKL_SCOPE( bc_y       , this->bc_y         );
+    YAKL_SCOPE( dx         , this->dx           );
+    YAKL_SCOPE( dy         , this->dy           );
+    YAKL_SCOPE( xlen       , this->xlen         );
+    YAKL_SCOPE( ylen       , this->ylen         );
+    YAKL_SCOPE( i_beg      , this->i_beg        );
+    YAKL_SCOPE( j_beg      , this->j_beg        );
+    YAKL_SCOPE( sim1d      , this->sim1d        );
     YAKL_SCOPE( s2g        , this->sten_to_gll  );
     YAKL_SCOPE( c2g        , this->coefs_to_gll );
     YAKL_SCOPE( bath_gll_x , this->bath_gll_x   );
@@ -428,6 +428,7 @@ public:
     YAKL_SCOPE( bath_gll   , this->bath_gll     );
     YAKL_SCOPE( dimsplit   , this->dimsplit     );
     YAKL_SCOPE( weno       , this->weno         );
+    YAKL_SCOPE( surf_level , this->surf_level   );
 
     SArray<real,1,9> gll_pts, gll_wts;
     TransformMatrices::get_gll_points (gll_pts);

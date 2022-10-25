@@ -27,7 +27,7 @@ bc_x : open
 bc_y : open
 
 # Output filename
-out_file  : lake_pert_1d_7.nc
+out_file  : lake_pert_1d_5.nc
 
 # Output frequency in seconds
 out_freq  : 0.02
