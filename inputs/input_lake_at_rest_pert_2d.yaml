@@ -1,10 +1,10 @@
 ---
 # Simulation time in seconds
-sim_time  : 0.6
+sim_time  : 0.8
 
 # Number of cells to use
-nx_glob : 200
-ny_glob : 100
+nx_glob : 600
+ny_glob : 300
 
 # Number of tasks to use in the x- and y-directions
 nproc_x : 1
